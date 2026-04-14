@@ -92,6 +92,34 @@
   }
   .step strong { color: var(--text); }
 
+  /* ── FAMILLE PICKER ── */
+  #famille-screen {
+    display: none; min-height: 100vh; flex-direction: column;
+    align-items: center; justify-content: center; gap: 28px;
+  }
+  .famille-title { font-family:'Space Mono',monospace; font-size:18px; font-weight:700; color:var(--accent); text-align:center; }
+  .famille-sub { font-size:13px; color:var(--muted); text-align:center; margin-top:6px; }
+  .famille-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; max-width:600px; width:100%; }
+  .famille-btn {
+    background:var(--surface); border:2px solid var(--border);
+    border-radius:12px; padding:18px 12px; text-align:center;
+    cursor:pointer; transition:all .2s; font-family:'DM Sans',sans-serif;
+  }
+  .famille-btn:hover { border-color:var(--accent); background:var(--surface2); transform:translateY(-2px); }
+  .famille-btn.selected { border-color:var(--accent); background:#3b82f611; }
+  .famille-btn .fam-icon { font-size:28px; margin-bottom:8px; }
+  .famille-btn .fam-label { font-size:12px; font-weight:700; color:var(--text); }
+  .famille-btn .fam-count { font-size:10px; color:var(--muted); font-family:'Space Mono',monospace; margin-top:3px; }
+  .famille-btn.all-btn { grid-column:1/-1; background:var(--surface2); }
+  .famille-btn.all-btn:hover { border-color:var(--green); }
+  .btn-famille-go {
+    background:var(--accent); color:white; border:none; border-radius:10px;
+    padding:12px 36px; font-family:'DM Sans',sans-serif; font-size:14px; font-weight:700;
+    cursor:pointer; transition:all .2s; display:none;
+  }
+  .btn-famille-go:hover { background:#2563eb; transform:translateY(-1px); }
+  .btn-famille-go.visible { display:block; }
+
   /* ── TOPBAR ── */
   #app { display: none; }
   .topbar {
@@ -173,23 +201,65 @@
   .histo-bar { width:100%; border-radius:4px 4px 0 0; min-height:4px; }
   .histo-label { font-size:9px; color:var(--muted); white-space:nowrap; }
 
-  /* ── TABLE ── */
-  .filters { display:flex; gap:10px; flex-wrap:wrap; margin:18px 0 14px; align-items:center; }
-  .filter-group { display:flex; flex-direction:column; gap:4px; }
-  .filter-group label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
-  select, input[type=text], input[type=number] {
-    background:var(--surface); border:1px solid var(--border); color:var(--text);
-    border-radius:8px; padding:7px 12px; font-family:'DM Sans',sans-serif;
-    font-size:12px; outline:none; cursor:pointer; min-width:160px; transition:border-color .15s;
+  /* ── FILTER BAR ── */
+  .filter-bar {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--card-r); padding: 16px 20px; margin: 16px 0 10px;
+    display: flex; flex-direction: column; gap: 14px;
   }
-  select:focus, input:focus { border-color:var(--accent); }
+  .filter-bar-top { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+  .filter-bar-bottom { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; border-top: 1px solid var(--border); padding-top: 12px; }
+  .filter-section { display: flex; flex-direction: column; gap: 8px; }
+  .filter-section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+  .search-input {
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+    border-radius: 8px; padding: 8px 14px; font-family: 'DM Sans', sans-serif;
+    font-size: 13px; outline: none; width: 320px; transition: border-color .15s;
+  }
+  .search-input:focus { border-color: var(--accent); }
+  .filter-inline-group { display: flex; align-items: center; gap: 6px; }
+  .filter-inline-label { font-size: 11px; color: var(--muted); white-space: nowrap; font-weight: 600; }
+  select, input[type=number] {
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+    border-radius: 8px; padding: 6px 10px; font-family: 'DM Sans', sans-serif;
+    font-size: 12px; outline: none; cursor: pointer; transition: border-color .15s;
+  }
+  select:focus, input:focus { border-color: var(--accent); }
+
+  /* ── FAMILLE CHIPS (multi-select) ── */
+  .famille-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .fam-chip {
+    display: flex; align-items: center; gap: 5px;
+    background: var(--surface2); border: 2px solid var(--border);
+    border-radius: 20px; padding: 5px 12px; cursor: pointer;
+    font-size: 11px; font-weight: 600; color: var(--muted);
+    transition: all .15s; user-select: none;
+  }
+  .fam-chip:hover { border-color: var(--accent); color: var(--text); }
+  .fam-chip.active { border-color: var(--accent); background: #3b82f611; color: var(--text); }
+  .fam-chip.all-chip.active { border-color: var(--green); background: #22c55e11; color: var(--green); }
+  .fam-chip-icon { font-size: 13px; }
+  .fam-chip-count { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--muted); }
+
   .btn-reset {
-    background:var(--surface2); border:1px solid var(--border); color:var(--muted);
-    border-radius:8px; padding:7px 16px; font-family:'DM Sans',sans-serif;
-    font-size:12px; cursor:pointer; transition:all .15s; align-self:flex-end;
+    background: var(--surface2); border: 1px solid var(--border); color: var(--muted);
+    border-radius: 8px; padding: 6px 14px; font-family: 'DM Sans', sans-serif;
+    font-size: 12px; cursor: pointer; transition: all .15s;
   }
-  .btn-reset:hover { color:var(--text); border-color:var(--accent); }
-  .count-badge { margin-left:auto; align-self:flex-end; font-family:'Space Mono',monospace; font-size:11px; color:var(--muted); padding:8px 0; }
+  .btn-reset:hover { color: var(--text); border-color: var(--red); }
+  .count-badge { margin-left: auto; font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted); }
+
+  /* ── TABLE LEGEND ── */
+  .table-legend {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    margin-bottom: 8px; font-size: 11px; color: var(--muted);
+  }
+  .contact-link {
+    margin-left: auto; color: var(--accent); text-decoration: none; font-size: 11px;
+    border: 1px solid var(--border); border-radius: 6px; padding: 3px 10px;
+    transition: all .15s;
+  }
+  .contact-link:hover { border-color: var(--accent); background: #3b82f611; }
   .table-wrap { overflow-x:auto; border-radius:var(--card-r); border:1px solid var(--border); }
   table { width:100%; border-collapse:collapse; font-size:11.5px; }
   thead th {
@@ -265,6 +335,16 @@
   <div class="upload-error" id="upload-error"></div>
 </div>
 
+<!-- ═══════════ FAMILLE SCREEN ═══════════ -->
+<div id="famille-screen">
+  <div>
+    <div class="famille-title">Choisir une famille de produits</div>
+    <div class="famille-sub" id="famille-sub">Fichier chargé — sélectionne une famille pour afficher le dashboard</div>
+  </div>
+  <div class="famille-grid" id="famille-grid"></div>
+  <button class="btn-famille-go" id="btn-famille-go" onclick="confirmFamille()">Afficher le dashboard →</button>
+</div>
+
 <!-- ═══════════ APP ═══════════ -->
 <div id="app">
   <div class="topbar">
@@ -272,6 +352,7 @@
       <div class="logo">SAV//NOMAD</div>
       <div class="topbar-title" id="topbar-title">Atelier Limonest ELA</div>
       <span class="badge-file" id="badge-file"></span>
+      <span class="badge-file" id="badge-famille" style="background:#6366f111;border-color:#6366f155;color:#818cf8;cursor:pointer" onclick="changeFamille()" title="Changer de famille"></span>
     </div>
     <button class="btn-reload" onclick="reloadFile()">📂 Changer de fichier</button>
   </div>
@@ -313,44 +394,90 @@
 
     <!-- TABLE -->
     <div class="page" id="page-table">
-      <div class="filters">
-        <div class="filter-group"><label>Catégorie</label>
-          <select id="f-cat" onchange="applyFilters()">
-            <option value="">Toutes</option>
-            <option>ATTENTE INTERVENTION</option><option>ATTENTE PIECES</option>
-            <option>PIECE A REPOSER</option><option>DEVIS</option>
-            <option>VALIDATION/ADMIN</option><option>TERMINÉ</option>
-          </select>
+
+      <!-- Barre de filtres repensée -->
+      <div class="filter-bar">
+        <div class="filter-bar-top">
+          <div class="filter-section">
+            <div class="filter-section-title">🗂️ Famille(s)</div>
+            <div class="famille-chips" id="famille-chips"></div>
+          </div>
+          <div class="filter-section">
+            <div class="filter-section-title">🔍 Recherche rapide</div>
+            <input type="text" id="f-search" placeholder="Nom client, modèle, n° dossier…" oninput="applyFilters()" class="search-input">
+          </div>
         </div>
-        <div class="filter-group"><label>Statut exact</label><select id="f-statut" onchange="applyFilters()"><option value="">Tous</option></select></div>
-        <div class="filter-group"><label>Marque</label><select id="f-marque" onchange="applyFilters()"><option value="">Toutes</option></select></div>
-        <div class="filter-group"><label>Enseigne</label><select id="f-enseigne" onchange="applyFilters()"><option value="">Toutes</option></select></div>
-        <div class="filter-group"><label>Délai mini (j)</label><input type="number" id="f-delai-min" placeholder="ex: 30" onchange="applyFilters()" style="min-width:100px"></div>
-        <div class="filter-group"><label>Recherche</label><input type="text" id="f-search" placeholder="Nom, modèle, n° dossier…" oninput="applyFilters()" style="min-width:200px"></div>
-        <button class="btn-reset" onclick="resetFilters()">↺ Réinitialiser</button>
-        <div class="count-badge" id="count-badge"></div>
+        <div class="filter-bar-bottom">
+          <div class="filter-inline-group">
+            <span class="filter-inline-label">Statut</span>
+            <select id="f-statut" onchange="applyFilters()"><option value="">Tous les statuts</option></select>
+          </div>
+          <div class="filter-inline-group">
+            <span class="filter-inline-label">Marque</span>
+            <select id="f-marque" onchange="applyFilters()"><option value="">Toutes</option></select>
+          </div>
+          <div class="filter-inline-group">
+            <span class="filter-inline-label">Enseigne</span>
+            <select id="f-enseigne" onchange="applyFilters()"><option value="">Toutes</option></select>
+          </div>
+          <div class="filter-inline-group">
+            <span class="filter-inline-label">Délai mini</span>
+            <input type="number" id="f-delai-min" placeholder="ex: 30 j" onchange="applyFilters()" style="width:90px">
+          </div>
+          <div class="filter-inline-group">
+            <span class="filter-inline-label">Trier par</span>
+            <select id="f-sort" onchange="applySortFromSelect()">
+              <option value="DELAI RECEP NOW_desc">Délai ↓ (plus anciens en premier)</option>
+              <option value="DELAI RECEP NOW_asc">Délai ↑ (plus récents en premier)</option>
+              <option value="NOM CLIENT_asc">Client A→Z</option>
+              <option value="MARQUE_asc">Marque A→Z</option>
+              <option value="CODE ATELIER_asc">Famille A→Z</option>
+              <option value="DERN STATUT_asc">Statut A→Z</option>
+              <option value="DATE DEPOT_desc">Date dépôt (récent)</option>
+              <option value="DATE DEPOT_asc">Date dépôt (ancien)</option>
+            </select>
+          </div>
+          <button class="btn-reset" onclick="resetFilters()">↺ Tout réinitialiser</button>
+          <div class="count-badge" id="count-badge"></div>
+        </div>
       </div>
+
+      <!-- Légende colonnes -->
+      <div class="table-legend">
+        <span>💡 Cliquez sur les en-têtes de colonnes pour trier</span>
+        <span class="delai-chip d-ok" style="font-size:10px">≤7j ok</span>
+        <span class="delai-chip d-watch" style="font-size:10px">7-14j surveiller</span>
+        <span class="delai-chip d-late" style="font-size:10px">14-30j retard</span>
+        <span class="delai-chip d-crit" style="font-size:10px">&gt;30j critique</span>
+        <a href="mailto:thomas.crastres@darty.fr?subject=Dashboard SAV - Demande modification" class="contact-link">✉️ Demander une modification</a>
+      </div>
+
       <div class="table-wrap">
         <table>
           <thead><tr>
-            <th onclick="sortTable('NUM DOS NOMAD')">N° Dossier ↕</th>
-            <th onclick="sortTable('DATE DEPOT')">Date dépôt ↕</th>
-            <th onclick="sortTable('LIEU DEPOT')">Magasin ↕</th>
-            <th onclick="sortTable('NOM CLIENT')">Client ↕</th>
-            <th onclick="sortTable('MODELE')">Modèle ↕</th>
-            <th onclick="sortTable('MARQUE')">Marque ↕</th>
-            <th onclick="sortTable('DERN STATUT')">Statut ↕</th>
-            <th onclick="sortTable('CATEGORIE')">Catégorie ↕</th>
-            <th onclick="sortTable('DELAI RECEP NOW')">Délai total ↕</th>
-            <th onclick="sortTable('DELAI DERNSTATUT NOW')">Délai statut ↕</th>
-            <th onclick="sortTable('NOM TECH')">Technicien ↕</th>
-            <th onclick="sortTable('ENSEIGNE')">Enseigne ↕</th>
-            <th onclick="sortTable('PRIX ACHAT')">Prix achat ↕</th>
+            <th onclick="sortTable('NUM DOS NOMAD')" title="Trier par n° dossier">N° Dossier</th>
+            <th onclick="sortTable('DATE DEPOT')" title="Trier par date dépôt">Date dépôt</th>
+            <th onclick="sortTable('LIEU DEPOT')" title="Trier par magasin">Magasin</th>
+            <th onclick="sortTable('NOM CLIENT')" title="Trier par client">Client</th>
+            <th onclick="sortTable('MODELE')" title="Trier par modèle">Modèle</th>
+            <th onclick="sortTable('MARQUE')" title="Trier par marque">Marque</th>
+            <th onclick="sortTable('CODE ATELIER')" title="Trier par famille">Famille</th>
+            <th onclick="sortTable('DERN STATUT')" title="Trier par statut">Statut</th>
+            <th onclick="sortTable('DELAI RECEP NOW')" title="Trier par délai total">Délai total ↕</th>
+            <th onclick="sortTable('DELAI DERNSTATUT NOW')" title="Trier par délai statut">Délai statut ↕</th>
+            <th onclick="sortTable('NOM TECH')" title="Trier par technicien">Technicien</th>
+            <th onclick="sortTable('ENSEIGNE')" title="Trier par enseigne">Enseigne</th>
+            <th onclick="sortTable('PRIX ACHAT')" title="Trier par prix">Prix achat</th>
           </tr></thead>
           <tbody id="table-body"></tbody>
         </table>
       </div>
       <div class="pagination" id="pagination"></div>
+
+      <div style="text-align:center;margin-top:20px;padding:16px;border-top:1px solid var(--border)">
+        <span style="font-size:11px;color:var(--muted)">Un filtre manque ? Une colonne à ajouter ?</span>
+        <a href="mailto:thomas.crastres@darty.fr?subject=Dashboard SAV - Suggestion amélioration" style="color:var(--accent);font-size:11px;margin-left:8px;text-decoration:none">✉️ Contactez thomas.crastres@darty.fr</a>
+      </div>
     </div>
   </div>
 </div>
@@ -381,6 +508,19 @@ const CAT_TAG = {
   'ATTENTE INTERVENTION':'intervention','ATTENTE PIECES':'pieces','PIECE A REPOSER':'reposer',
   'DEVIS':'devis','VALIDATION/ADMIN':'validation','TERMINÉ':'termine'
 };
+
+const FAMILLE_ICONS = {
+  'AIR':'🌀','CULIN':'🍳','HIFI':'🎵','APPLE':'🍎','MOB':'🛴',
+  'MO':'🖥️','VAPEUR':'♨️','EXPRES':'☕','STTRMA':'📦','STTDIR':'🚚','PIECES':'🔧','AUTRE':'📁'
+};
+const FAMILLE_LABELS = {
+  'AIR':'Air / Aspiration','CULIN':'Culinaire','HIFI':'HiFi / Son','APPLE':'Apple',
+  'MOB':'Mobilité','MO':'Moniteurs','VAPEUR':'Vapeur','EXPRES':'Expresso',
+  'STTRMA':'Sous-trait RMA','STTDIR':'Sous-trait Direct','PIECES':'Pièces','AUTRE':'Autre'
+};
+
+let allRecordsRaw = [];
+let selectedFamille = '';
 
 // ── Upload ──
 const dropZone = document.getElementById('drop-zone');
@@ -418,7 +558,6 @@ function processFile(file) {
       const ws = wb.Sheets[wb.SheetNames[0]];
       const raw = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
 
-      // Trouver la ligne d'en-tête (contient "NUM DOS NOMAD")
       let headerRow = -1;
       for(let i=0;i<20;i++) {
         if(raw[i] && raw[i].some(c => String(c).includes('NUM DOS NOMAD'))) { headerRow = i; break; }
@@ -430,26 +569,21 @@ function processFile(file) {
 
       showProgress('Calcul des statistiques...');
 
-      function col(row, name) {
-        const i = headers.indexOf(name);
-        return i>=0 ? row[i] : '';
-      }
+      function col(row, name) { const i = headers.indexOf(name); return i>=0 ? row[i] : ''; }
       function fmtDate(v) {
         if(!v) return '';
         if(v instanceof Date) return v.toLocaleDateString('fr-FR');
-        if(typeof v === 'number') {
-          const d = new Date(Math.round((v-25569)*86400*1000));
-          return d.toLocaleDateString('fr-FR');
-        }
+        if(typeof v === 'number') { const d = new Date(Math.round((v-25569)*86400*1000)); return d.toLocaleDateString('fr-FR'); }
         return String(v);
       }
 
-      const records = [];
+      allRecordsRaw = [];
       for(const row of dataRows) {
         const statut = String(col(row,'DERN STATUT')).trim();
         if(SOUS_TRAIT.includes(statut)) continue;
         const cat = CAT_MAP[statut] || 'AUTRE';
-        records.push({
+        const famille = String(col(row,'CODE ATELIER')).trim() || 'AUTRE';
+        allRecordsRaw.push({
           'NUM DOS NOMAD': col(row,'NUM DOS NOMAD'),
           'DATE DEPOT': fmtDate(col(row,'DATE DEPOT')),
           'LIEU DEPOT': String(col(row,'LIEU DEPOT')).trim(),
@@ -460,6 +594,7 @@ function processFile(file) {
           'MARQUE': String(col(row,'MARQUE')).trim(),
           'DERN STATUT': statut,
           'CATEGORIE': cat,
+          'CODE ATELIER': famille,
           'DELAI RECEP NOW': Number(col(row,'DELAI RECEP NOW'))||0,
           'DELAI DERNSTATUT NOW': Number(col(row,'DELAI DERNSTATUT NOW'))||0,
           'NB DEM PIECE': col(row,'NB DEM PIECE'),
@@ -470,8 +605,10 @@ function processFile(file) {
         });
       }
 
-      if(records.length === 0) { showError('Aucun dossier trouvé dans ce fichier.'); return; }
-      buildDashboard(records, file.name);
+      if(allRecordsRaw.length === 0) { showError('Aucun dossier trouvé dans ce fichier.'); return; }
+
+      // Afficher l'écran de sélection famille
+      showFamilleScreen(file.name);
 
     } catch(err) {
       showError('Erreur lors de la lecture : ' + err.message);
@@ -480,21 +617,77 @@ function processFile(file) {
   reader.readAsArrayBuffer(file);
 }
 
+// ── Famille screen ──
+function showFamilleScreen(filename) {
+  document.getElementById('upload-screen').style.display = 'none';
+  document.getElementById('upload-progress').style.display = 'none';
+  document.getElementById('famille-screen').style.display = 'flex';
+  document.getElementById('famille-sub').textContent = filename + ' — ' + allRecordsRaw.length + ' dossiers chargés';
+
+  // Compter par famille
+  const counts = {};
+  allRecordsRaw.forEach(r => { const f=r['CODE ATELIER']; counts[f]=(counts[f]||0)+1; });
+  const familles = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+
+  const grid = document.getElementById('famille-grid');
+  grid.innerHTML = '';
+
+  // Bouton "Tout voir"
+  grid.innerHTML += `<div class="famille-btn all-btn" onclick="selectFamille('', this)">
+    <div class="fam-icon">🗂️</div>
+    <div class="fam-label">TOUTES LES FAMILLES</div>
+    <div class="fam-count">${allRecordsRaw.length} dossiers</div>
+  </div>`;
+
+  familles.forEach(([fam, count]) => {
+    grid.innerHTML += `<div class="famille-btn" onclick="selectFamille('${fam}', this)">
+      <div class="fam-icon">${FAMILLE_ICONS[fam]||'📁'}</div>
+      <div class="fam-label">${fam}</div>
+      <div class="fam-count">${count} dossiers</div>
+    </div>`;
+  });
+}
+
+function selectFamille(fam, el) {
+  document.querySelectorAll('.famille-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedFamille = fam;
+  const btn = document.getElementById('btn-famille-go');
+  btn.classList.add('visible');
+  btn.textContent = fam ? `Afficher ${fam} →` : 'Afficher toutes les familles →';
+}
+
+function confirmFamille() {
+  const records = selectedFamille
+    ? allRecordsRaw.filter(r => r['CODE ATELIER'] === selectedFamille)
+    : allRecordsRaw;
+  document.getElementById('famille-screen').style.display = 'none';
+  document.getElementById('badge-famille').textContent = selectedFamille || 'TOUTES';
+  buildDashboard(records, selectedFamille || 'Toutes familles');
+}
+
+function changeFamille() {
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('famille-screen').style.display = 'flex';
+  document.querySelectorAll('.famille-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('btn-famille-go').classList.remove('visible');
+}
+
 function reloadFile() {
   document.getElementById('app').style.display = 'none';
+  document.getElementById('famille-screen').style.display = 'none';
   document.getElementById('upload-screen').style.display = 'flex';
   document.getElementById('upload-progress').style.display = 'none';
   document.getElementById('upload-error').style.display = 'none';
   fileInput.value = '';
+  allRecordsRaw = [];
 }
 
 // ── Build dashboard ──
-function buildDashboard(records, filename) {
-  document.getElementById('upload-screen').style.display = 'none';
+function buildDashboard(records, familleLabel) {
   document.getElementById('app').style.display = 'block';
-  document.getElementById('badge-file').textContent = filename;
+  document.getElementById('badge-file').textContent = familleLabel;
 
-  // Stats
   const total = records.length;
   const delays = records.map(r => r['DELAI RECEP NOW']);
   const delaiMoy = (delays.reduce((a,b)=>a+b,0)/total).toFixed(1);
@@ -505,7 +698,6 @@ function buildDashboard(records, filename) {
   const surveiller = delays.filter(d=>d>7&&d<=14).length;
   const ok = delays.filter(d=>d<=7).length;
 
-  // KPIs
   const kpiGrid = document.getElementById('kpi-grid');
   kpiGrid.innerHTML = '';
   [
@@ -519,7 +711,6 @@ function buildDashboard(records, filename) {
     kpiGrid.innerHTML += `<div class="kpi ${k.cls}"><div class="kpi-label">${k.label}</div><div class="kpi-val">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`;
   });
 
-  // Cat stats
   const catMap = {};
   records.forEach(r => {
     const c = r['CATEGORIE'];
@@ -530,7 +721,6 @@ function buildDashboard(records, filename) {
     CATEGORIE:k, count:v.count, delai_moy:+(v.totalDelai/v.count).toFixed(1)
   })).sort((a,b)=>b.count-a.count);
 
-  // Donut
   const donutCanvas = document.getElementById('donut');
   const ctx = donutCanvas.getContext('2d');
   ctx.clearRect(0,0,150,150);
@@ -549,18 +739,16 @@ function buildDashboard(records, filename) {
   ctx.fillText(total,cx,cy-5); ctx.font='9px DM Sans,sans-serif';
   ctx.fillStyle='#64748b'; ctx.fillText('dossiers',cx,cy+10);
 
-  const legendDonut = document.getElementById('legend-donut');
-  legendDonut.innerHTML = catStats.map(c => `<div class="legend-item">
+  document.getElementById('legend-donut').innerHTML = catStats.map(c => `<div class="legend-item">
     <span class="legend-dot" style="background:${CAT_COLORS[c.CATEGORIE]||'#555'}"></span>
     <span class="legend-name" style="font-size:10px">${c.CATEGORIE}</span>
     <span class="legend-val">${c.count} (${Math.round(c.count/total*100)}%)</span>
   </div>`).join('');
 
-  // Histo
   const tranches = [[0,7],[7,14],[14,21],[21,30],[30,45],[45,60],[60,9999]];
-  const labels = ['0-7j','7-14j','14-21j','21-30j','30-45j','45-60j','>60j'];
+  const histLabels = ['0-7j','7-14j','14-21j','21-30j','30-45j','45-60j','>60j'];
   const histColors = ['#22c55e','#22c55e','#eab308','#f97316','#ef4444','#ef4444','#ef4444'];
-  const histData = tranches.map(([lo,hi],i) => ({label:labels[i],count:delays.filter(d=>d>lo&&d<=hi).length,color:histColors[i]}));
+  const histData = tranches.map(([lo,hi],i) => ({label:histLabels[i],count:delays.filter(d=>d>lo&&d<=hi).length,color:histColors[i]}));
   const histMax = Math.max(...histData.map(h=>h.count));
   document.getElementById('histo-wrap').innerHTML = '<div class="histo">' +
     histData.map(h => `<div class="histo-col">
@@ -569,7 +757,6 @@ function buildDashboard(records, filename) {
       <div class="histo-label">${h.label}</div>
     </div>`).join('') + '</div>';
 
-  // Bar charts
   function renderBar(elId, data, labelKey, valKey, colorFn) {
     const maxV = Math.max(...data.map(d=>d[valKey]));
     document.getElementById(elId).innerHTML = data.map(d => `<div class="bar-row">
@@ -597,34 +784,75 @@ function buildDashboard(records, filename) {
     .sort((a,b)=>b.count-a.count).slice(0,10);
   renderBar('bar-tech', techStats, 'NOM_TECH', 'delai_moy', delaiColor);
 
-  // Table
   initTable(records);
 }
 
 // ── Table ──
 let allRecords=[], filteredRecords=[], sortCol='DELAI RECEP NOW', sortDir=-1, curPage=1;
 const PAGE_SIZE=50;
+let selectedFamilles = new Set(); // vide = toutes
 
 function initTable(records) {
   allRecords = records;
+
+  // Famille chips
+  const counts = {};
+  records.forEach(r => { const f=r['CODE ATELIER']||'AUTRE'; counts[f]=(counts[f]||0)+1; });
+  const familles = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  const chipsEl = document.getElementById('famille-chips');
+  chipsEl.innerHTML = `<div class="fam-chip all-chip active" onclick="toggleFamille('__ALL__', this)">
+    <span class="fam-chip-icon">🗂️</span><span>Toutes</span>
+    <span class="fam-chip-count">${records.length}</span>
+  </div>`;
+  familles.forEach(([fam, cnt]) => {
+    chipsEl.innerHTML += `<div class="fam-chip" data-fam="${fam}" onclick="toggleFamille('${fam}', this)">
+      <span class="fam-chip-icon">${FAMILLE_ICONS[fam]||'📁'}</span>
+      <span>${fam}</span>
+      <span class="fam-chip-count">${cnt}</span>
+    </div>`;
+  });
+  selectedFamilles = new Set();
+
   const fStatut = document.getElementById('f-statut');
   const fMarque = document.getElementById('f-marque');
   const fEnseigne = document.getElementById('f-enseigne');
-  fStatut.innerHTML = '<option value="">Tous</option>' + [...new Set(records.map(r=>r['DERN STATUT']).filter(Boolean))].sort().map(s=>`<option>${s}</option>`).join('');
+  fStatut.innerHTML = '<option value="">Tous les statuts</option>' + [...new Set(records.map(r=>r['DERN STATUT']).filter(Boolean))].sort().map(s=>`<option>${s}</option>`).join('');
   fMarque.innerHTML = '<option value="">Toutes</option>' + [...new Set(records.map(r=>r['MARQUE']).filter(Boolean))].sort().map(m=>`<option>${m}</option>`).join('');
   fEnseigne.innerHTML = '<option value="">Toutes</option>' + [...new Set(records.map(r=>r['ENSEIGNE']).filter(Boolean))].sort().map(e=>`<option>${e}</option>`).join('');
   applyFilters();
 }
 
+function toggleFamille(fam, el) {
+  if(fam === '__ALL__') {
+    selectedFamilles = new Set();
+    document.querySelectorAll('.fam-chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+  } else {
+    // Désactive "Toutes"
+    document.querySelector('.all-chip').classList.remove('active');
+    if(selectedFamilles.has(fam)) {
+      selectedFamilles.delete(fam);
+      el.classList.remove('active');
+    } else {
+      selectedFamilles.add(fam);
+      el.classList.add('active');
+    }
+    // Si aucune sélectionnée → revenir à "Toutes"
+    if(selectedFamilles.size === 0) {
+      document.querySelector('.all-chip').classList.add('active');
+    }
+  }
+  applyFilters();
+}
+
 function applyFilters() {
-  const cat=document.getElementById('f-cat').value;
   const statut=document.getElementById('f-statut').value;
   const marque=document.getElementById('f-marque').value;
   const enseigne=document.getElementById('f-enseigne').value;
   const delaiMin=parseFloat(document.getElementById('f-delai-min').value)||0;
   const search=document.getElementById('f-search').value.toLowerCase();
   filteredRecords = allRecords.filter(r => {
-    if(cat && r['CATEGORIE']!==cat) return false;
+    if(selectedFamilles.size > 0 && !selectedFamilles.has(r['CODE ATELIER'])) return false;
     if(statut && r['DERN STATUT']!==statut) return false;
     if(marque && r['MARQUE']!==marque) return false;
     if(enseigne && r['ENSEIGNE']!==enseigne) return false;
@@ -638,7 +866,21 @@ function applyFilters() {
   sortBy(); curPage=1; render();
 }
 
-function sortTable(col) { if(sortCol===col) sortDir*=-1; else{sortCol=col;sortDir=-1;} sortBy(); render(); }
+function applySortFromSelect() {
+  const val = document.getElementById('f-sort').value;
+  const [col, dir] = val.split('_');
+  sortCol = col; sortDir = dir === 'desc' ? -1 : 1;
+  sortBy(); render();
+}
+
+function sortTable(col) {
+  if(sortCol===col) sortDir*=-1; else{sortCol=col;sortDir=-1;}
+  // Sync le select si possible
+  const sel = document.getElementById('f-sort');
+  const target = col+'_'+(sortDir===-1?'desc':'asc');
+  for(let o of sel.options) { if(o.value===target){sel.value=target;break;} }
+  sortBy(); render();
+}
 function sortBy() {
   filteredRecords.sort((a,b) => {
     let av=a[sortCol]??'', bv=b[sortCol]??'';
@@ -657,10 +899,11 @@ function render() {
     return `<tr>
       <td style="font-family:monospace;font-size:10px;color:var(--muted)">${r['NUM DOS NOMAD']}</td>
       <td>${r['DATE DEPOT']}</td>
-      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${r['LIEU DEPOT']}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis">${r['LIEU DEPOT']}</td>
       <td style="font-weight:500">${r['NOM CLIENT']}</td>
       <td style="color:var(--muted)">${r['MODELE']}</td>
       <td style="font-weight:600">${r['MARQUE']}</td>
+      <td><span style="background:var(--surface2);border:1px solid var(--border);font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px;font-family:Space Mono,monospace">${r['CODE ATELIER']}</span></td>
       <td style="font-size:10px;color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis">${r['DERN STATUT']}</td>
       <td><span class="tag tag-${tc}">${r['CATEGORIE']}</span></td>
       <td><span class="delai-chip ${delaiClass(d)}">${d}j</span></td>
@@ -672,7 +915,8 @@ function render() {
   }).join('');
 
   const t=filteredRecords.length;
-  document.getElementById('count-badge').textContent=`${t} dossier${t>1?'s':''} trouvé${t>1?'s':''}`;
+  const famTxt = selectedFamilles.size>0 ? [...selectedFamilles].join(', ') : 'toutes familles';
+  document.getElementById('count-badge').textContent=`${t} dossier${t>1?'s':''} — ${famTxt}`;
 
   const totalPages=Math.ceil(t/PAGE_SIZE);
   const pag=document.getElementById('pagination');
@@ -688,9 +932,15 @@ function render() {
 
 function goPage(p) { const max=Math.ceil(filteredRecords.length/PAGE_SIZE); if(p<1||p>max)return; curPage=p; render(); }
 function resetFilters() {
-  ['f-cat','f-statut','f-marque','f-enseigne'].forEach(id=>document.getElementById(id).value='');
+  selectedFamilles = new Set();
+  document.querySelectorAll('.fam-chip').forEach(c=>c.classList.remove('active'));
+  const allChip = document.querySelector('.all-chip');
+  if(allChip) allChip.classList.add('active');
+  ['f-statut','f-marque','f-enseigne'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f-delai-min').value='';
   document.getElementById('f-search').value='';
+  document.getElementById('f-sort').value='DELAI RECEP NOW_desc';
+  sortCol='DELAI RECEP NOW'; sortDir=-1;
   applyFilters();
 }
 function switchPage(id,btn) {
