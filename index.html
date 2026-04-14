@@ -148,6 +148,13 @@ function openMail(type) {
     letter-spacing: .03em;
   }
   .btn-famille-change:hover { background: #6366f122; border-color: #818cf8; }
+  .nav-contact {
+    margin-left: auto; align-self: center; padding: 6px 14px;
+    font-size: 11px; color: var(--muted); background: #ffffff06;
+    border: 1px solid var(--border); border-radius: 8px;
+  }
+  .nav-contact a { color: var(--accent); text-decoration: none; font-weight: 600; }
+  .nav-contact a:hover { text-decoration: underline; }
     background: var(--surface2); border: 1px solid var(--border);
     color: var(--muted); border-radius: 8px; padding: 6px 14px;
     font-family: 'DM Sans', sans-serif; font-size: 12px; cursor: pointer;
@@ -190,6 +197,11 @@ function openMail(type) {
   .kpi.orange .kpi-val{color:var(--orange)} .kpi.yellow .kpi-val{color:var(--yellow)}
   .kpi.green .kpi-val{color:var(--green)} .kpi.purple .kpi-val{color:var(--accent2)}
   .kpi-sub { font-size:11px; color:var(--muted); margin-top:6px; }
+  .kpi-hint { font-size:9px; color:var(--muted); margin-top:6px; opacity:0; transition:opacity .15s; letter-spacing:.04em; }
+  .kpi-clickable { transition: transform 0.15s, box-shadow 0.15s !important; }
+  .kpi-clickable:hover { transform: translateY(-3px) !important; box-shadow: 0 6px 20px #00000040; }
+  .kpi-clickable:hover .kpi-hint { opacity:1; }
+  .kpi-clickable:hover::after { content:''; position:absolute; inset:0; background:#ffffff05; border-radius:var(--card-r); }
 
   /* ── CHARTS ── */
   .charts-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
@@ -414,7 +426,7 @@ function openMail(type) {
       <div class="logo">SAV//NOMAD</div>
       <div class="topbar-title" id="topbar-title">Atelier Limonest ELA</div>
       <span class="badge-file" id="badge-file"></span>
-      <button class="btn-famille-change" id="badge-famille" onclick="changeFamille()" title="Changer de famille">🗂️ <span id="badge-famille-label">TOUTES</span> — Changer de famille</button>
+      <button class="btn-famille-change" id="badge-famille" onclick="changeFamille()" title="Changer de famille">🗂️ Changer de famille</button>
     </div>
     <button class="btn-reload" onclick="reloadFile()">📂 Changer de fichier</button>
   </div>
@@ -423,6 +435,7 @@ function openMail(type) {
     <button class="nav-btn active" onclick="switchPage('dashboard',this)">📊 Tableau de bord</button>
     <button class="nav-btn" onclick="switchPage('table',this)">📋 Dossiers</button>
     <button class="nav-btn" onclick="switchPage('tech',this)">👨‍🔧 Encours techniciens</button>
+    <div class="nav-contact">💬 Pour toute modification ou amélioration, contacter <a href="mailto:thomas.crastres@darty.fr">thomas.crastres@darty.fr</a></div>
   </div>
 
   <div class="main">
@@ -474,22 +487,22 @@ function openMail(type) {
 
       <div id="tech-kpis" style="display:none">
         <div class="tech-filter-bar">
-          <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Filtrer par statut</span>
+          <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Filtrer par statut(s)</span>
           <div class="tech-stat-chips" id="tech-stat-chips">
             <span class="tech-chip active" data-statut="" onclick="setTechStatut('',this)">Tous</span>
-            <span class="tech-chip att-inter" data-statut="ATTENTE INTERVENTION" onclick="setTechStatut('ATTENTE INTERVENTION',this)">⏳ Attente intervention</span>
-            <span class="tech-chip pieces" data-statut="PIECE COMMANDEE ATEL" onclick="setTechStatut('PIECE COMMANDEE ATEL',this)">📦 Pièce commandée</span>
-            <span class="tech-chip pieces" data-statut="PIECE DEMDEE ATELIER" onclick="setTechStatut('PIECE DEMDEE ATELIER',this)">🔍 Pièce demandée</span>
-            <span class="tech-chip reposer" data-statut="PIECE ATL A REPOSER" onclick="setTechStatut('PIECE ATL A REPOSER',this)">🔧 Pièce à reposer</span>
-            <span class="tech-chip rupture" data-statut="PIECE EN RUPTURE" onclick="setTechStatut('PIECE EN RUPTURE',this)">❌ Rupture</span>
-            <span class="tech-chip rupture" data-statut="RUPTURE RELANCEE" onclick="setTechStatut('RUPTURE RELANCEE',this)">🔄 Rupture relancée</span>
-            <span class="tech-chip devis" data-statut="DEVIS EMIS" onclick="setTechStatut('DEVIS EMIS',this)">📋 Devis émis</span>
+            <span class="tech-chip att-inter" data-statut="ATTENTE INTERVENTION" onclick="toggleTechStatut('ATTENTE INTERVENTION',this)">⏳ Attente intervention</span>
+            <span class="tech-chip pieces" data-statut="PIECE COMMANDEE ATEL" onclick="toggleTechStatut('PIECE COMMANDEE ATEL',this)">📦 Pièce commandée</span>
+            <span class="tech-chip pieces" data-statut="PIECE DEMDEE ATELIER" onclick="toggleTechStatut('PIECE DEMDEE ATELIER',this)">🔍 Pièce demandée</span>
+            <span class="tech-chip reposer" data-statut="PIECE ATL A REPOSER" onclick="toggleTechStatut('PIECE ATL A REPOSER',this)">🔧 Pièce à reposer</span>
+            <span class="tech-chip rupture" data-statut="PIECE EN RUPTURE" onclick="toggleTechStatut('PIECE EN RUPTURE',this)">❌ Rupture</span>
+            <span class="tech-chip rupture" data-statut="RUPTURE RELANCEE" onclick="toggleTechStatut('RUPTURE RELANCEE',this)">🔄 Rupture relancée</span>
+            <span class="tech-chip devis" data-statut="DEVIS EMIS" onclick="toggleTechStatut('DEVIS EMIS',this)">📋 Devis émis</span>
           </div>
-          <div class="filter-inline-group" style="margin-left:auto">
-            <span class="filter-inline-label">Autre statut</span>
-            <select id="tech-statut-extra" onchange="setTechStatutFromSelect(this.value)" style="min-width:200px">
-              <option value="">-- Tous les autres --</option>
-            </select>
+          <div style="position:relative;margin-left:auto">
+            <button class="btn-reset" style="font-size:11px" onclick="toggleTechDropdown()">+ Autres statuts ▾</button>
+            <div id="tech-statut-dropdown" style="display:none;position:absolute;right:0;top:110%;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px;min-width:260px;z-index:50;max-height:300px;overflow-y:auto;box-shadow:0 8px 24px #00000040">
+              <div id="tech-statut-checkboxes"></div>
+            </div>
           </div>
         </div>
 
@@ -622,15 +635,15 @@ function openMail(type) {
 
 <script>
 // ── Catégories ──
-const SOUS_TRAIT = ['EN COURS S/TRAITANT','A ENVOYER EN S/TRAIT','ECH REA, ATT REC ACC','ATTENT RECEP CPT DIS','A ENVOYER CPT DIST.'];
+const SOUS_TRAIT = ['EN COURS S/TRAITANT','A ENVOYER EN S/TRAIT','ECH REA, ATT REC ACC','ATTENT RECEP CPT DIS','A ENVOYER CPT DIST.','B.E DELIVRE, ATT REA','ECH TOPE, ATT EDI BE','APPAREIL + DE 6 MOIS','PASSAGE SG A TRAITER','ATT RECEP APP REFUSE','ATTENTE ENCAISSEMENT'];
 const CAT_MAP = {
   'PIECE COMMANDEE ATEL':'ATTENTE PIECES','PIECE DEMDEE ATELIER':'ATTENTE PIECES',
   'PIECE A COMMDER ATEL':'ATTENTE PIECES','PIECE EN RUPTURE':'ATTENTE PIECES','RUPTURE RELANCEE':'ATTENTE PIECES',
-  'PIECE ATL A REPOSER':'PIECE A REPOSER',"B.E DELIVRE, ATT REA":'PIECE A REPOSER',"APP.EN BANC D'ESSAI":'PIECE A REPOSER',
+  'PIECE ATL A REPOSER':'PIECE A REPOSER',
   'ATTENTE INTERVENTION':'ATTENTE INTERVENTION','ECSG A TRAITER':'ATTENTE INTERVENTION','PASSAGE SG A TRAITER':'ATTENTE INTERVENTION',
   'DEVIS EMIS':'DEVIS','DEVIS ENV/APP CH.FRS':'DEVIS','DEVIS ETABLI NOMAD':'DEVIS',
-  'DEVIS S/TRT INT RECU':'DEVIS','ECH TOPE, ATT EDI BE':'DEVIS','ATT.INT/DEVIS REFUSE':'DEVIS','ATT INT/DEVIS ACCEPT':'DEVIS',
-  'APPAREIL TER. REPARE':'TERMINÉ','APP TERM. NON REPARE':'TERMINÉ','APPAREIL + DE 6 MOIS':'TERMINÉ',
+  'DEVIS S/TRT INT RECU':'DEVIS','ATT.INT/DEVIS REFUSE':'DEVIS','ATT INT/DEVIS ACCEPT':'DEVIS',
+  'APPAREIL TER. REPARE':'TERMINÉ','APP TERM. NON REPARE':'TERMINÉ',
   'APPAREIL A DETRUIRE':'TERMINÉ','APP MANQUANT REP CLT':'TERMINÉ',
   'ATTENTE ENCAISSEMENT':'VALIDATION/ADMIN','ATT VALIDATION CC':'VALIDATION/ADMIN','DEM. RMA EFFECTUEE':'VALIDATION/ADMIN',
   'DMD COMP. CLIENT':'VALIDATION/ADMIN','ECH REA, ATT MUT ACC':'VALIDATION/ADMIN','LITIGE MUT SAV->CPT':'VALIDATION/ADMIN',
@@ -832,7 +845,7 @@ function confirmFamille() {
   const label = selectedFamillesInit.size === 0 ? 'TOUTES'
     : selectedFamillesInit.size === 1 ? [...selectedFamillesInit][0]
     : [...selectedFamillesInit].join(', ');
-  document.getElementById('badge-famille-label').textContent = label;
+  // badge-famille is now static text
   buildDashboard(records, label);
 }
 
@@ -870,15 +883,17 @@ function buildDashboard(records, familleLabel) {
 
   const kpiGrid = document.getElementById('kpi-grid');
   kpiGrid.innerHTML = '';
-  [
-    {label:'Total dossiers', val:total, sub:'hors sous-traitance', cls:'blue'},
-    {label:'Délai moyen atelier', val:delaiMoy+'j', sub:'Médiane : '+delaiMed+'j', cls:'purple'},
-    {label:'⚠ Critiques (>30j)', val:critique, sub:Math.round(critique/total*100)+'% des dossiers', cls:'red'},
-    {label:'↑ En retard (14-30j)', val:enRetard, sub:Math.round(enRetard/total*100)+'% des dossiers', cls:'orange'},
-    {label:'~ À surveiller (7-14j)', val:surveiller, sub:Math.round(surveiller/total*100)+'% des dossiers', cls:'yellow'},
-    {label:'✓ Dans les délais (≤7j)', val:ok, sub:Math.round(ok/total*100)+'% des dossiers', cls:'green'},
-  ].forEach(k => {
-    kpiGrid.innerHTML += `<div class="kpi ${k.cls}"><div class="kpi-label">${k.label}</div><div class="kpi-val">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`;
+  const kpiItems = [
+    {label:'Total dossiers',        val:total,          sub:'hors sous-traitance',                         cls:'blue',   action:null},
+    {label:'Délai moyen atelier',   val:delaiMoy+'j',   sub:'Médiane : '+delaiMed+'j',                     cls:'purple', action:null},
+    {label:'⚠ Critiques (>30j)',    val:critique,       sub:Math.round(critique/total*100)+'% des dossiers',cls:'red',    action:'goToDossiersDelai(30,9999)'},
+    {label:'↑ En retard (14-30j)',  val:enRetard,       sub:Math.round(enRetard/total*100)+'% des dossiers',cls:'orange', action:'goToDossiersDelai(14,30)'},
+    {label:'~ À surveiller (7-14j)',val:surveiller,     sub:Math.round(surveiller/total*100)+'% des dossiers',cls:'yellow',action:'goToDossiersDelai(7,14)'},
+    {label:'✓ Dans les délais (≤7j)',val:ok,            sub:Math.round(ok/total*100)+'% des dossiers',      cls:'green',  action:'goToDossiersDelai(0,7)'},
+  ];
+  kpiItems.forEach(k => {
+    const clickable = k.action ? `onclick="${k.action}" style="cursor:pointer" title="Voir les dossiers"` : '';
+    kpiGrid.innerHTML += `<div class="kpi ${k.cls} ${k.action?'kpi-clickable':''}" ${clickable}><div class="kpi-label">${k.label}</div><div class="kpi-val">${k.val}</div><div class="kpi-sub">${k.sub}</div>${k.action?'<div class="kpi-hint">Voir les dossiers →</div>':''}</div>`;
   });
 
   const catMap = {};
@@ -938,24 +953,47 @@ function buildDashboard(records, familleLabel) {
   }
   function delaiColor(v) { return v>30?'#ef4444':v>14?'#f97316':v>7?'#eab308':'#22c55e'; }
 
-  // Délai moyen par catégorie — exclure TERMINÉ et VALIDATION/ADMIN, ajouter statuts pièces détaillés
-  const catExclude = ['TERMINÉ','VALIDATION/ADMIN'];
-  const statutsSpeciaux = ['PIECE EN RUPTURE','RUPTURE RELANCEE','PIECE DEMDEE ATELIER'];
-  const catStatsFiltres = catStats.filter(c => !catExclude.includes(c.CATEGORIE));
+  // Barres catégories avec règles précises :
+  // - PIECE A REPOSER → seulement PIECE ATL A REPOSER
+  // - DEVIS → seulement DEVIS ETABLI NOMAD + ATT.INT/DEVIS REFUSE + ATT INT/DEVIS ACCEPT
+  // - ECH TOPE ATT EDI BE → exclu partout
+  // - TERMINÉ + VALIDATION/ADMIN → exclus
+  const STATUTS_REPOSER   = ['PIECE ATL A REPOSER'];
+  const STATUTS_DEVIS_BAR = ['DEVIS ETABLI NOMAD','ATT.INT/DEVIS REFUSE','ATT INT/DEVIS ACCEPT'];
+  const STATUTS_SPECIAUX  = ['PIECE EN RUPTURE','RUPTURE RELANCEE','PIECE DEMDEE ATELIER'];
+  const CATS_EXCLUES      = ['TERMINÉ','VALIDATION/ADMIN','PIECE A REPOSER','DEVIS'];
 
-  // Stats détaillées pour les statuts spéciaux
-  const statutMap = {};
-  records.forEach(r => {
-    const s = r['DERN STATUT'];
-    if(statutsSpeciaux.includes(s)) {
-      if(!statutMap[s]) statutMap[s] = {count:0, totalDelai:0};
-      statutMap[s].count++; statutMap[s].totalDelai += r['DELAI DERNSTATUT NOW'];
-    }
+  // Recalcul précis par groupe de statuts
+  const barStatMap = {};
+  const groupes = [
+    {label:'PIECE ATL A REPOSER', statuts: STATUTS_REPOSER},
+    {label:'DEVIS (3 statuts)',    statuts: STATUTS_DEVIS_BAR},
+    {label:'PIECE EN RUPTURE',     statuts: ['PIECE EN RUPTURE']},
+    {label:'RUPTURE RELANCEE',     statuts: ['RUPTURE RELANCEE']},
+    {label:'PIECE DEMDEE ATELIER', statuts: ['PIECE DEMDEE ATELIER']},
+  ];
+  groupes.forEach(g => {
+    const rows = records.filter(r => g.statuts.includes(r['DERN STATUT']));
+    if(rows.length === 0) return;
+    const moy = rows.reduce((s,r)=>s+r['DELAI DERNSTATUT NOW'],0)/rows.length;
+    barStatMap[g.label] = {count:rows.length, delai_moy:+moy.toFixed(1)};
   });
-  const statutSpecStats = Object.entries(statutMap).map(([k,v]) => ({
-    CATEGORIE: k, count: v.count, delai_moy: +(v.totalDelai/v.count).toFixed(1)
-  }));
-  const catStatsFinal = [...catStatsFiltres, ...statutSpecStats].sort((a,b) => b.delai_moy - a.delai_moy);
+
+  // Catégories restantes (ATTENTE INTERVENTION, ATTENTE PIECES sans rupture/demandée, SOUS-TRAITANCE si présent)
+  const catStatsFiltres = catStats.filter(c => !CATS_EXCLUES.includes(c.CATEGORIE));
+  // Recalcul ATTENTE PIECES sans les statuts spéciaux et sans ECH TOPE
+  const STATUTS_EXCL_PIECES = [...STATUTS_SPECIAUX, 'ECH TOPE, ATT EDI BE'];
+  const rowsAP = records.filter(r => r['CATEGORIE']==='ATTENTE PIECES' && !STATUTS_EXCL_PIECES.includes(r['DERN STATUT']));
+  const catStatsRemainder = catStatsFiltres.map(c => {
+    if(c.CATEGORIE === 'ATTENTE PIECES' && rowsAP.length > 0) {
+      const moy = rowsAP.reduce((s,r)=>s+r['DELAI DERNSTATUT NOW'],0)/rowsAP.length;
+      return {CATEGORIE:'ATTENTE PIECES (commandée)', count:rowsAP.length, delai_moy:+moy.toFixed(1)};
+    }
+    return c;
+  });
+
+  const barStatEntries = Object.entries(barStatMap).map(([k,v])=>({CATEGORIE:k,...v}));
+  const catStatsFinal = [...catStatsRemainder, ...barStatEntries].sort((a,b) => b.delai_moy - a.delai_moy);
 
   renderBar('bar-cat', catStatsFinal, 'CATEGORIE', 'delai_moy', delaiColor, 'goToDossiersCat');
 
@@ -988,11 +1026,36 @@ function goToTech(techName) {
   // Select tech
   const sel = document.getElementById('tech-select');
   sel.value = techName;
-  techStatutFilter = '';
+  techStatutFilters = new Set();
   document.querySelectorAll('.tech-chip').forEach(c=>c.classList.remove('active'));
+  document.querySelectorAll('#tech-statut-checkboxes input').forEach(cb=>cb.checked=false);
   const allChip = document.querySelector('.tech-chip[data-statut=""]');
   if(allChip) allChip.classList.add('active');
   renderTechPage();
+  window.scrollTo(0,0);
+}
+
+function goToDossiersDelai(delaiMin, delaiMax) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-table').classList.add('active');
+  document.querySelectorAll('.nav-btn')[1].classList.add('active');
+  window._dashCatFilter = '';
+  // Reset all filters then set delay range
+  selectedFamilles = new Set();
+  document.querySelectorAll('.fam-chip').forEach(c=>c.classList.remove('active'));
+  const allChip = document.querySelector('.all-chip');
+  if(allChip) allChip.classList.add('active');
+  ['f-statut','f-marque','f-enseigne'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-search').value='';
+  document.getElementById('f-sort').value='DELAI RECEP NOW_desc';
+  sortCol='DELAI RECEP NOW'; sortDir=-1;
+  // Apply delay filter
+  const delaiMinEl = document.getElementById('f-delai-min');
+  delaiMinEl.value = delaiMin > 0 ? delaiMin : '';
+  // Filter with max too
+  window._dashDelaiMax = delaiMax;
+  applyFilters();
   window.scrollTo(0,0);
 }
 
@@ -1085,6 +1148,7 @@ function applyFilters() {
   const marque=document.getElementById('f-marque').value;
   const enseigne=document.getElementById('f-enseigne').value;
   const delaiMin=parseFloat(document.getElementById('f-delai-min').value)||0;
+  const delaiMax = window._dashDelaiMax || 9999;
   const search=document.getElementById('f-search').value.toLowerCase();
   const dashCat = window._dashCatFilter || '';
   filteredRecords = allRecords.filter(r => {
@@ -1093,6 +1157,7 @@ function applyFilters() {
     if(marque && r['MARQUE']!==marque) return false;
     if(enseigne && r['ENSEIGNE']!==enseigne) return false;
     if(delaiMin && r['DELAI RECEP NOW']<delaiMin) return false;
+    if(delaiMax < 9999 && r['DELAI RECEP NOW']>delaiMax) return false;
     if(dashCat && r['CATEGORIE']!==dashCat && r['DERN STATUT']!==dashCat) return false;
     if(search) {
       const hay=[r['NOM CLIENT'],r['MODELE'],String(r['NUM DOS NOMAD']),r['LIEU DEPOT']].join(' ').toLowerCase();
@@ -1169,6 +1234,7 @@ function goPage(p) { const max=Math.ceil(filteredRecords.length/PAGE_SIZE); if(p
 function resetFilters() {
   selectedFamilles = new Set();
   window._dashCatFilter = '';
+  window._dashDelaiMax = 9999;
   document.querySelectorAll('.fam-chip').forEach(c=>c.classList.remove('active'));
   const allChip = document.querySelector('.all-chip');
   if(allChip) allChip.classList.add('active');
@@ -1182,7 +1248,7 @@ function resetFilters() {
 // ── Tech page ──
 let techRecords = [];
 let techSortCol = 'DELAI RECEP NOW', techSortDir = -1;
-let techStatutFilter = '';
+let techStatutFilters = new Set();
 
 function initTechPage(records) {
   techRecords = records;
@@ -1191,34 +1257,53 @@ function initTechPage(records) {
   sel.innerHTML = '<option value="">-- Choisir un technicien --</option>'
     + techNames.map(t => `<option>${t}</option>`).join('');
 
-  // Populate extra statut dropdown with all statuts
+  const quickChipStatuts = ['ATTENTE INTERVENTION','PIECE COMMANDEE ATEL','PIECE DEMDEE ATELIER',
+    'PIECE ATL A REPOSER','PIECE EN RUPTURE','RUPTURE RELANCEE','DEVIS EMIS'];
   const allStatuts = [...new Set(records.map(r=>r['DERN STATUT']).filter(Boolean))].sort();
-  const quickChipStatuts = ['ATTENTE INTERVENTION','PIECE COMMANDEE ATEL','PIECE DEMDEE ATELIER','PIECE ATL A REPOSER','PIECE EN RUPTURE','RUPTURE RELANCEE','DEVIS EMIS'];
   const extraStatuts = allStatuts.filter(s => !quickChipStatuts.includes(s));
-  const extraSel = document.getElementById('tech-statut-extra');
-  extraSel.innerHTML = '<option value="">-- Tous les autres --</option>'
-    + extraStatuts.map(s => `<option value="${s}">${s}</option>`).join('');
+  const cbContainer = document.getElementById('tech-statut-checkboxes');
+  cbContainer.innerHTML = extraStatuts.map(s => `
+    <label style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:11px;color:var(--text)"
+           onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='none'">
+      <input type="checkbox" value="${s}" onchange="toggleTechStatutCb(this)" style="accent-color:var(--accent)">
+      ${s}
+    </label>`).join('');
 
   document.getElementById('tech-kpis').style.display = 'none';
   document.getElementById('tech-empty').style.display = 'block';
   document.getElementById('btn-print-tech').style.display = 'none';
-  techStatutFilter = '';
+  techStatutFilters = new Set();
 }
 
-function setTechStatutFromSelect(val) {
-  if(!val) return;
-  techStatutFilter = val;
-  // Deactivate all chips
-  document.querySelectorAll('.tech-chip').forEach(c=>c.classList.remove('active'));
-  document.getElementById('tech-statut-extra').value = val;
-  renderTechPage();
+function toggleTechDropdown() {
+  const d = document.getElementById('tech-statut-dropdown');
+  d.style.display = d.style.display === 'none' ? 'block' : 'none';
 }
 
 function setTechStatut(statut, el) {
-  techStatutFilter = statut;
+  techStatutFilters = new Set();
   document.querySelectorAll('.tech-chip').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
-  document.getElementById('tech-statut-extra').value = '';
+  document.querySelectorAll('#tech-statut-checkboxes input').forEach(cb => cb.checked = false);
+  renderTechPage();
+}
+
+function toggleTechStatut(statut, el) {
+  document.querySelector('.tech-chip[data-statut=""]').classList.remove('active');
+  if(techStatutFilters.has(statut)) {
+    techStatutFilters.delete(statut); el.classList.remove('active');
+  } else {
+    techStatutFilters.add(statut); el.classList.add('active');
+  }
+  if(techStatutFilters.size === 0) document.querySelector('.tech-chip[data-statut=""]').classList.add('active');
+  renderTechPage();
+}
+
+function toggleTechStatutCb(cb) {
+  const statut = cb.value;
+  document.querySelector('.tech-chip[data-statut=""]').classList.remove('active');
+  if(cb.checked) { techStatutFilters.add(statut); } else { techStatutFilters.delete(statut); }
+  if(techStatutFilters.size === 0) document.querySelector('.tech-chip[data-statut=""]').classList.add('active');
   renderTechPage();
 }
 
@@ -1235,7 +1320,7 @@ function renderTechPage() {
   document.getElementById('btn-print-tech').style.display = 'block';
 
   let rows = techRecords.filter(r => r['NOM TECH'] === techName);
-  if(techStatutFilter) rows = rows.filter(r => r['DERN STATUT'] === techStatutFilter);
+  if(techStatutFilters.size > 0) rows = rows.filter(r => techStatutFilters.has(r['DERN STATUT']));
 
   // Sort
   rows.sort((a,b) => {
@@ -1250,8 +1335,8 @@ function renderTechPage() {
   const delaiMoy = total ? (rows.reduce((s,r)=>s+r['DELAI DERNSTATUT NOW'],0)/total).toFixed(1) : 0;
   const ok = rows.filter(r=>r['DELAI RECEP NOW']<=7).length;
 
-  const filterLabel = techStatutFilter ? ` — filtre : ${techStatutFilter}` : '';
-  document.getElementById('tech-count').textContent = `${total} dossier${total>1?'s':''}${techStatutFilter?' (filtré)':''} / ${totalAll} au total`;
+  const filterLabel = techStatutFilters.size > 0 ? ` — ${[...techStatutFilters].join(', ')}` : '';
+  document.getElementById('tech-count').textContent = `${total} dossier${total>1?'s':''}${techStatutFilters.size>0?' (filtré)':''} / ${totalAll} au total`;
   document.getElementById('print-title').textContent = `Encours — ${techName}${filterLabel}`;
   document.getElementById('print-subtitle').textContent = `${total} dossier${total>1?'s':''} — Imprimé le ${new Date().toLocaleDateString('fr-FR')}`;
 
