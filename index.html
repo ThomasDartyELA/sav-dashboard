@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ENCOURS SAV — Atelier Limonest</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #161b27; --surface2: #1e2535;
+    --border: #2a3347; --accent: #3b82f6; --accent2: #6366f1;
+    --red: #ef4444; --orange: #f97316; --yellow: #eab308;
+    --green: #22c55e; --text: #e2e8f0; --muted: #64748b; --card-r: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; }
+
+  /* ── UPLOAD SCREEN ── */
+  #upload-screen {
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 32px;
+  }
+  .upload-logo { font-family: 'Space Mono', monospace; font-size: 22px; font-weight: 700; color: var(--accent); letter-spacing: 0.1em; }
+  .upload-sub { font-size: 14px; color: var(--muted); margin-top: 6px; text-align: center; }
+  .drop-zone {
+    width: 480px; border: 2px dashed var(--border); border-radius: 16px;
+    padding: 52px 32px; text-align: center; cursor: pointer;
+    transition: all 0.2s; background: var(--surface);
+    position: relative;
+  }
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--accent); background: #1e2535;
+  }
+  .drop-zone input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .drop-icon { font-size: 48px; margin-bottom: 16px; }
+  .drop-title { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+  .drop-hint { font-size: 12px; color: var(--muted); }
+  .drop-formats { margin-top: 12px; display: flex; gap: 8px; justify-content: center; }
+  .fmt-badge {
+    background: var(--surface2); border: 1px solid var(--border);
+    font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 20px;
+    font-family: 'Space Mono', monospace; color: var(--muted);
+  }
+  .upload-progress {
+    display: none; width: 480px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 16px; padding: 24px 32px;
+    text-align: center;
+  }
+  .progress-bar-track {
+    width: 100%; height: 6px; background: var(--border);
+    border-radius: 3px; margin: 16px 0; overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%; background: var(--accent); border-radius: 3px;
+    width: 0%; transition: width 0.3s;
+    animation: progress-anim 1.5s ease-in-out infinite;
+  }
+  @keyframes progress-anim { 0%{width:0%} 50%{width:70%} 100%{width:100%} }
+  .progress-label { font-size: 13px; color: var(--muted); }
+  .upload-error {
+    display: none; width: 480px; background: #2a1515;
+    border: 1px solid var(--red); border-radius: 16px; padding: 20px 28px;
+    font-size: 13px; color: var(--red);
+  }
+  .ssrs-card {
+    width: 480px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 20px 28px;
+  }
+  .ssrs-card-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--muted); margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .btn-ssrs {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%; background: var(--accent); color: white;
+    border: none; border-radius: 10px; padding: 12px 20px;
+    font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+    cursor: pointer; text-decoration: none; transition: all .2s; margin-bottom: 16px;
+  }
+  .btn-ssrs:hover { background: #2563eb; transform: translateY(-1px); }
+  .steps { display: flex; flex-direction: column; gap: 8px; }
+  .step { display: flex; align-items: flex-start; gap: 10px; font-size: 12px; color: var(--muted); }
+  .step-num {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--accent); font-family: 'Space Mono', monospace; font-size: 10px;
+    font-weight: 700; min-width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;
+  }
+  .step strong { color: var(--text); }
+
+  /* ── TOPBAR ── */
+  #app { display: none; }
+  .topbar {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 0 28px; height: 58px; display: flex; align-items: center;
+    justify-content: space-between; position: sticky; top: 0; z-index: 100;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 14px; }
+  .logo { font-family: 'Space Mono', monospace; font-size: 13px; font-weight: 700; color: var(--accent); }
+  .topbar-title { font-size: 13px; color: var(--muted); }
+  .badge-file {
+    background: #3b82f622; border: 1px solid #3b82f655; color: var(--accent);
+    font-size: 10px; font-weight: 700; padding: 2px 10px; border-radius: 20px;
+    font-family: 'Space Mono', monospace;
+  }
+  .btn-reload {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--muted); border-radius: 8px; padding: 6px 14px;
+    font-family: 'DM Sans', sans-serif; font-size: 12px; cursor: pointer;
+    transition: all 0.15s; display: flex; align-items: center; gap: 6px;
+  }
+  .btn-reload:hover { color: var(--text); border-color: var(--accent); }
+
+  /* ── NAV ── */
+  .nav { display: flex; gap: 4px; padding: 14px 28px 0; }
+  .nav-btn {
+    background: none; border: none; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+    color: var(--muted); padding: 8px 16px; border-radius: 8px 8px 0 0;
+    border: 1px solid transparent; border-bottom: none; transition: all 0.15s;
+  }
+  .nav-btn.active { background: var(--surface); color: var(--text); border-color: var(--border); }
+  .nav-btn:hover:not(.active) { color: var(--text); background: #ffffff08; }
+
+  /* ── MAIN ── */
+  .main { padding: 0 28px 32px; }
+  .page { display: none; }
+  .page.active { display: block; animation: fadeIn 0.25s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+
+  /* ── KPI ── */
+  .kpi-grid { display: grid; grid-template-columns: repeat(6,1fr); gap: 14px; margin: 20px 0; }
+  .kpi {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--card-r); padding: 18px 20px;
+    position: relative; overflow: hidden; transition: transform 0.15s;
+  }
+  .kpi:hover { transform: translateY(-2px); }
+  .kpi::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; }
+  .kpi.blue::before{background:var(--accent)} .kpi.red::before{background:var(--red)}
+  .kpi.orange::before{background:var(--orange)} .kpi.yellow::before{background:var(--yellow)}
+  .kpi.green::before{background:var(--green)} .kpi.purple::before{background:var(--accent2)}
+  .kpi-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:8px; }
+  .kpi-val { font-family:'Space Mono',monospace; font-size:28px; font-weight:700; line-height:1; }
+  .kpi.blue .kpi-val{color:var(--accent)} .kpi.red .kpi-val{color:var(--red)}
+  .kpi.orange .kpi-val{color:var(--orange)} .kpi.yellow .kpi-val{color:var(--yellow)}
+  .kpi.green .kpi-val{color:var(--green)} .kpi.purple .kpi-val{color:var(--accent2)}
+  .kpi-sub { font-size:11px; color:var(--muted); margin-top:6px; }
+
+  /* ── CHARTS ── */
+  .charts-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+  .charts-grid.three { grid-template-columns:1fr 1fr 1fr; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--card-r); padding:20px; }
+  .card-title { font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin-bottom:16px; }
+  .bar-chart { display:flex; flex-direction:column; gap:10px; }
+  .bar-row { display:flex; align-items:center; gap:10px; }
+  .bar-label { font-size:11px; color:var(--text); min-width:130px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .bar-track { flex:1; height:8px; background:var(--border); border-radius:4px; overflow:hidden; }
+  .bar-fill { height:100%; border-radius:4px; transition:width 0.8s cubic-bezier(.4,0,.2,1); }
+  .bar-count { font-family:'Space Mono',monospace; font-size:10px; color:var(--muted); min-width:32px; text-align:right; }
+  .donut-wrap { display:flex; align-items:center; gap:20px; }
+  .legend-donut { display:flex; flex-direction:column; gap:8px; flex:1; }
+  .legend-item { display:flex; align-items:center; gap:8px; font-size:11px; }
+  .legend-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .legend-name { color:var(--text); flex:1; }
+  .legend-val { font-family:'Space Mono',monospace; color:var(--muted); font-size:10px; }
+  .histo { display:flex; align-items:flex-end; gap:6px; height:90px; }
+  .histo-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .histo-bar { width:100%; border-radius:4px 4px 0 0; min-height:4px; }
+  .histo-label { font-size:9px; color:var(--muted); white-space:nowrap; }
+
+  /* ── TABLE ── */
+  .filters { display:flex; gap:10px; flex-wrap:wrap; margin:18px 0 14px; align-items:center; }
+  .filter-group { display:flex; flex-direction:column; gap:4px; }
+  .filter-group label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+  select, input[type=text], input[type=number] {
+    background:var(--surface); border:1px solid var(--border); color:var(--text);
+    border-radius:8px; padding:7px 12px; font-family:'DM Sans',sans-serif;
+    font-size:12px; outline:none; cursor:pointer; min-width:160px; transition:border-color .15s;
+  }
+  select:focus, input:focus { border-color:var(--accent); }
+  .btn-reset {
+    background:var(--surface2); border:1px solid var(--border); color:var(--muted);
+    border-radius:8px; padding:7px 16px; font-family:'DM Sans',sans-serif;
+    font-size:12px; cursor:pointer; transition:all .15s; align-self:flex-end;
+  }
+  .btn-reset:hover { color:var(--text); border-color:var(--accent); }
+  .count-badge { margin-left:auto; align-self:flex-end; font-family:'Space Mono',monospace; font-size:11px; color:var(--muted); padding:8px 0; }
+  .table-wrap { overflow-x:auto; border-radius:var(--card-r); border:1px solid var(--border); }
+  table { width:100%; border-collapse:collapse; font-size:11.5px; }
+  thead th {
+    background:var(--surface2); color:var(--muted); font-size:10px; font-weight:600;
+    text-transform:uppercase; letter-spacing:.07em; padding:10px 12px; text-align:left;
+    position:sticky; top:0; white-space:nowrap; cursor:pointer; user-select:none;
+  }
+  thead th:hover { color:var(--text); }
+  tbody tr { border-top:1px solid var(--border); transition:background .1s; }
+  tbody tr:hover { background:var(--surface2); }
+  tbody td { padding:8px 12px; white-space:nowrap; }
+  .tag { display:inline-block; font-size:9px; font-weight:700; letter-spacing:.06em; padding:2px 8px; border-radius:20px; text-transform:uppercase; }
+  .tag-intervention{background:#f97316;color:#fff} .tag-pieces{background:#ef4444;color:#fff}
+  .tag-reposer{background:#fb923c;color:#fff} .tag-devis{background:#6366f1;color:#fff}
+  .tag-validation{background:#22c55e;color:#fff} .tag-termine{background:#64748b;color:#fff}
+  .tag-autre{background:#334155;color:#94a3b8}
+  .delai-chip { font-family:'Space Mono',monospace; font-size:10px; font-weight:700; padding:2px 8px; border-radius:6px; display:inline-block; }
+  .d-ok{background:#22c55e22;color:#22c55e} .d-watch{background:#eab30822;color:#eab308}
+  .d-late{background:#f9731622;color:#f97316} .d-crit{background:#ef444422;color:#ef4444}
+  .pagination { display:flex; align-items:center; justify-content:center; gap:6px; margin-top:14px; }
+  .page-btn {
+    background:var(--surface); border:1px solid var(--border); color:var(--muted);
+    border-radius:6px; padding:5px 10px; font-size:11px; cursor:pointer;
+    transition:all .15s; font-family:'DM Sans',sans-serif;
+  }
+  .page-btn:hover { border-color:var(--accent); color:var(--text); }
+  .page-btn.active { background:var(--accent); border-color:var(--accent); color:white; font-weight:600; }
+  .page-info { font-size:11px; color:var(--muted); padding:0 8px; }
+  ::-webkit-scrollbar{width:6px;height:6px} ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
+</head>
+<body>
+
+<!-- ═══════════ UPLOAD SCREEN ═══════════ -->
+<div id="upload-screen">
+  <div style="text-align:center">
+    <div class="upload-logo">SAV // NOMAD</div>
+    <div class="upload-sub">Atelier Limonest ELA — Dashboard encours</div>
+  </div>
+
+  <div class="ssrs-card">
+    <div class="ssrs-card-title">📥 Étape 1 — Télécharger le rapport</div>
+    <a class="btn-ssrs" href="http://195.51.51.24/Reports_PILOTAGE/Pages/Report.aspx?ItemPath=%2fNOMAD+Reporting+RE7%2fATELIER%2fENCOURS+NOMAD+ATELIER" target="_blank">
+      🔗 Ouvrir le gestionnaire SSRS
+    </a>
+    <div class="steps">
+      <div class="step"><span class="step-num">1</span><span>Dans le filtre <strong>Atelier</strong>, sélectionne <strong>Limonest (945056)</strong></span></div>
+      <div class="step"><span class="step-num">2</span><span>Dans le filtre <strong>Statut</strong>, sélectionne <strong>Tous les statuts</strong></span></div>
+      <div class="step"><span class="step-num">3</span><span>Clique sur <strong>Exécuter</strong> pour générer le rapport</span></div>
+      <div class="step"><span class="step-num">4</span><span>Clique sur l'icône 💾 puis <strong>Excel</strong> pour télécharger le fichier</span></div>
+      <div class="step"><span class="step-num">5</span><span>Glisse le fichier <strong>.xlsx</strong> dans la zone ci-dessous ↓</span></div>
+    </div>
+  </div>
+
+  <div class="drop-zone" id="drop-zone">
+    <input type="file" id="file-input" accept=".xlsx,.xls">
+    <div class="drop-icon">📂</div>
+    <div class="drop-title">Étape 2 — Glisse ton fichier ici</div>
+    <div class="drop-hint">ou clique pour sélectionner</div>
+    <div class="drop-formats">
+      <span class="fmt-badge">.XLSX</span>
+      <span class="fmt-badge">.XLS</span>
+    </div>
+  </div>
+
+  <div class="upload-progress" id="upload-progress">
+    <div style="font-size:13px;font-weight:600">Analyse du fichier en cours...</div>
+    <div class="progress-bar-track"><div class="progress-bar-fill"></div></div>
+    <div class="progress-label" id="progress-label">Lecture des données...</div>
+  </div>
+
+  <div class="upload-error" id="upload-error"></div>
+</div>
+
+<!-- ═══════════ APP ═══════════ -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="logo">SAV//NOMAD</div>
+      <div class="topbar-title" id="topbar-title">Atelier Limonest ELA</div>
+      <span class="badge-file" id="badge-file"></span>
+    </div>
+    <button class="btn-reload" onclick="reloadFile()">📂 Changer de fichier</button>
+  </div>
+
+  <div class="nav">
+    <button class="nav-btn active" onclick="switchPage('dashboard',this)">📊 Tableau de bord</button>
+    <button class="nav-btn" onclick="switchPage('table',this)">📋 Dossiers</button>
+  </div>
+
+  <div class="main">
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="kpi-grid" id="kpi-grid"></div>
+      <div class="charts-grid">
+        <div class="card">
+          <div class="card-title">Dossiers par catégorie</div>
+          <div class="donut-wrap">
+            <canvas id="donut" width="150" height="150"></canvas>
+            <div class="legend-donut" id="legend-donut"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Distribution des délais atelier</div>
+          <div id="histo-wrap"></div>
+          <div style="margin-top:12px;display:flex;gap:12px;flex-wrap:wrap;">
+            <span style="font-size:10px;color:var(--green)">■ 0-7j : ok</span>
+            <span style="font-size:10px;color:var(--yellow)">■ 7-14j : surveiller</span>
+            <span style="font-size:10px;color:var(--orange)">■ 14-30j : retard</span>
+            <span style="font-size:10px;color:var(--red)">■ >30j : critique</span>
+          </div>
+        </div>
+      </div>
+      <div class="charts-grid three">
+        <div class="card"><div class="card-title">Délai moyen par catégorie (jours)</div><div class="bar-chart" id="bar-cat"></div></div>
+        <div class="card"><div class="card-title">Top 10 marques en encours</div><div class="bar-chart" id="bar-marque"></div></div>
+        <div class="card"><div class="card-title">Top techniciens — délai moyen</div><div class="bar-chart" id="bar-tech"></div></div>
+      </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="page" id="page-table">
+      <div class="filters">
+        <div class="filter-group"><label>Catégorie</label>
+          <select id="f-cat" onchange="applyFilters()">
+            <option value="">Toutes</option>
+            <option>ATTENTE INTERVENTION</option><option>ATTENTE PIECES</option>
+            <option>PIECE A REPOSER</option><option>DEVIS</option>
+            <option>VALIDATION/ADMIN</option><option>TERMINÉ</option>
+          </select>
+        </div>
+        <div class="filter-group"><label>Statut exact</label><select id="f-statut" onchange="applyFilters()"><option value="">Tous</option></select></div>
+        <div class="filter-group"><label>Marque</label><select id="f-marque" onchange="applyFilters()"><option value="">Toutes</option></select></div>
+        <div class="filter-group"><label>Enseigne</label><select id="f-enseigne" onchange="applyFilters()"><option value="">Toutes</option></select></div>
+        <div class="filter-group"><label>Délai mini (j)</label><input type="number" id="f-delai-min" placeholder="ex: 30" onchange="applyFilters()" style="min-width:100px"></div>
+        <div class="filter-group"><label>Recherche</label><input type="text" id="f-search" placeholder="Nom, modèle, n° dossier…" oninput="applyFilters()" style="min-width:200px"></div>
+        <button class="btn-reset" onclick="resetFilters()">↺ Réinitialiser</button>
+        <div class="count-badge" id="count-badge"></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th onclick="sortTable('NUM DOS NOMAD')">N° Dossier ↕</th>
+            <th onclick="sortTable('DATE DEPOT')">Date dépôt ↕</th>
+            <th onclick="sortTable('LIEU DEPOT')">Magasin ↕</th>
+            <th onclick="sortTable('NOM CLIENT')">Client ↕</th>
+            <th onclick="sortTable('MODELE')">Modèle ↕</th>
+            <th onclick="sortTable('MARQUE')">Marque ↕</th>
+            <th onclick="sortTable('DERN STATUT')">Statut ↕</th>
+            <th onclick="sortTable('CATEGORIE')">Catégorie ↕</th>
+            <th onclick="sortTable('DELAI RECEP NOW')">Délai total ↕</th>
+            <th onclick="sortTable('DELAI DERNSTATUT NOW')">Délai statut ↕</th>
+            <th onclick="sortTable('NOM TECH')">Technicien ↕</th>
+            <th onclick="sortTable('ENSEIGNE')">Enseigne ↕</th>
+            <th onclick="sortTable('PRIX ACHAT')">Prix achat ↕</th>
+          </tr></thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="pagination"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Catégories ──
+const SOUS_TRAIT = ['EN COURS S/TRAITANT','A ENVOYER EN S/TRAIT','ECH REA, ATT REC ACC','ATTENT RECEP CPT DIS','A ENVOYER CPT DIST.'];
+const CAT_MAP = {
+  'PIECE COMMANDEE ATEL':'ATTENTE PIECES','PIECE DEMDEE ATELIER':'ATTENTE PIECES',
+  'PIECE A COMMDER ATEL':'ATTENTE PIECES','PIECE EN RUPTURE':'ATTENTE PIECES','RUPTURE RELANCEE':'ATTENTE PIECES',
+  'PIECE ATL A REPOSER':'PIECE A REPOSER',"B.E DELIVRE, ATT REA":'PIECE A REPOSER',"APP.EN BANC D'ESSAI":'PIECE A REPOSER',
+  'ATTENTE INTERVENTION':'ATTENTE INTERVENTION','ECSG A TRAITER':'ATTENTE INTERVENTION','PASSAGE SG A TRAITER':'ATTENTE INTERVENTION',
+  'DEVIS EMIS':'DEVIS','DEVIS ENV/APP CH.FRS':'DEVIS','DEVIS ETABLI NOMAD':'DEVIS',
+  'DEVIS S/TRT INT RECU':'DEVIS','ECH TOPE, ATT EDI BE':'DEVIS','ATT.INT/DEVIS REFUSE':'DEVIS','ATT INT/DEVIS ACCEPT':'DEVIS',
+  'APPAREIL TER. REPARE':'TERMINÉ','APP TERM. NON REPARE':'TERMINÉ','APPAREIL + DE 6 MOIS':'TERMINÉ',
+  'APPAREIL A DETRUIRE':'TERMINÉ','APP MANQUANT REP CLT':'TERMINÉ',
+  'ATTENTE ENCAISSEMENT':'VALIDATION/ADMIN','ATT VALIDATION CC':'VALIDATION/ADMIN','DEM. RMA EFFECTUEE':'VALIDATION/ADMIN',
+  'DMD COMP. CLIENT':'VALIDATION/ADMIN','ECH REA, ATT MUT ACC':'VALIDATION/ADMIN','LITIGE MUT SAV->CPT':'VALIDATION/ADMIN',
+  'ATT RECEP APP REFUSE':'VALIDATION/ADMIN','APP REFUSE PAR SAV':'VALIDATION/ADMIN','ATT RECEP. SAV COMPL':'VALIDATION/ADMIN',
+  'SC A PROPOSER AU CLT':'VALIDATION/ADMIN','ATT INTER/RETOUR STT':'VALIDATION/ADMIN',
+  'ECH A PROPOSER AU CL':'VALIDATION/ADMIN','NO DE RMA A DEMANDER':'VALIDATION/ADMIN',
+};
+const CAT_COLORS = {
+  'ATTENTE INTERVENTION':'#f97316','ATTENTE PIECES':'#ef4444','PIECE A REPOSER':'#fb923c',
+  'DEVIS':'#6366f1','VALIDATION/ADMIN':'#22c55e','TERMINÉ':'#64748b','AUTRE':'#334155'
+};
+const CAT_TAG = {
+  'ATTENTE INTERVENTION':'intervention','ATTENTE PIECES':'pieces','PIECE A REPOSER':'reposer',
+  'DEVIS':'devis','VALIDATION/ADMIN':'validation','TERMINÉ':'termine'
+};
+
+// ── Upload ──
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('dragover');
+  const f = e.dataTransfer.files[0];
+  if(f) processFile(f);
+});
+fileInput.addEventListener('change', e => { if(e.target.files[0]) processFile(e.target.files[0]); });
+
+function showProgress(msg) {
+  document.getElementById('upload-progress').style.display = 'block';
+  document.getElementById('progress-label').textContent = msg;
+  document.getElementById('upload-error').style.display = 'none';
+}
+function showError(msg) {
+  document.getElementById('upload-progress').style.display = 'none';
+  const el = document.getElementById('upload-error');
+  el.style.display = 'block';
+  el.textContent = '❌ ' + msg;
+}
+
+function processFile(file) {
+  if(!file.name.match(/\.(xlsx|xls)$/i)) { showError('Format non supporté. Utilise un fichier .xlsx ou .xls'); return; }
+  showProgress('Lecture du fichier Excel...');
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      showProgress('Analyse des données...');
+      const wb = XLSX.read(e.target.result, {type:'array', cellDates:true});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+
+      // Trouver la ligne d'en-tête (contient "NUM DOS NOMAD")
+      let headerRow = -1;
+      for(let i=0;i<20;i++) {
+        if(raw[i] && raw[i].some(c => String(c).includes('NUM DOS NOMAD'))) { headerRow = i; break; }
+      }
+      if(headerRow === -1) { showError('Impossible de trouver les en-têtes. Vérifie que c\'est bien le bon fichier.'); return; }
+
+      const headers = raw[headerRow].map(h => String(h).trim());
+      const dataRows = raw.slice(headerRow+1).filter(r => r[headers.indexOf('NUM DOS NOMAD')]);
+
+      showProgress('Calcul des statistiques...');
+
+      function col(row, name) {
+        const i = headers.indexOf(name);
+        return i>=0 ? row[i] : '';
+      }
+      function fmtDate(v) {
+        if(!v) return '';
+        if(v instanceof Date) return v.toLocaleDateString('fr-FR');
+        if(typeof v === 'number') {
+          const d = new Date(Math.round((v-25569)*86400*1000));
+          return d.toLocaleDateString('fr-FR');
+        }
+        return String(v);
+      }
+
+      const records = [];
+      for(const row of dataRows) {
+        const statut = String(col(row,'DERN STATUT')).trim();
+        if(SOUS_TRAIT.includes(statut)) continue;
+        const cat = CAT_MAP[statut] || 'AUTRE';
+        records.push({
+          'NUM DOS NOMAD': col(row,'NUM DOS NOMAD'),
+          'DATE DEPOT': fmtDate(col(row,'DATE DEPOT')),
+          'LIEU DEPOT': String(col(row,'LIEU DEPOT')).trim(),
+          'DATE ENTREE ATELIER': fmtDate(col(row,'DATE ENTREE ATELIER')),
+          'NOM CLIENT': String(col(row,'NOM CLIENT')).trim(),
+          'TEL CLIENT': String(col(row,'TEL CLIENT')).trim(),
+          'MODELE': String(col(row,'MODELE')).trim(),
+          'MARQUE': String(col(row,'MARQUE')).trim(),
+          'DERN STATUT': statut,
+          'CATEGORIE': cat,
+          'DELAI RECEP NOW': Number(col(row,'DELAI RECEP NOW'))||0,
+          'DELAI DERNSTATUT NOW': Number(col(row,'DELAI DERNSTATUT NOW'))||0,
+          'NB DEM PIECE': col(row,'NB DEM PIECE'),
+          'NOM TECH': String(col(row,'NOM TECH')).trim(),
+          'ENSEIGNE': String(col(row,'ENSEIGNE')).trim(),
+          'PRIX ACHAT': col(row,'PRIX ACHAT'),
+          'SOLCOM': String(col(row,'SOLCOM')).trim(),
+        });
+      }
+
+      if(records.length === 0) { showError('Aucun dossier trouvé dans ce fichier.'); return; }
+      buildDashboard(records, file.name);
+
+    } catch(err) {
+      showError('Erreur lors de la lecture : ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function reloadFile() {
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('upload-screen').style.display = 'flex';
+  document.getElementById('upload-progress').style.display = 'none';
+  document.getElementById('upload-error').style.display = 'none';
+  fileInput.value = '';
+}
+
+// ── Build dashboard ──
+function buildDashboard(records, filename) {
+  document.getElementById('upload-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('badge-file').textContent = filename;
+
+  // Stats
+  const total = records.length;
+  const delays = records.map(r => r['DELAI RECEP NOW']);
+  const delaiMoy = (delays.reduce((a,b)=>a+b,0)/total).toFixed(1);
+  const sorted = [...delays].sort((a,b)=>a-b);
+  const delaiMed = sorted[Math.floor(sorted.length/2)];
+  const critique = delays.filter(d=>d>30).length;
+  const enRetard = delays.filter(d=>d>14&&d<=30).length;
+  const surveiller = delays.filter(d=>d>7&&d<=14).length;
+  const ok = delays.filter(d=>d<=7).length;
+
+  // KPIs
+  const kpiGrid = document.getElementById('kpi-grid');
+  kpiGrid.innerHTML = '';
+  [
+    {label:'Total dossiers', val:total, sub:'hors sous-traitance', cls:'blue'},
+    {label:'Délai moyen atelier', val:delaiMoy+'j', sub:'Médiane : '+delaiMed+'j', cls:'purple'},
+    {label:'⚠ Critiques (>30j)', val:critique, sub:Math.round(critique/total*100)+'% des dossiers', cls:'red'},
+    {label:'↑ En retard (14-30j)', val:enRetard, sub:Math.round(enRetard/total*100)+'% des dossiers', cls:'orange'},
+    {label:'~ À surveiller (7-14j)', val:surveiller, sub:Math.round(surveiller/total*100)+'% des dossiers', cls:'yellow'},
+    {label:'✓ Dans les délais (≤7j)', val:ok, sub:Math.round(ok/total*100)+'% des dossiers', cls:'green'},
+  ].forEach(k => {
+    kpiGrid.innerHTML += `<div class="kpi ${k.cls}"><div class="kpi-label">${k.label}</div><div class="kpi-val">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`;
+  });
+
+  // Cat stats
+  const catMap = {};
+  records.forEach(r => {
+    const c = r['CATEGORIE'];
+    if(!catMap[c]) catMap[c] = {count:0, totalDelai:0};
+    catMap[c].count++; catMap[c].totalDelai += r['DELAI RECEP NOW'];
+  });
+  const catStats = Object.entries(catMap).map(([k,v]) => ({
+    CATEGORIE:k, count:v.count, delai_moy:+(v.totalDelai/v.count).toFixed(1)
+  })).sort((a,b)=>b.count-a.count);
+
+  // Donut
+  const donutCanvas = document.getElementById('donut');
+  const ctx = donutCanvas.getContext('2d');
+  ctx.clearRect(0,0,150,150);
+  let startAngle = -Math.PI/2;
+  const cx=75,cy=75,r=60,ir=38;
+  catStats.forEach(c => {
+    const slice = (c.count/total)*Math.PI*2;
+    ctx.beginPath(); ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,r,startAngle,startAngle+slice);
+    ctx.closePath(); ctx.fillStyle = CAT_COLORS[c.CATEGORIE]||'#555'; ctx.fill();
+    startAngle += slice;
+  });
+  ctx.beginPath(); ctx.arc(cx,cy,ir,0,Math.PI*2); ctx.fillStyle='#161b27'; ctx.fill();
+  ctx.fillStyle='#e2e8f0'; ctx.font='bold 14px Space Mono,monospace';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(total,cx,cy-5); ctx.font='9px DM Sans,sans-serif';
+  ctx.fillStyle='#64748b'; ctx.fillText('dossiers',cx,cy+10);
+
+  const legendDonut = document.getElementById('legend-donut');
+  legendDonut.innerHTML = catStats.map(c => `<div class="legend-item">
+    <span class="legend-dot" style="background:${CAT_COLORS[c.CATEGORIE]||'#555'}"></span>
+    <span class="legend-name" style="font-size:10px">${c.CATEGORIE}</span>
+    <span class="legend-val">${c.count} (${Math.round(c.count/total*100)}%)</span>
+  </div>`).join('');
+
+  // Histo
+  const tranches = [[0,7],[7,14],[14,21],[21,30],[30,45],[45,60],[60,9999]];
+  const labels = ['0-7j','7-14j','14-21j','21-30j','30-45j','45-60j','>60j'];
+  const histColors = ['#22c55e','#22c55e','#eab308','#f97316','#ef4444','#ef4444','#ef4444'];
+  const histData = tranches.map(([lo,hi],i) => ({label:labels[i],count:delays.filter(d=>d>lo&&d<=hi).length,color:histColors[i]}));
+  const histMax = Math.max(...histData.map(h=>h.count));
+  document.getElementById('histo-wrap').innerHTML = '<div class="histo">' +
+    histData.map(h => `<div class="histo-col">
+      <div style="font-family:monospace;font-size:9px;color:var(--muted);margin-bottom:2px">${h.count}</div>
+      <div class="histo-bar" style="height:${Math.round(h.count/histMax*81)}px;background:${h.color}"></div>
+      <div class="histo-label">${h.label}</div>
+    </div>`).join('') + '</div>';
+
+  // Bar charts
+  function renderBar(elId, data, labelKey, valKey, colorFn) {
+    const maxV = Math.max(...data.map(d=>d[valKey]));
+    document.getElementById(elId).innerHTML = data.map(d => `<div class="bar-row">
+      <span class="bar-label" title="${d[labelKey]}">${d[labelKey]}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round(d[valKey]/maxV*100)}%;background:${colorFn(d[valKey])}"></div></div>
+      <span class="bar-count">${d[valKey]}</span>
+    </div>`).join('');
+  }
+  function delaiColor(v) { return v>30?'#ef4444':v>14?'#f97316':v>7?'#eab308':'#22c55e'; }
+
+  renderBar('bar-cat', catStats, 'CATEGORIE', 'delai_moy', delaiColor);
+
+  const marqueMap = {};
+  records.forEach(r => { const m=r['MARQUE']||'?'; if(!marqueMap[m]) marqueMap[m]=0; marqueMap[m]++; });
+  const marqueStats = Object.entries(marqueMap).map(([k,v])=>({MARQUE:k,count:v})).sort((a,b)=>b.count-a.count).slice(0,10);
+  renderBar('bar-marque', marqueStats, 'MARQUE', 'count', ()=>'#3b82f6');
+
+  const techMap = {};
+  records.forEach(r => {
+    const t=r['NOM TECH']||''; if(!t) return;
+    if(!techMap[t]) techMap[t]={total:0,count:0};
+    techMap[t].total+=r['DELAI RECEP NOW']; techMap[t].count++;
+  });
+  const techStats = Object.entries(techMap).map(([k,v])=>({NOM_TECH:k,delai_moy:+(v.total/v.count).toFixed(1),count:v.count}))
+    .sort((a,b)=>b.count-a.count).slice(0,10);
+  renderBar('bar-tech', techStats, 'NOM_TECH', 'delai_moy', delaiColor);
+
+  // Table
+  initTable(records);
+}
+
+// ── Table ──
+let allRecords=[], filteredRecords=[], sortCol='DELAI RECEP NOW', sortDir=-1, curPage=1;
+const PAGE_SIZE=50;
+
+function initTable(records) {
+  allRecords = records;
+  const fStatut = document.getElementById('f-statut');
+  const fMarque = document.getElementById('f-marque');
+  const fEnseigne = document.getElementById('f-enseigne');
+  fStatut.innerHTML = '<option value="">Tous</option>' + [...new Set(records.map(r=>r['DERN STATUT']).filter(Boolean))].sort().map(s=>`<option>${s}</option>`).join('');
+  fMarque.innerHTML = '<option value="">Toutes</option>' + [...new Set(records.map(r=>r['MARQUE']).filter(Boolean))].sort().map(m=>`<option>${m}</option>`).join('');
+  fEnseigne.innerHTML = '<option value="">Toutes</option>' + [...new Set(records.map(r=>r['ENSEIGNE']).filter(Boolean))].sort().map(e=>`<option>${e}</option>`).join('');
+  applyFilters();
+}
+
+function applyFilters() {
+  const cat=document.getElementById('f-cat').value;
+  const statut=document.getElementById('f-statut').value;
+  const marque=document.getElementById('f-marque').value;
+  const enseigne=document.getElementById('f-enseigne').value;
+  const delaiMin=parseFloat(document.getElementById('f-delai-min').value)||0;
+  const search=document.getElementById('f-search').value.toLowerCase();
+  filteredRecords = allRecords.filter(r => {
+    if(cat && r['CATEGORIE']!==cat) return false;
+    if(statut && r['DERN STATUT']!==statut) return false;
+    if(marque && r['MARQUE']!==marque) return false;
+    if(enseigne && r['ENSEIGNE']!==enseigne) return false;
+    if(delaiMin && r['DELAI RECEP NOW']<delaiMin) return false;
+    if(search) {
+      const hay=[r['NOM CLIENT'],r['MODELE'],String(r['NUM DOS NOMAD']),r['LIEU DEPOT']].join(' ').toLowerCase();
+      if(!hay.includes(search)) return false;
+    }
+    return true;
+  });
+  sortBy(); curPage=1; render();
+}
+
+function sortTable(col) { if(sortCol===col) sortDir*=-1; else{sortCol=col;sortDir=-1;} sortBy(); render(); }
+function sortBy() {
+  filteredRecords.sort((a,b) => {
+    let av=a[sortCol]??'', bv=b[sortCol]??'';
+    if(typeof av==='number') return (av-bv)*sortDir;
+    return String(av).localeCompare(String(bv))*sortDir;
+  });
+}
+
+function delaiClass(v) { return v>30?'d-crit':v>14?'d-late':v>7?'d-watch':'d-ok'; }
+
+function render() {
+  const page = filteredRecords.slice((curPage-1)*PAGE_SIZE, curPage*PAGE_SIZE);
+  document.getElementById('table-body').innerHTML = page.map(r => {
+    const d=r['DELAI RECEP NOW'], ds=r['DELAI DERNSTATUT NOW'];
+    const tc=CAT_TAG[r['CATEGORIE']]||'autre';
+    return `<tr>
+      <td style="font-family:monospace;font-size:10px;color:var(--muted)">${r['NUM DOS NOMAD']}</td>
+      <td>${r['DATE DEPOT']}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${r['LIEU DEPOT']}</td>
+      <td style="font-weight:500">${r['NOM CLIENT']}</td>
+      <td style="color:var(--muted)">${r['MODELE']}</td>
+      <td style="font-weight:600">${r['MARQUE']}</td>
+      <td style="font-size:10px;color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis">${r['DERN STATUT']}</td>
+      <td><span class="tag tag-${tc}">${r['CATEGORIE']}</span></td>
+      <td><span class="delai-chip ${delaiClass(d)}">${d}j</span></td>
+      <td><span class="delai-chip ${delaiClass(ds)}">${ds}j</span></td>
+      <td style="font-size:10px">${r['NOM TECH']||'—'}</td>
+      <td>${r['ENSEIGNE']}</td>
+      <td style="font-family:monospace;font-size:10px;text-align:right">${r['PRIX ACHAT']?Number(r['PRIX ACHAT']).toLocaleString('fr-FR',{style:'currency',currency:'EUR'}):'—'}</td>
+    </tr>`;
+  }).join('');
+
+  const t=filteredRecords.length;
+  document.getElementById('count-badge').textContent=`${t} dossier${t>1?'s':''} trouvé${t>1?'s':''}`;
+
+  const totalPages=Math.ceil(t/PAGE_SIZE);
+  const pag=document.getElementById('pagination');
+  if(totalPages<=1){pag.innerHTML='';return;}
+  let h=`<button class="page-btn" onclick="goPage(${curPage-1})" ${curPage===1?'disabled':''}>‹ Préc</button>`;
+  let pages=[];
+  for(let i=1;i<=totalPages;i++) { if(i===1||i===totalPages||Math.abs(i-curPage)<=2) pages.push(i); else if(pages[pages.length-1]!=='...') pages.push('...'); }
+  pages.forEach(p => { if(p==='...') h+=`<span class="page-info">…</span>`; else h+=`<button class="page-btn ${p===curPage?'active':''}" onclick="goPage(${p})">${p}</button>`; });
+  h+=`<button class="page-btn" onclick="goPage(${curPage+1})" ${curPage===totalPages?'disabled':''}>Suiv ›</button>`;
+  h+=`<span class="page-info">Page ${curPage}/${totalPages}</span>`;
+  pag.innerHTML=h;
+}
+
+function goPage(p) { const max=Math.ceil(filteredRecords.length/PAGE_SIZE); if(p<1||p>max)return; curPage=p; render(); }
+function resetFilters() {
+  ['f-cat','f-statut','f-marque','f-enseigne'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-delai-min').value='';
+  document.getElementById('f-search').value='';
+  applyFilters();
+}
+function switchPage(id,btn) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>
