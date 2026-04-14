@@ -5,7 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ENCOURS SAV — Atelier Limonest</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">
+function openMail(type) {
+  const u = ['thomas','.','crastres','@','darty','.','fr'].join('');
+  const s = type === 'suggestion' ? 'Dashboard SAV - Suggestion amélioration' : 'Dashboard SAV - Demande modification';
+  window.location.href = 'mailto:' + u + '?subject=' + encodeURIComponent(s);
+}
+</script>
 <style>
   :root {
     --bg: #0f1117; --surface: #161b27; --surface2: #1e2535;
@@ -449,7 +455,7 @@
         <span class="delai-chip d-watch" style="font-size:10px">7-14j surveiller</span>
         <span class="delai-chip d-late" style="font-size:10px">14-30j retard</span>
         <span class="delai-chip d-crit" style="font-size:10px">&gt;30j critique</span>
-        <a href="mailto:thomas.crastres@darty.fr?subject=Dashboard SAV - Demande modification" class="contact-link">✉️ Demander une modification</a>
+        <a href="#" onclick="openMail()" class="contact-link">✉️ Demander une modification</a>
       </div>
 
       <div class="table-wrap">
@@ -476,7 +482,7 @@
 
       <div style="text-align:center;margin-top:20px;padding:16px;border-top:1px solid var(--border)">
         <span style="font-size:11px;color:var(--muted)">Un filtre manque ? Une colonne à ajouter ?</span>
-        <a href="mailto:thomas.crastres@darty.fr?subject=Dashboard SAV - Suggestion amélioration" style="color:var(--accent);font-size:11px;margin-left:8px;text-decoration:none">✉️ Contactez thomas.crastres@darty.fr</a>
+        <a href="#" onclick="openMail()" style="color:var(--accent);font-size:11px;margin-left:8px;text-decoration:none">✉️ Contactez </a>
       </div>
     </div>
   </div>
@@ -618,52 +624,84 @@ function processFile(file) {
 }
 
 // ── Famille screen ──
+let selectedFamillesInit = new Set(); // pour l'écran de départ
+
 function showFamilleScreen(filename) {
   document.getElementById('upload-screen').style.display = 'none';
   document.getElementById('upload-progress').style.display = 'none';
   document.getElementById('famille-screen').style.display = 'flex';
   document.getElementById('famille-sub').textContent = filename + ' — ' + allRecordsRaw.length + ' dossiers chargés';
 
-  // Compter par famille
   const counts = {};
   allRecordsRaw.forEach(r => { const f=r['CODE ATELIER']; counts[f]=(counts[f]||0)+1; });
   const familles = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
 
   const grid = document.getElementById('famille-grid');
   grid.innerHTML = '';
+  selectedFamillesInit = new Set();
 
-  // Bouton "Tout voir"
-  grid.innerHTML += `<div class="famille-btn all-btn" onclick="selectFamille('', this)">
+  grid.innerHTML += `<div class="famille-btn all-btn selected" id="btn-all-fam" onclick="selectFamilleInit('__ALL__', this)">
     <div class="fam-icon">🗂️</div>
     <div class="fam-label">TOUTES LES FAMILLES</div>
     <div class="fam-count">${allRecordsRaw.length} dossiers</div>
   </div>`;
 
   familles.forEach(([fam, count]) => {
-    grid.innerHTML += `<div class="famille-btn" onclick="selectFamille('${fam}', this)">
+    grid.innerHTML += `<div class="famille-btn" data-fam="${fam}" onclick="selectFamilleInit('${fam}', this)">
       <div class="fam-icon">${FAMILLE_ICONS[fam]||'📁'}</div>
       <div class="fam-label">${fam}</div>
       <div class="fam-count">${count} dossiers</div>
     </div>`;
   });
-}
 
-function selectFamille(fam, el) {
-  document.querySelectorAll('.famille-btn').forEach(b => b.classList.remove('selected'));
-  el.classList.add('selected');
-  selectedFamille = fam;
+  // Bouton "Afficher" toujours visible — toutes sélectionnées par défaut
   const btn = document.getElementById('btn-famille-go');
   btn.classList.add('visible');
-  btn.textContent = fam ? `Afficher ${fam} →` : 'Afficher toutes les familles →';
+  btn.textContent = 'Afficher toutes les familles →';
+}
+
+function selectFamilleInit(fam, el) {
+  if(fam === '__ALL__') {
+    // Tout décocher → sélectionner toutes
+    selectedFamillesInit = new Set();
+    document.querySelectorAll('.famille-btn').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected');
+  } else {
+    // Décocher "TOUTES" si on sélectionne une famille spécifique
+    document.getElementById('btn-all-fam').classList.remove('selected');
+    if(selectedFamillesInit.has(fam)) {
+      selectedFamillesInit.delete(fam);
+      el.classList.remove('selected');
+      // Si plus rien de sélectionné → revenir à "TOUTES"
+      if(selectedFamillesInit.size === 0) {
+        document.getElementById('btn-all-fam').classList.add('selected');
+      }
+    } else {
+      selectedFamillesInit.add(fam);
+      el.classList.add('selected');
+    }
+  }
+  const btn = document.getElementById('btn-famille-go');
+  btn.classList.add('visible');
+  if(selectedFamillesInit.size === 0) {
+    btn.textContent = 'Afficher toutes les familles →';
+  } else if(selectedFamillesInit.size === 1) {
+    btn.textContent = `Afficher ${[...selectedFamillesInit][0]} →`;
+  } else {
+    btn.textContent = `Afficher ${selectedFamillesInit.size} familles →`;
+  }
 }
 
 function confirmFamille() {
-  const records = selectedFamille
-    ? allRecordsRaw.filter(r => r['CODE ATELIER'] === selectedFamille)
+  const records = selectedFamillesInit.size > 0
+    ? allRecordsRaw.filter(r => selectedFamillesInit.has(r['CODE ATELIER']))
     : allRecordsRaw;
   document.getElementById('famille-screen').style.display = 'none';
-  document.getElementById('badge-famille').textContent = selectedFamille || 'TOUTES';
-  buildDashboard(records, selectedFamille || 'Toutes familles');
+  const label = selectedFamillesInit.size === 0 ? 'TOUTES'
+    : selectedFamillesInit.size === 1 ? [...selectedFamillesInit][0]
+    : [...selectedFamillesInit].join(', ');
+  document.getElementById('badge-famille').textContent = label;
+  buildDashboard(records, label);
 }
 
 function changeFamille() {
@@ -895,7 +933,6 @@ function render() {
   const page = filteredRecords.slice((curPage-1)*PAGE_SIZE, curPage*PAGE_SIZE);
   document.getElementById('table-body').innerHTML = page.map(r => {
     const d=r['DELAI RECEP NOW'], ds=r['DELAI DERNSTATUT NOW'];
-    const tc=CAT_TAG[r['CATEGORIE']]||'autre';
     return `<tr>
       <td style="font-family:monospace;font-size:10px;color:var(--muted)">${r['NUM DOS NOMAD']}</td>
       <td>${r['DATE DEPOT']}</td>
@@ -905,7 +942,6 @@ function render() {
       <td style="font-weight:600">${r['MARQUE']}</td>
       <td><span style="background:var(--surface2);border:1px solid var(--border);font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px;font-family:Space Mono,monospace">${r['CODE ATELIER']}</span></td>
       <td style="font-size:10px;color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis">${r['DERN STATUT']}</td>
-      <td><span class="tag tag-${tc}">${r['CATEGORIE']}</span></td>
       <td><span class="delai-chip ${delaiClass(d)}">${d}j</span></td>
       <td><span class="delai-chip ${delaiClass(ds)}">${ds}j</span></td>
       <td style="font-size:10px">${r['NOM TECH']||'—'}</td>
