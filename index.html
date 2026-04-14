@@ -141,7 +141,13 @@ function openMail(type) {
     font-size: 10px; font-weight: 700; padding: 2px 10px; border-radius: 20px;
     font-family: 'Space Mono', monospace;
   }
-  .btn-reload {
+  .btn-famille-change {
+    background: #6366f111; border: 1px solid #6366f155; color: #818cf8;
+    border-radius: 20px; padding: 3px 12px; font-size: 11px; font-weight: 700;
+    font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all .15s;
+    letter-spacing: .03em;
+  }
+  .btn-famille-change:hover { background: #6366f122; border-color: #818cf8; }
     background: var(--surface2); border: 1px solid var(--border);
     color: var(--muted); border-radius: 8px; padding: 6px 14px;
     font-family: 'DM Sans', sans-serif; font-size: 12px; cursor: pointer;
@@ -192,6 +198,11 @@ function openMail(type) {
   .card-title { font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin-bottom:16px; }
   .bar-chart { display:flex; flex-direction:column; gap:10px; }
   .bar-row { display:flex; align-items:center; gap:10px; }
+  .bar-row.bar-clickable { cursor:pointer; border-radius:6px; padding:2px 4px; margin:-2px -4px; transition:background .15s; }
+  .bar-row.bar-clickable:hover { background:#ffffff0a; }
+  .bar-row.bar-clickable:hover .bar-label { color:var(--accent); }
+  .bar-arrow { font-size:10px; color:var(--muted); opacity:0; transition:opacity .15s; }
+  .bar-row.bar-clickable:hover .bar-arrow { opacity:1; color:var(--accent); }
   .bar-label { font-size:11px; color:var(--text); min-width:130px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .bar-track { flex:1; height:8px; background:var(--border); border-radius:4px; overflow:hidden; }
   .bar-fill { height:100%; border-radius:4px; transition:width 0.8s cubic-bezier(.4,0,.2,1); }
@@ -266,7 +277,52 @@ function openMail(type) {
     transition: all .15s;
   }
   .contact-link:hover { border-color: var(--accent); background: #3b82f611; }
-  .table-wrap { overflow-x:auto; border-radius:var(--card-r); border:1px solid var(--border); }
+  .tech-header {
+    display: flex; align-items: flex-start; gap: 20px; flex-wrap: wrap;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--card-r); padding: 16px 20px; margin: 16px 0 0;
+  }
+  .tech-filter-bar {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--card-r); padding: 12px 16px; margin: 10px 0 0;
+  }
+  .tech-stat-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tech-chip {
+    font-size: 11px; font-weight: 600; padding: 4px 12px; border-radius: 20px;
+    cursor: pointer; border: 1px solid var(--border); background: var(--surface2);
+    color: var(--muted); transition: all .15s; user-select: none;
+  }
+  .tech-chip:hover { color: var(--text); }
+  .tech-chip.active { color: white; border-color: transparent; }
+  .tech-chip.active:not([data-statut=""]) { background: var(--accent); }
+  .tech-chip[data-statut=""].active { background: var(--surface2); color: var(--text); border-color: var(--accent); }
+  .tech-chip.att-inter.active { background: #f97316; }
+  .tech-chip.pieces.active { background: #ef4444; }
+  .tech-chip.reposer.active { background: #fb923c; }
+  .tech-chip.rupture.active { background: #7c3aed; }
+  .tech-chip.devis.active { background: #6366f1; }
+  .btn-print {
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+    border-radius: 8px; padding: 7px 16px; font-family: 'DM Sans', sans-serif;
+    font-size: 12px; cursor: pointer; transition: all .15s; align-self: center;
+  }
+  .btn-print:hover { border-color: var(--accent); color: var(--accent); }
+
+  @media print {
+    body { background: white !important; color: black !important; }
+    .topbar, .nav, #upload-screen, #famille-screen, .tech-header, .tech-filter-bar,
+    .tech-stat-chips, .btn-print, .table-legend, #tech-kpi-grid { display: none !important; }
+    .page { display: block !important; }
+    #page-dashboard, #page-table { display: none !important; }
+    #page-tech { display: block !important; }
+    .table-wrap { border: none !important; overflow: visible !important; }
+    table { font-size: 10px !important; }
+    thead th { background: #1F3864 !important; color: white !important; -webkit-print-color-adjust: exact; }
+    .delai-chip { border: 1px solid #ccc !important; }
+    #print-header { display: block !important; }
+  }
+  #print-header { display: none; padding: 0 0 12px; border-bottom: 2px solid #1F3864; margin-bottom: 12px; }
   table { width:100%; border-collapse:collapse; font-size:11.5px; }
   thead th {
     background:var(--surface2); color:var(--muted); font-size:10px; font-weight:600;
@@ -358,7 +414,7 @@ function openMail(type) {
       <div class="logo">SAV//NOMAD</div>
       <div class="topbar-title" id="topbar-title">Atelier Limonest ELA</div>
       <span class="badge-file" id="badge-file"></span>
-      <span class="badge-file" id="badge-famille" style="background:#6366f111;border-color:#6366f155;color:#818cf8;cursor:pointer" onclick="changeFamille()" title="Changer de famille"></span>
+      <button class="btn-famille-change" id="badge-famille" onclick="changeFamille()" title="Changer de famille">🗂️ <span id="badge-famille-label">TOUTES</span> — Changer de famille</button>
     </div>
     <button class="btn-reload" onclick="reloadFile()">📂 Changer de fichier</button>
   </div>
@@ -366,6 +422,7 @@ function openMail(type) {
   <div class="nav">
     <button class="nav-btn active" onclick="switchPage('dashboard',this)">📊 Tableau de bord</button>
     <button class="nav-btn" onclick="switchPage('table',this)">📋 Dossiers</button>
+    <button class="nav-btn" onclick="switchPage('tech',this)">👨‍🔧 Encours techniciens</button>
   </div>
 
   <div class="main">
@@ -393,14 +450,89 @@ function openMail(type) {
       </div>
       <div class="charts-grid three">
         <div class="card"><div class="card-title">Délai moyen par catégorie (jours)</div><div class="bar-chart" id="bar-cat"></div></div>
-        <div class="card"><div class="card-title">Top 10 marques en encours</div><div class="bar-chart" id="bar-marque"></div></div>
-        <div class="card"><div class="card-title">Top techniciens — délai moyen</div><div class="bar-chart" id="bar-tech"></div></div>
+        <div class="card" style="overflow-y:auto;max-height:400px"><div class="card-title">Marques en encours</div><div class="bar-chart" id="bar-marque"></div></div>
+        <div class="card" style="overflow-y:auto;max-height:400px"><div class="card-title">Techniciens — délai moyen</div><div class="bar-chart" id="bar-tech"></div></div>
+      </div>
+    </div>
+
+    <!-- TECHNICIENS -->
+    <div class="page" id="page-tech">
+      <div class="tech-header">
+        <div>
+          <div class="filter-section-title" style="font-size:13px;color:var(--text);margin-bottom:4px">👨‍🔧 Encours par technicien</div>
+          <div style="font-size:11px;color:var(--muted)">Sélectionnez un technicien pour voir tous ses dossiers en cours</div>
+        </div>
+        <div class="filter-inline-group" style="align-self:center">
+          <span class="filter-inline-label">Technicien</span>
+          <select id="tech-select" onchange="renderTechPage()" style="min-width:220px">
+            <option value="">-- Choisir un technicien --</option>
+          </select>
+        </div>
+        <div class="count-badge" id="tech-count"></div>
+        <button class="btn-print" onclick="printTech()" id="btn-print-tech" style="display:none">🖨️ Imprimer / PDF</button>
+      </div>
+
+      <div id="tech-kpis" style="display:none">
+        <div class="tech-filter-bar">
+          <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Filtrer par statut</span>
+          <div class="tech-stat-chips" id="tech-stat-chips">
+            <span class="tech-chip active" data-statut="" onclick="setTechStatut('',this)">Tous</span>
+            <span class="tech-chip att-inter" data-statut="ATTENTE INTERVENTION" onclick="setTechStatut('ATTENTE INTERVENTION',this)">⏳ Attente intervention</span>
+            <span class="tech-chip pieces" data-statut="PIECE COMMANDEE ATEL" onclick="setTechStatut('PIECE COMMANDEE ATEL',this)">📦 Pièce commandée</span>
+            <span class="tech-chip pieces" data-statut="PIECE DEMDEE ATELIER" onclick="setTechStatut('PIECE DEMDEE ATELIER',this)">🔍 Pièce demandée</span>
+            <span class="tech-chip reposer" data-statut="PIECE ATL A REPOSER" onclick="setTechStatut('PIECE ATL A REPOSER',this)">🔧 Pièce à reposer</span>
+            <span class="tech-chip rupture" data-statut="PIECE EN RUPTURE" onclick="setTechStatut('PIECE EN RUPTURE',this)">❌ Rupture</span>
+            <span class="tech-chip rupture" data-statut="RUPTURE RELANCEE" onclick="setTechStatut('RUPTURE RELANCEE',this)">🔄 Rupture relancée</span>
+            <span class="tech-chip devis" data-statut="DEVIS EMIS" onclick="setTechStatut('DEVIS EMIS',this)">📋 Devis émis</span>
+          </div>
+          <div class="filter-inline-group" style="margin-left:auto">
+            <span class="filter-inline-label">Autre statut</span>
+            <select id="tech-statut-extra" onchange="setTechStatutFromSelect(this.value)" style="min-width:200px">
+              <option value="">-- Tous les autres --</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin:10px 0" id="tech-kpi-grid"></div>
+
+        <div class="table-legend" style="margin-bottom:8px">
+          <span>💡 Cliquez sur les en-têtes pour trier</span>
+          <span class="delai-chip d-ok">≤7j ok</span>
+          <span class="delai-chip d-watch">7-14j surveiller</span>
+          <span class="delai-chip d-late">14-30j retard</span>
+          <span class="delai-chip d-crit">&gt;30j critique</span>
+        </div>
+        <div class="table-wrap" id="tech-table-wrap">
+          <table>
+            <thead><tr>
+              <th onclick="sortTechTable('NUM DOS NOMAD')">N° Dossier</th>
+              <th onclick="sortTechTable('DATE DEPOT')">Date dépôt</th>
+              <th onclick="sortTechTable('LIEU DEPOT')">Magasin</th>
+              <th onclick="sortTechTable('NOM CLIENT')">Client</th>
+              <th onclick="sortTechTable('MODELE')">Modèle</th>
+              <th onclick="sortTechTable('MARQUE')">Marque</th>
+              <th onclick="sortTechTable('CODE ATELIER')">Famille</th>
+              <th onclick="sortTechTable('DERN STATUT')">Statut</th>
+              <th onclick="sortTechTable('DELAI RECEP NOW')">Délai total ↕</th>
+              <th onclick="sortTechTable('DELAI DERNSTATUT NOW')">Délai statut ↕</th>
+              <th onclick="sortTechTable('ENSEIGNE')">Enseigne</th>
+              <th onclick="sortTechTable('PRIX ACHAT')">Prix achat</th>
+            </tr></thead>
+            <tbody id="tech-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="tech-empty" style="text-align:center;padding:60px;color:var(--muted);font-size:14px">
+        👆 Sélectionnez un technicien ci-dessus pour afficher son encours
+      </div>
+      <div id="print-header">
+        <div style="font-size:16px;font-weight:700;color:#1F3864" id="print-title"></div>
+        <div style="font-size:11px;color:#666;margin-top:4px" id="print-subtitle"></div>
       </div>
     </div>
 
     <!-- TABLE -->
     <div class="page" id="page-table">
-
       <!-- Barre de filtres repensée -->
       <div class="filter-bar">
         <div class="filter-bar-top">
@@ -700,7 +832,7 @@ function confirmFamille() {
   const label = selectedFamillesInit.size === 0 ? 'TOUTES'
     : selectedFamillesInit.size === 1 ? [...selectedFamillesInit][0]
     : [...selectedFamillesInit].join(', ');
-  document.getElementById('badge-famille').textContent = label;
+  document.getElementById('badge-famille-label').textContent = label;
   buildDashboard(records, label);
 }
 
@@ -753,7 +885,7 @@ function buildDashboard(records, familleLabel) {
   records.forEach(r => {
     const c = r['CATEGORIE'];
     if(!catMap[c]) catMap[c] = {count:0, totalDelai:0};
-    catMap[c].count++; catMap[c].totalDelai += r['DELAI RECEP NOW'];
+    catMap[c].count++; catMap[c].totalDelai += r['DELAI DERNSTATUT NOW'];
   });
   const catStats = Object.entries(catMap).map(([k,v]) => ({
     CATEGORIE:k, count:v.count, delai_moy:+(v.totalDelai/v.count).toFixed(1)
@@ -795,34 +927,99 @@ function buildDashboard(records, familleLabel) {
       <div class="histo-label">${h.label}</div>
     </div>`).join('') + '</div>';
 
-  function renderBar(elId, data, labelKey, valKey, colorFn) {
+  function renderBar(elId, data, labelKey, valKey, colorFn, onClickFn) {
     const maxV = Math.max(...data.map(d=>d[valKey]));
-    document.getElementById(elId).innerHTML = data.map(d => `<div class="bar-row">
+    document.getElementById(elId).innerHTML = data.map(d => `<div class="bar-row${onClickFn?' bar-clickable':''}" ${onClickFn?`onclick="${onClickFn}('${d[labelKey].replace(/'/g,"\\'")}')"`:''}  title="${onClickFn?'Cliquer pour voir les dossiers':''}">
       <span class="bar-label" title="${d[labelKey]}">${d[labelKey]}</span>
       <div class="bar-track"><div class="bar-fill" style="width:${Math.round(d[valKey]/maxV*100)}%;background:${colorFn(d[valKey])}"></div></div>
       <span class="bar-count">${d[valKey]}</span>
+      ${onClickFn?'<span class="bar-arrow">→</span>':''}
     </div>`).join('');
   }
   function delaiColor(v) { return v>30?'#ef4444':v>14?'#f97316':v>7?'#eab308':'#22c55e'; }
 
-  renderBar('bar-cat', catStats, 'CATEGORIE', 'delai_moy', delaiColor);
+  // Délai moyen par catégorie — exclure TERMINÉ et VALIDATION/ADMIN, ajouter statuts pièces détaillés
+  const catExclude = ['TERMINÉ','VALIDATION/ADMIN'];
+  const statutsSpeciaux = ['PIECE EN RUPTURE','RUPTURE RELANCEE','PIECE DEMDEE ATELIER'];
+  const catStatsFiltres = catStats.filter(c => !catExclude.includes(c.CATEGORIE));
+
+  // Stats détaillées pour les statuts spéciaux
+  const statutMap = {};
+  records.forEach(r => {
+    const s = r['DERN STATUT'];
+    if(statutsSpeciaux.includes(s)) {
+      if(!statutMap[s]) statutMap[s] = {count:0, totalDelai:0};
+      statutMap[s].count++; statutMap[s].totalDelai += r['DELAI DERNSTATUT NOW'];
+    }
+  });
+  const statutSpecStats = Object.entries(statutMap).map(([k,v]) => ({
+    CATEGORIE: k, count: v.count, delai_moy: +(v.totalDelai/v.count).toFixed(1)
+  }));
+  const catStatsFinal = [...catStatsFiltres, ...statutSpecStats].sort((a,b) => b.delai_moy - a.delai_moy);
+
+  renderBar('bar-cat', catStatsFinal, 'CATEGORIE', 'delai_moy', delaiColor, 'goToDossiersCat');
 
   const marqueMap = {};
   records.forEach(r => { const m=r['MARQUE']||'?'; if(!marqueMap[m]) marqueMap[m]=0; marqueMap[m]++; });
-  const marqueStats = Object.entries(marqueMap).map(([k,v])=>({MARQUE:k,count:v})).sort((a,b)=>b.count-a.count).slice(0,10);
-  renderBar('bar-marque', marqueStats, 'MARQUE', 'count', ()=>'#3b82f6');
+  const marqueStats = Object.entries(marqueMap).map(([k,v])=>({MARQUE:k,count:v})).sort((a,b)=>b.count-a.count);
+  renderBar('bar-marque', marqueStats, 'MARQUE', 'count', ()=>'#3b82f6', null);
 
   const techMap = {};
   records.forEach(r => {
     const t=r['NOM TECH']||''; if(!t) return;
     if(!techMap[t]) techMap[t]={total:0,count:0};
-    techMap[t].total+=r['DELAI RECEP NOW']; techMap[t].count++;
+    techMap[t].total+=r['DELAI DERNSTATUT NOW']; techMap[t].count++;
   });
   const techStats = Object.entries(techMap).map(([k,v])=>({NOM_TECH:k,delai_moy:+(v.total/v.count).toFixed(1),count:v.count}))
-    .sort((a,b)=>b.count-a.count).slice(0,10);
-  renderBar('bar-tech', techStats, 'NOM_TECH', 'delai_moy', delaiColor);
+    .sort((a,b)=>b.delai_moy-a.delai_moy);
+  renderBar('bar-tech', techStats, 'NOM_TECH', 'delai_moy', delaiColor, 'goToTech');
 
+  initTechPage(records);
   initTable(records);
+}
+
+// ── Navigation depuis dashboard ──
+function goToTech(techName) {
+  // Switch to tech page
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-tech').classList.add('active');
+  document.querySelectorAll('.nav-btn')[2].classList.add('active');
+  // Select tech
+  const sel = document.getElementById('tech-select');
+  sel.value = techName;
+  techStatutFilter = '';
+  document.querySelectorAll('.tech-chip').forEach(c=>c.classList.remove('active'));
+  const allChip = document.querySelector('.tech-chip[data-statut=""]');
+  if(allChip) allChip.classList.add('active');
+  renderTechPage();
+  window.scrollTo(0,0);
+}
+
+function goToDossiersCat(catOrStatut) {
+  // Switch to table page
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-table').classList.add('active');
+  document.querySelectorAll('.nav-btn')[1].classList.add('active');
+  // Check if it's a statut or a categorie
+  const statutEl = document.getElementById('f-statut');
+  const catEl = document.getElementById('f-cat-hidden');
+  // Try statut first
+  let found = false;
+  for(let o of statutEl.options) {
+    if(o.value === catOrStatut) { statutEl.value = catOrStatut; found = true; break; }
+  }
+  if(!found) {
+    // It's a category — filter via statut reset and use category filter
+    statutEl.value = '';
+    // Set hidden cat filter
+    window._dashCatFilter = catOrStatut;
+  } else {
+    window._dashCatFilter = '';
+  }
+  applyFilters();
+  window.scrollTo(0,0);
 }
 
 // ── Table ──
@@ -889,12 +1086,14 @@ function applyFilters() {
   const enseigne=document.getElementById('f-enseigne').value;
   const delaiMin=parseFloat(document.getElementById('f-delai-min').value)||0;
   const search=document.getElementById('f-search').value.toLowerCase();
+  const dashCat = window._dashCatFilter || '';
   filteredRecords = allRecords.filter(r => {
     if(selectedFamilles.size > 0 && !selectedFamilles.has(r['CODE ATELIER'])) return false;
     if(statut && r['DERN STATUT']!==statut) return false;
     if(marque && r['MARQUE']!==marque) return false;
     if(enseigne && r['ENSEIGNE']!==enseigne) return false;
     if(delaiMin && r['DELAI RECEP NOW']<delaiMin) return false;
+    if(dashCat && r['CATEGORIE']!==dashCat && r['DERN STATUT']!==dashCat) return false;
     if(search) {
       const hay=[r['NOM CLIENT'],r['MODELE'],String(r['NUM DOS NOMAD']),r['LIEU DEPOT']].join(' ').toLowerCase();
       if(!hay.includes(search)) return false;
@@ -969,6 +1168,7 @@ function render() {
 function goPage(p) { const max=Math.ceil(filteredRecords.length/PAGE_SIZE); if(p<1||p>max)return; curPage=p; render(); }
 function resetFilters() {
   selectedFamilles = new Set();
+  window._dashCatFilter = '';
   document.querySelectorAll('.fam-chip').forEach(c=>c.classList.remove('active'));
   const allChip = document.querySelector('.all-chip');
   if(allChip) allChip.classList.add('active');
@@ -979,6 +1179,117 @@ function resetFilters() {
   sortCol='DELAI RECEP NOW'; sortDir=-1;
   applyFilters();
 }
+// ── Tech page ──
+let techRecords = [];
+let techSortCol = 'DELAI RECEP NOW', techSortDir = -1;
+let techStatutFilter = '';
+
+function initTechPage(records) {
+  techRecords = records;
+  const techNames = [...new Set(records.map(r=>r['NOM TECH']).filter(Boolean))].sort();
+  const sel = document.getElementById('tech-select');
+  sel.innerHTML = '<option value="">-- Choisir un technicien --</option>'
+    + techNames.map(t => `<option>${t}</option>`).join('');
+
+  // Populate extra statut dropdown with all statuts
+  const allStatuts = [...new Set(records.map(r=>r['DERN STATUT']).filter(Boolean))].sort();
+  const quickChipStatuts = ['ATTENTE INTERVENTION','PIECE COMMANDEE ATEL','PIECE DEMDEE ATELIER','PIECE ATL A REPOSER','PIECE EN RUPTURE','RUPTURE RELANCEE','DEVIS EMIS'];
+  const extraStatuts = allStatuts.filter(s => !quickChipStatuts.includes(s));
+  const extraSel = document.getElementById('tech-statut-extra');
+  extraSel.innerHTML = '<option value="">-- Tous les autres --</option>'
+    + extraStatuts.map(s => `<option value="${s}">${s}</option>`).join('');
+
+  document.getElementById('tech-kpis').style.display = 'none';
+  document.getElementById('tech-empty').style.display = 'block';
+  document.getElementById('btn-print-tech').style.display = 'none';
+  techStatutFilter = '';
+}
+
+function setTechStatutFromSelect(val) {
+  if(!val) return;
+  techStatutFilter = val;
+  // Deactivate all chips
+  document.querySelectorAll('.tech-chip').forEach(c=>c.classList.remove('active'));
+  document.getElementById('tech-statut-extra').value = val;
+  renderTechPage();
+}
+
+function setTechStatut(statut, el) {
+  techStatutFilter = statut;
+  document.querySelectorAll('.tech-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tech-statut-extra').value = '';
+  renderTechPage();
+}
+
+function renderTechPage() {
+  const techName = document.getElementById('tech-select').value;
+  if(!techName) {
+    document.getElementById('tech-kpis').style.display = 'none';
+    document.getElementById('tech-empty').style.display = 'block';
+    document.getElementById('btn-print-tech').style.display = 'none';
+    return;
+  }
+  document.getElementById('tech-empty').style.display = 'none';
+  document.getElementById('tech-kpis').style.display = 'block';
+  document.getElementById('btn-print-tech').style.display = 'block';
+
+  let rows = techRecords.filter(r => r['NOM TECH'] === techName);
+  if(techStatutFilter) rows = rows.filter(r => r['DERN STATUT'] === techStatutFilter);
+
+  // Sort
+  rows.sort((a,b) => {
+    let av=a[techSortCol]??'', bv=b[techSortCol]??'';
+    if(typeof av==='number') return (av-bv)*techSortDir;
+    return String(av).localeCompare(String(bv))*techSortDir;
+  });
+
+  const total = rows.length;
+  const totalAll = techRecords.filter(r => r['NOM TECH'] === techName).length;
+  const critique = rows.filter(r=>r['DELAI RECEP NOW']>30).length;
+  const delaiMoy = total ? (rows.reduce((s,r)=>s+r['DELAI DERNSTATUT NOW'],0)/total).toFixed(1) : 0;
+  const ok = rows.filter(r=>r['DELAI RECEP NOW']<=7).length;
+
+  const filterLabel = techStatutFilter ? ` — filtre : ${techStatutFilter}` : '';
+  document.getElementById('tech-count').textContent = `${total} dossier${total>1?'s':''}${techStatutFilter?' (filtré)':''} / ${totalAll} au total`;
+  document.getElementById('print-title').textContent = `Encours — ${techName}${filterLabel}`;
+  document.getElementById('print-subtitle').textContent = `${total} dossier${total>1?'s':''} — Imprimé le ${new Date().toLocaleDateString('fr-FR')}`;
+
+  document.getElementById('tech-kpi-grid').innerHTML = [
+    {label:'Dossiers affichés', val:total, cls:'blue'},
+    {label:'Délai statut moyen', val:delaiMoy+'j', cls:'purple'},
+    {label:'Critiques >30j', val:critique, cls:'red'},
+    {label:'Dans les délais ≤7j', val:ok, cls:'green'},
+  ].map(k=>`<div class="kpi ${k.cls}"><div class="kpi-label">${k.label}</div><div class="kpi-val">${k.val}</div></div>`).join('');
+
+  document.getElementById('tech-table-body').innerHTML = rows.map(r => {
+    const d=r['DELAI RECEP NOW'], ds=r['DELAI DERNSTATUT NOW'];
+    return `<tr>
+      <td style="font-family:monospace;font-size:10px;color:var(--muted)">${r['NUM DOS NOMAD']}</td>
+      <td>${r['DATE DEPOT']}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis">${r['LIEU DEPOT']}</td>
+      <td style="font-weight:500">${r['NOM CLIENT']}</td>
+      <td style="color:var(--muted)">${r['MODELE']}</td>
+      <td style="font-weight:600">${r['MARQUE']}</td>
+      <td><span style="background:var(--surface2);border:1px solid var(--border);font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px;font-family:Space Mono,monospace">${r['CODE ATELIER']}</span></td>
+      <td style="font-size:10px;color:var(--muted)">${r['DERN STATUT']}</td>
+      <td><span class="delai-chip ${delaiClass(d)}">${d}j</span></td>
+      <td><span class="delai-chip ${delaiClass(ds)}">${ds}j</span></td>
+      <td>${r['ENSEIGNE']}</td>
+      <td style="font-family:monospace;font-size:10px;text-align:right">${r['PRIX ACHAT']?Number(r['PRIX ACHAT']).toLocaleString('fr-FR',{style:'currency',currency:'EUR'}):'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function sortTechTable(col) {
+  if(techSortCol===col) techSortDir*=-1; else{techSortCol=col;techSortDir=-1;}
+  renderTechPage();
+}
+
+function printTech() {
+  window.print();
+}
+
 function switchPage(id,btn) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
