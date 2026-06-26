@@ -110,6 +110,39 @@ $("show-login").addEventListener("click", (e) => {
   $("login-form").classList.remove("hidden");
 });
 
+$("show-forgot").addEventListener("click", (e) => {
+  e.preventDefault();
+  $("forgot-error").textContent = "";
+  $("forgot-success").textContent = "";
+  $("forgot-email").value = $("login-email").value.trim();
+  $("login-form").classList.add("hidden");
+  $("forgot-form").classList.remove("hidden");
+});
+$("show-login-from-forgot").addEventListener("click", (e) => {
+  e.preventDefault();
+  $("forgot-form").classList.add("hidden");
+  $("login-form").classList.remove("hidden");
+});
+
+$("btn-forgot").addEventListener("click", async () => {
+  $("forgot-error").textContent = "";
+  $("forgot-success").textContent = "";
+  const email = $("forgot-email").value.trim();
+  if (!email) {
+    $("forgot-error").textContent = "Merci de saisir ton email.";
+    return;
+  }
+  $("btn-forgot").disabled = true;
+  try {
+    await auth.sendPasswordResetEmail(email);
+    $("forgot-success").textContent = "Email envoyé ! Vérifie ta boîte de réception (et les spams) pour choisir un nouveau mot de passe.";
+  } catch (err) {
+    $("forgot-error").textContent = traduireErreurFirebase(err);
+  } finally {
+    $("btn-forgot").disabled = false;
+  }
+});
+
 $("btn-login").addEventListener("click", async () => {
   $("login-error").textContent = "";
   const email = $("login-email").value.trim();
@@ -151,7 +184,9 @@ function traduireErreurFirebase(err) {
     "auth/wrong-password": "Mot de passe incorrect.",
     "auth/email-already-in-use": "Un compte existe déjà avec cet email.",
     "auth/weak-password": "Mot de passe trop faible (6 caractères minimum).",
-    "auth/invalid-credential": "Email ou mot de passe incorrect."
+    "auth/invalid-credential": "Email ou mot de passe incorrect.",
+    "auth/missing-email": "Merci de saisir un email.",
+    "auth/too-many-requests": "Trop de tentatives, réessaie dans quelques minutes."
   };
   return map[err.code] || err.message;
 }
@@ -298,21 +333,46 @@ $("shortcut-yesterday").addEventListener("click", () => {
 // Petits messages d'attente, clin d'œil au métier SAV — un tirage au sort
 // différent à chaque ouverture de journée pour ne pas être répétitif.
 const MESSAGES_CHARGEMENT_SAV = [
-  "Réveil du tournevis cruciforme…",
-  "Négociation avec la base de données…",
-  "On dépoussière le bon d'intervention…",
-  "Calibrage de la jauge d'efficience…",
-  "Recherche de la pièce détachée perdue…",
-  "On rassure le client au téléphone…",
-  "Vérification qu'il ne manque pas une vis…",
-  "Chargement du café de l'atelier…",
-  "On compte les pièces une par une (presque)…",
-  "Synchronisation avec le bon de commande…",
-  "On range l'établi avant d'ouvrir la journée…",
-  "Le technicien cherche ses lunettes…",
-  "Petit coup de chiffon sur les statistiques…",
-  "On évite soigneusement le retour atelier…",
-  "Mise à jour du tableau de bord en cours…"
+  "Détartrage de la cafetière avant de commencer…",
+  "On retire le pain coincé dans le grille-pain…",
+  "On démêle le câble de l'aspirateur…",
+  "Chargement du café de l'atelier (avec une cafetière qui marche, promis)…",
+  "On compte les pièces détachées une par une (presque)…",
+  "Le technicien cherche son tournevis cruciforme…",
+  "Recomptage des heures (sans tricher)…",
+  "Le client rappelle pour son micro-ondes, on accélère…",
+  "Vérification que le sèche-cheveux ne chauffe plus pour rien…",
+  "On range les résistances par taille, ça aide à rien mais bon…",
+  "Décodage de l'écriture du bon de commande…",
+  "On cherche qui a piqué le dernier filtre d'aspirateur…",
+  "On dépanne la base de données comme un vieux fer à repasser…",
+  "Conversion des heures en tasses de café…",
+  "On planque le carton de pièces avant l'inventaire…",
+  "On évite que deux journées se mélangent (promis)…",
+  "L'aspirateur reprend son souffle avant le diagnostic…",
+  "On débogue avec un tournevis plat (ça marche pas mais on essaie)…",
+  "On checke si le grille-pain a bien refroidi…",
+  "Petit détartrage du conic-gradient…",
+  "On attend que la cafetière (et la base de données) se réveillent…",
+  "Le vendeur a encore vendu du Darty Max, on valide la prise en charge…",
+  "Estimation du temps avant le prochain coup de fil pour un grille-pain…",
+  "On compare le devis au prix d'un appareil neuf chez Darty…",
+  "Le client demande si Darty Max rembourse aussi le café renversé…",
+  "Calibrage du sourire \"service client\" avant l'intervention…",
+  "On explique une fois de plus ce que couvre Darty Max…",
+  "On compte les vis une par une (à peu près)…",
+  "Mise à jour du café (toujours pas trouvé le bouton \"plus fort\")…",
+  "On revérifie que la journée d'hier n'est pas revenue se mélanger (elle a déjà essayé)…",
+  "Recherche de la bonne pièce détachée (elle était sous le café)…",
+  "On recompte les pièces détachées, version 2 (la première fois on a perdu le fil)…",
+  "Le client demande si Darty Max couvre aussi les coups de colère…",
+  "On range le tournevis plat avec les autres (qui ne servent à rien non plus)…",
+  "Calibrage de la patience avant le prochain appel client…",
+  "On revérifie que le café n'a pas grillé avant la résistance…",
+  "Le vendeur jure que Darty Max marche même sur un grille-pain en pièces…",
+  "On cherche le bon tournevis (cruciforme, plat, et celui qu'on a jamais retrouvé)…",
+  "Synchronisation du café avec la base de données (priorité au café)…",
+  "Le client demande si Darty Max couvre les pièces perdues sous le canapé…"
 ];
 function messageChargementAleatoire() {
   return MESSAGES_CHARGEMENT_SAV[Math.floor(Math.random() * MESSAGES_CHARGEMENT_SAV.length)];
@@ -377,6 +437,7 @@ async function ouvrirJournee(date) {
     console.log(`[Efficience] Journée ouverte → document Firestore "${docId}" — ${currentDay.interventions.length} intervention(s) chargée(s).`);
 
     $("inp-heures-reelles").value = currentDay.heuresReelles ?? "";
+    syncHeuresPresetActive();
     $("lbl-date-ouverte").textContent = formatDateFr(date);
     $("save-status").textContent = "";
     $("card-ouverture").classList.add("hidden");
@@ -467,9 +528,34 @@ let heuresDebounceTimer = null;
 
 $("inp-heures-reelles").addEventListener("input", () => {
   currentDay.heuresReelles = parseFloat($("inp-heures-reelles").value) || null;
+  syncHeuresPresetActive();
   renderTopStats();
   clearTimeout(heuresDebounceTimer);
   heuresDebounceTimer = setTimeout(persistJournee, 600);
+});
+
+function syncHeuresPresetActive() {
+  const val = parseFloat($("inp-heures-reelles").value);
+  document.querySelectorAll(".heures-preset-chip").forEach(chip => {
+    chip.classList.toggle("active", !isNaN(val) && parseFloat(chip.dataset.val) === val);
+  });
+}
+
+$("btn-heures-moins").addEventListener("click", () => {
+  const v = Math.max(0, (parseFloat($("inp-heures-reelles").value) || 0) - 0.25);
+  $("inp-heures-reelles").value = v;
+  $("inp-heures-reelles").dispatchEvent(new Event("input"));
+});
+$("btn-heures-plus").addEventListener("click", () => {
+  const v = Math.min(24, (parseFloat($("inp-heures-reelles").value) || 0) + 0.25);
+  $("inp-heures-reelles").value = v;
+  $("inp-heures-reelles").dispatchEvent(new Event("input"));
+});
+document.querySelectorAll(".heures-preset-chip").forEach(chip => {
+  chip.addEventListener("click", () => {
+    $("inp-heures-reelles").value = chip.dataset.val;
+    $("inp-heures-reelles").dispatchEvent(new Event("input"));
+  });
 });
 
 async function persistJournee() {

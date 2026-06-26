@@ -23,6 +23,7 @@
       </label>
       <button class="btn btn-primary" id="btn-login">Se connecter</button>
       <p class="auth-error" id="login-error"></p>
+      <p class="auth-switch"><a href="#" id="show-forgot">Mot de passe oublié ?</a></p>
       <p class="auth-switch">Pas encore de compte ? <a href="#" id="show-signup">Créer un compte technicien</a></p>
     </div>
 
@@ -40,6 +41,18 @@
       <button class="btn btn-primary" id="btn-signup">Créer mon compte</button>
       <p class="auth-error" id="signup-error"></p>
       <p class="auth-switch">Déjà inscrit ? <a href="#" id="show-login">Se connecter</a></p>
+    </div>
+
+    <div id="forgot-form" class="auth-form hidden">
+      <h2>Mot de passe oublié</h2>
+      <p class="auth-hint">Indique ton email : tu recevras un lien pour choisir un nouveau mot de passe.</p>
+      <label>Email
+        <input type="email" id="forgot-email" placeholder="prenom.nom@entreprise.fr" autocomplete="username">
+      </label>
+      <button class="btn btn-primary" id="btn-forgot">Envoyer le lien de réinitialisation</button>
+      <p class="auth-error" id="forgot-error"></p>
+      <p class="auth-success" id="forgot-success"></p>
+      <p class="auth-switch">Retour à la <a href="#" id="show-login-from-forgot">connexion</a></p>
     </div>
   </div>
 </div>
@@ -102,9 +115,30 @@
             <h2 style="margin:0;">Journée du <span id="lbl-date-ouverte"></span></h2>
             <button class="btn btn-ghost" id="btn-changer-journee">Changer de journée</button>
           </div>
-          <label>Temps de travail réel (heures)
-            <input type="number" id="inp-heures-reelles" min="0" max="24" step="0.25" placeholder="ex: 7">
-          </label>
+          <div class="heures-travail-block">
+            <div class="heures-travail-header">
+              <span class="heures-icon">⏱️</span>
+              <div>
+                <span class="heures-label">Temps de travail réel</span>
+                <span class="heures-sub">Heures effectivement travaillées sur la journée</span>
+              </div>
+            </div>
+
+            <div class="heures-travail-controls">
+              <div class="stepper stepper-lg">
+                <button type="button" class="stepper-btn" id="btn-heures-moins">−</button>
+                <input type="number" id="inp-heures-reelles" min="0" max="24" step="0.25" placeholder="ex: 7">
+                <button type="button" class="stepper-btn" id="btn-heures-plus">+</button>
+              </div>
+              <span class="heures-unite">heures</span>
+            </div>
+
+            <div class="heures-presets">
+              <button type="button" class="heures-preset-chip" data-val="7">7h</button>
+              <button type="button" class="heures-preset-chip" data-val="7.5">7h30</button>
+              <button type="button" class="heures-preset-chip" data-val="8">8h</button>
+            </div>
+          </div>
           <p class="save-status" id="save-status"></p>
         </div>
 

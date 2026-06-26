@@ -74,6 +74,8 @@ body {
   font-size: 0.95rem;
 }
 .auth-error { color: var(--danger); font-size: 0.85rem; min-height: 1.2em; }
+.auth-success { color: var(--success); font-size: 0.85rem; min-height: 1.2em; }
+.auth-hint { font-size: 0.82rem; color: var(--text-muted); margin: -6px 0 16px; text-align: center; }
 .auth-switch { text-align: center; font-size: 0.85rem; color: var(--text-muted); }
 .auth-switch a { color: var(--primary); text-decoration: none; }
 
@@ -521,20 +523,21 @@ input:focus, select:focus {
 .ouverture-loading {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   margin-top: 16px;
-  padding: 10px 14px;
+  padding: 14px 18px;
   background: var(--neutral-bg);
   border-radius: 10px;
-  font-size: 0.85rem;
-  color: var(--text-muted);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
 }
 .ouverture-spinner {
   flex: none;
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
-  border: 2px solid var(--border);
+  border: 3px solid var(--border);
   border-top-color: var(--primary);
   animation: spin 0.7s linear infinite;
 }
@@ -638,6 +641,60 @@ input:focus, select:focus {
   margin: 0;
 }
 
+/* ---------- TEMPS DE TRAVAIL (carte redessinée) ---------- */
+.heures-travail-block {
+  margin: 18px 0 4px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: linear-gradient(135deg, #fff, var(--neutral-bg) 180%);
+}
+.heures-travail-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.heures-icon {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+}
+.heures-label { display: block; font-weight: 700; font-size: 1rem; color: var(--text); }
+.heures-sub { display: block; font-size: 0.82rem; color: var(--text-muted); margin-top: 2px; }
+
+.heures-travail-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.stepper-lg { height: 52px; max-width: 220px; }
+.stepper-lg .stepper-btn { width: 48px; font-size: 1.4rem; }
+.stepper-lg input[type="number"] { font-size: 1.3rem; }
+.heures-unite { font-size: 0.9rem; color: var(--text-muted); font-weight: 600; }
+
+.heures-presets { display: flex; gap: 8px; flex-wrap: wrap; }
+.heures-preset-chip {
+  border: 1.5px solid var(--border);
+  background: #fff;
+  border-radius: 999px;
+  padding: 6px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.heures-preset-chip:hover { border-color: var(--primary); color: var(--primary); }
+.heures-preset-chip.active { border-color: var(--primary); background: var(--primary); color: #fff; }
+
 .temps-alloue-preview {
   margin-top: 18px;
   display: flex;
@@ -676,6 +733,9 @@ input:focus, select:focus {
   .ouverture-date-row { flex-direction: column; }
   .ouverture-date-row .btn-ouvrir { width: 100%; }
   .shortcut-chip { font-size: 1rem; padding: 14px 12px; min-width: 0; }
+  .ouverture-loading { font-size: 0.92rem; }
+  .heures-travail-controls { flex-wrap: wrap; }
+  .stepper-lg { max-width: none; flex: 1; }
 }
 
 @media (max-width: 420px) {
