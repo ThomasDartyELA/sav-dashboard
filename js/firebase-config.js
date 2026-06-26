@@ -21,8 +21,13 @@ const firebaseConfig = {
 // (vue Manager / Statistiques Globales) lors de la création de leur compte.
 // Tu peux aussi changer le rôle manuellement depuis la console Firestore
 // (collection "users", document de l'utilisateur, champ "role" = "admin").
+//
+// Compte admin "raccourci" prêt à l'emploi : crée un compte (bouton "Créer un
+// compte technicien") avec l'email "admin@admin.com" et le mot de passe
+// "admin1234" (Firebase impose au moins 6 caractères, "1234" seul est trop
+// court) — il recevra automatiquement le rôle admin grâce à la ligne ci-dessous.
 const ADMIN_EMAILS = [
-  // "manager@entreprise.fr",
+  "admin@admin.com",
 ];
 
 firebase.initializeApp(firebaseConfig);

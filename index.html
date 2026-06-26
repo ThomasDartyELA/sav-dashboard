@@ -54,6 +54,7 @@
     <nav class="tabs" id="main-tabs">
       <button class="tab-btn active" data-view="saisie">Saisie du jour</button>
       <button class="tab-btn" data-view="dashboard">Mon Dashboard</button>
+      <button class="tab-btn" data-view="equipe">Stats Équipe</button>
       <button class="tab-btn hidden" data-view="admin" id="tab-admin">Statistiques Globales</button>
     </nav>
     <div class="topbar-right">
@@ -67,13 +68,30 @@
     <!-- ===== VUE SAISIE ===== -->
     <section id="view-saisie" class="view">
 
-      <div class="card" id="card-ouverture">
-        <h2>Quelle journée souhaitez-vous saisir ?</h2>
-        <div class="form-row">
-          <label>Date
-            <input type="date" id="inp-date">
-          </label>
-          <button class="btn btn-primary" id="btn-ouvrir-journee">Ouvrir cette journée</button>
+      <div class="card card-ouverture-redesign" id="card-ouverture">
+        <div class="ouverture-header">
+          <span class="ouverture-icon">📅</span>
+          <div>
+            <h2>Quelle journée souhaitez-vous saisir ?</h2>
+            <p class="ouverture-sub">Choisis une date ou pioche un raccourci ci-dessous.</p>
+          </div>
+        </div>
+
+        <div class="ouverture-shortcuts">
+          <button type="button" class="shortcut-chip" id="shortcut-today">Aujourd'hui</button>
+          <button type="button" class="shortcut-chip" id="shortcut-yesterday">Hier</button>
+        </div>
+
+        <div class="ouverture-date-row">
+          <input type="date" id="inp-date" class="ouverture-date-input">
+          <button class="btn btn-primary btn-ouvrir" id="btn-ouvrir-journee">
+            <span class="btn-ouvrir-label">Ouvrir cette journée</span>
+          </button>
+        </div>
+
+        <div class="ouverture-loading hidden" id="ouverture-loading">
+          <span class="ouverture-spinner"></span>
+          <span id="ouverture-loading-msg">Chargement…</span>
         </div>
       </div>
 
@@ -106,8 +124,15 @@
           <p class="hint">À incrémenter chaque fois qu'un appareil déjà réparé revient, indépendamment des interventions du jour.</p>
         </div>
 
-        <div class="card">
-          <h3>Ajouter une intervention</h3>
+        <div class="card card-add-inter">
+          <div class="add-inter-header">
+            <span class="add-inter-icon">🔧</span>
+            <div>
+              <h3>Nouvelle intervention</h3>
+              <p class="add-inter-sub">Renseigne le produit, le type, puis ajoute-la au récap du jour.</p>
+            </div>
+          </div>
+
           <div class="form-grid">
             <label>Famille de produit
               <div class="searchable-select" id="ss-famille">
@@ -121,25 +146,53 @@
                 <div class="ss-results hidden" id="ss-marque-results"></div>
               </div>
             </label>
-            <label>Type d'intervention
-              <select id="inp-type">
-                <option value="TAR">TAR — Produit réparé</option>
-                <option value="TAN">TAN — Produit non réparé</option>
-                <option value="ETC">ETC / ECC — Produit échangé</option>
-              </select>
-            </label>
+          </div>
+
+          <div class="type-field">
+            <span class="type-field-label">Type d'intervention</span>
+            <div class="type-select" id="type-select">
+              <button type="button" class="type-chip type-chip-tar active" data-type="TAR">
+                <span class="type-chip-code">TAR</span>
+                <span class="type-chip-sub">Réparé</span>
+              </button>
+              <button type="button" class="type-chip type-chip-tan" data-type="TAN">
+                <span class="type-chip-code">TAN</span>
+                <span class="type-chip-sub">Non réparé</span>
+              </button>
+              <button type="button" class="type-chip type-chip-etc" data-type="ETC">
+                <span class="type-chip-code">ETC/ECC</span>
+                <span class="type-chip-sub">Échangé</span>
+              </button>
+            </div>
+            <select id="inp-type" class="hidden">
+              <option value="TAR">TAR — Produit réparé</option>
+              <option value="TAN">TAN — Produit non réparé</option>
+              <option value="ETC">ETC / ECC — Produit échangé</option>
+            </select>
+          </div>
+
+          <div class="form-grid form-grid-secondary">
             <label>N° d'intervention <span class="optional">(dossier / bon)</span>
               <input type="text" id="inp-numero" placeholder="ex: 2026-00451">
             </label>
-            <label>Nb pièces détachées utilisées
-              <input type="number" id="inp-pieces" min="0" step="1" value="0">
+            <label>Pièces détachées utilisées
+              <div class="stepper">
+                <button type="button" class="stepper-btn" id="btn-pieces-moins">−</button>
+                <input type="number" id="inp-pieces" min="0" step="1" value="0">
+                <button type="button" class="stepper-btn" id="btn-pieces-plus">+</button>
+              </div>
             </label>
-            <div class="temps-alloue-preview">
-              Temps alloué détecté&nbsp;: <strong id="temps-alloue-preview">—</strong>
+          </div>
+
+          <div class="temps-alloue-preview">
+            <span class="tap-icon">⏱️</span>
+            <div>
+              <div class="tap-value">Temps alloué détecté&nbsp;: <strong id="temps-alloue-preview">—</strong></div>
               <span id="temps-alloue-source" class="badge"></span>
             </div>
           </div>
-          <button class="btn btn-primary" id="btn-add-intervention">+ Ajouter l'intervention</button>
+
+          <button class="btn btn-primary btn-add-inter" id="btn-add-intervention">+ Ajouter l'intervention</button>
           <p class="form-error" id="intervention-error"></p>
         </div>
 
@@ -169,13 +222,54 @@
     <!-- ===== VUE DASHBOARD TECHNICIEN ===== -->
     <section id="view-dashboard" class="view hidden">
       <h2>Mon Dashboard</h2>
-      <div class="stat-grid">
-        <div class="stat-card"><div class="stat-label">Efficience du jour</div><div class="stat-value" id="stat-eff-jour">—</div></div>
-        <div class="stat-card"><div class="stat-label">Efficience du mois</div><div class="stat-value" id="stat-eff-mois">—</div></div>
-        <div class="stat-card"><div class="stat-label">Conso. pièces / jour</div><div class="stat-value" id="stat-pieces-jour">—</div></div>
-        <div class="stat-card"><div class="stat-label">Conso. pièces / mois</div><div class="stat-value" id="stat-pieces-mois">—</div></div>
-        <div class="stat-card"><div class="stat-label">Taux de retour atelier</div><div class="stat-value" id="stat-taux-retour">—</div></div>
-        <div class="stat-card"><div class="stat-label">Interventions ce mois</div><div class="stat-value" id="stat-nb-interventions">—</div></div>
+      <div class="form-row">
+        <label>Mois
+          <input type="month" id="inp-dash-month">
+        </label>
+        <button class="btn btn-primary" id="btn-dash-refresh">Actualiser</button>
+      </div>
+
+      <div class="jauge-grid">
+        <div class="jauge-card">
+          <div class="jauge-circle jauge-neutre" id="jauge-eff-mois">
+            <span class="jauge-value">—</span>
+          </div>
+          <div class="jauge-label">Efficience du mois</div>
+        </div>
+        <div class="jauge-card">
+          <div class="jauge-circle jauge-neutre" id="jauge-conso-mois">
+            <span class="jauge-value">—</span>
+          </div>
+          <div class="jauge-label">Conso. pièces / intervention (mois)</div>
+        </div>
+        <div class="jauge-card">
+          <div class="jauge-circle jauge-neutre" id="jauge-retour-mois">
+            <span class="jauge-value">—</span>
+          </div>
+          <div class="jauge-label">Taux de retour atelier (mois)</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Résumé du mois</h3>
+        <div class="mini-stats">
+          <div class="mini-stat"><div class="mini-stat-value" id="stat-jours-travailles">—</div><div class="mini-stat-label">Jours travaillés</div></div>
+          <div class="mini-stat"><div class="mini-stat-value" id="stat-heures-mois">—</div><div class="mini-stat-label">Heures travaillées</div></div>
+          <div class="mini-stat"><div class="mini-stat-value" id="stat-nb-interventions">—</div><div class="mini-stat-label">Interventions</div></div>
+          <div class="mini-stat"><div class="mini-stat-value" id="stat-pieces-total-mois">—</div><div class="mini-stat-label">Pièces utilisées</div></div>
+          <div class="mini-stat"><div class="mini-stat-value" id="stat-meilleur-jour">—</div><div class="mini-stat-label">Meilleure journée</div></div>
+          <div class="mini-stat"><div class="mini-stat-value" id="stat-moy-jour">—</div><div class="mini-stat-label">Efficience moy. / jour</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Répartition des interventions (mois)</h3>
+        <div class="repartition-bar" id="repartition-bar"></div>
+        <div class="repartition-legende">
+          <span class="leg-tar">TAR — réparé : <span id="rep-tar-txt">—</span></span>
+          <span class="leg-tan">TAN — non réparé : <span id="rep-tan-txt">—</span></span>
+          <span class="leg-etc">ETC/ECC — échangé : <span id="rep-etc-txt">—</span></span>
+        </div>
       </div>
 
       <div class="card">
@@ -183,6 +277,71 @@
         <table class="data-table">
           <thead><tr><th>Date</th><th>Heures réelles</th><th>Temps alloué</th><th>Efficience</th><th>Interventions</th><th>Pièces</th><th>Retours</th></tr></thead>
           <tbody id="historique-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== VUE STATS EQUIPE (anonyme, visible par tous) ===== -->
+    <section id="view-equipe" class="view hidden">
+      <h2>Stats Équipe — Anonymisées</h2>
+      <p class="hint" id="eq-hint">Moyennes calculées sur l'ensemble des techniciens pour le mois en cours. Aucun nom n'est affiché ici.</p>
+
+      <div class="form-row eq-controls-row">
+        <div class="period-toggle" id="eq-period-toggle">
+          <button type="button" class="period-btn" data-periode="jour">⚡ Aujourd'hui (temps réel)</button>
+          <button type="button" class="period-btn active" data-periode="mois">Ce mois</button>
+        </div>
+        <label id="eq-month-label">Mois
+          <input type="month" id="inp-equipe-month">
+        </label>
+      </div>
+
+      <div class="jauge-grid">
+        <div class="jauge-card">
+          <div class="jauge-circle jauge-neutre" id="jauge-eq-eff">
+            <span class="jauge-value">—</span>
+          </div>
+          <div class="jauge-label">Efficience moyenne équipe</div>
+        </div>
+        <div class="jauge-card">
+          <div class="jauge-circle jauge-neutre" id="jauge-eq-conso">
+            <span class="jauge-value">—</span>
+          </div>
+          <div class="jauge-label">Conso. pièces / intervention</div>
+        </div>
+        <div class="jauge-card">
+          <div class="jauge-circle jauge-neutre" id="jauge-eq-retour">
+            <span class="jauge-value">—</span>
+          </div>
+          <div class="jauge-label">Taux de retour atelier</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 id="eq-resume-title">Résumé du mois — toute l'équipe</h3>
+        <div class="mini-stats">
+          <div class="mini-stat"><div class="mini-stat-value" id="eq-nb-techniciens">—</div><div class="mini-stat-label">Techniciens actifs</div></div>
+          <div class="mini-stat"><div class="mini-stat-value" id="eq-total-interventions">—</div><div class="mini-stat-label" id="eq-total-interventions-label">Interventions (mois)</div></div>
+          <div class="mini-stat"><div class="mini-stat-value" id="eq-total-pieces">—</div><div class="mini-stat-label">Pièces utilisées</div></div>
+          <div class="mini-stat"><div class="mini-stat-value" id="eq-total-heures">—</div><div class="mini-stat-label">Heures cumulées</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Répartition des interventions — équipe</h3>
+        <div class="repartition-bar" id="eq-repartition-bar"></div>
+        <div class="repartition-legende">
+          <span class="leg-tar">TAR — réparé : <span id="eq-rep-tar-txt">—</span></span>
+          <span class="leg-tan">TAN — non réparé : <span id="eq-rep-tan-txt">—</span></span>
+          <span class="leg-etc">ETC/ECC — échangé : <span id="eq-rep-etc-txt">—</span></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Top familles de produits (par nb d'interventions)</h3>
+        <table class="data-table">
+          <thead><tr><th>Famille</th><th>Interventions</th><th>Temps alloué moyen</th><th>Pièces / intervention</th></tr></thead>
+          <tbody id="eq-familles-body"></tbody>
         </table>
       </div>
     </section>

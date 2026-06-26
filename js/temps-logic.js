@@ -49,11 +49,11 @@ function getTempsAlloue(fam, marque, type) {
   return null;
 }
 
-/** Liste triée des familles pour le datalist (libellé + code) */
+/** Liste triée des familles pour le datalist (juste le code, ex: "CAFEN") */
 function getFamillesOptions() {
   return (window.TEMPS_DETAIL3 || [])
     .map(d => ({ fam: d.fam, libelle: d.libelle || d.fam }))
-    .sort((a, b) => a.libelle.localeCompare(b.libelle, "fr"));
+    .sort((a, b) => a.fam.localeCompare(b.fam, "fr"));
 }
 
 /** Extrait le code FAMPROD à partir du texte affiché "Libellé (FAM)" */
@@ -90,4 +90,40 @@ function formatHeures(value) {
 
 function formatNombre(value, decimals = 2) {
   return value === null || value === undefined || isNaN(value) ? "—" : value.toFixed(decimals);
+}
+
+// ------------------------------------------------------------
+// CODE COULEUR DE PERFORMANCE
+// Seuils inspirés de la grille de prime variable technicien
+// fournie par l'utilisateur (bandes Max / à / à / à / Min) :
+//   - Efficience      : Max 100% … Min 70%   (plus haut = mieux)
+//   - Taux de retour  : Max 4%   … Min 8%    (plus bas = mieux)
+//   - Conso pièces    : Max 1.10 … Min 1.70  (plus bas = mieux)
+// Simplifiés ici en 3 niveaux (vert / orange / rouge) pour l'affichage.
+// ------------------------------------------------------------
+const SEUILS_PERFORMANCE = {
+  efficience: { sens: "haut", bon: 93, moyen: 78 },
+  tauxRetour: { sens: "bas", bon: 5, moyen: 7 },
+  consoPieces: { sens: "bas", bon: 1.10, moyen: 1.40 }
+};
+
+/** Retourne "vert" | "orange" | "rouge" | "neutre" pour colorer une statistique */
+function getNiveauPerformance(metric, value) {
+  if (value === null || value === undefined || isNaN(value)) return "neutre";
+  const s = SEUILS_PERFORMANCE[metric];
+  if (!s) return "neutre";
+  if (s.sens === "haut") {
+    if (value >= s.bon) return "vert";
+    if (value >= s.moyen) return "orange";
+    return "rouge";
+  }
+  if (value <= s.bon) return "vert";
+  if (value <= s.moyen) return "orange";
+  return "rouge";
+}
+
+/** Convertit une valeur en pourcentage de remplissage (0-100) pour une jauge, selon une échelle max */
+function pctEchelle(value, max) {
+  if (value === null || value === undefined || isNaN(value) || value < 0) return 0;
+  return Math.min(100, (value / max) * 100);
 }
