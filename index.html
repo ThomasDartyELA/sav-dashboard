@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Efficience Atelier — Suivi technique</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ================= ECRAN AUTHENTIFICATION ================= -->
+<div id="auth-screen" class="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">🛠️ <span>Efficience Atelier</span></div>
+
+    <div id="login-form" class="auth-form">
+      <h2>Connexion</h2>
+      <label>Email
+        <input type="email" id="login-email" placeholder="prenom.nom@entreprise.fr" autocomplete="username">
+      </label>
+      <label>Mot de passe
+        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+      </label>
+      <button class="btn btn-primary" id="btn-login">Se connecter</button>
+      <p class="auth-error" id="login-error"></p>
+      <p class="auth-switch">Pas encore de compte ? <a href="#" id="show-signup">Créer un compte technicien</a></p>
+    </div>
+
+    <div id="signup-form" class="auth-form hidden">
+      <h2>Créer un compte</h2>
+      <label>Nom complet
+        <input type="text" id="signup-name" placeholder="Jean Dupont">
+      </label>
+      <label>Email
+        <input type="email" id="signup-email" placeholder="prenom.nom@entreprise.fr" autocomplete="username">
+      </label>
+      <label>Mot de passe
+        <input type="password" id="signup-password" placeholder="6 caractères minimum" autocomplete="new-password">
+      </label>
+      <button class="btn btn-primary" id="btn-signup">Créer mon compte</button>
+      <p class="auth-error" id="signup-error"></p>
+      <p class="auth-switch">Déjà inscrit ? <a href="#" id="show-login">Se connecter</a></p>
+    </div>
+  </div>
+</div>
+
+<!-- ================= APPLICATION ================= -->
+<div id="app-screen" class="app-screen hidden">
+
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="logo">🛠️ Efficience Atelier</span>
+    </div>
+    <nav class="tabs" id="main-tabs">
+      <button class="tab-btn active" data-view="saisie">Saisie du jour</button>
+      <button class="tab-btn" data-view="dashboard">Mon Dashboard</button>
+      <button class="tab-btn hidden" data-view="admin" id="tab-admin">Statistiques Globales</button>
+    </nav>
+    <div class="topbar-right">
+      <span id="user-badge" class="user-badge"></span>
+      <button class="btn btn-ghost" id="btn-logout">Déconnexion</button>
+    </div>
+  </header>
+
+  <main class="main-content">
+
+    <!-- ===== VUE SAISIE ===== -->
+    <section id="view-saisie" class="view">
+      <div class="card">
+        <h2>Journée du <input type="date" id="inp-date"></h2>
+        <div class="form-row">
+          <label>Temps de travail réel (heures)
+            <input type="number" id="inp-heures-reelles" min="0" max="24" step="0.25" placeholder="ex: 7">
+          </label>
+          <div class="efficience-live">
+            Efficience du jour&nbsp;:
+            <span id="efficience-jour-live">—</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Ajouter une intervention</h3>
+        <div class="form-grid">
+          <label>Famille de produit
+            <input type="text" id="inp-famille" list="dl-famille" placeholder="Rechercher une famille…" autocomplete="off">
+            <datalist id="dl-famille"></datalist>
+          </label>
+          <label>Marque <span class="optional">(optionnel)</span>
+            <select id="inp-marque">
+              <option value="">— Aucune / Autre —</option>
+            </select>
+          </label>
+          <label>Type d'intervention
+            <select id="inp-type">
+              <option value="TAR">TAR — Produit réparé</option>
+              <option value="TAN">TAN — Produit non réparé</option>
+              <option value="ETC">ETC / ECC — Produit échangé</option>
+            </select>
+          </label>
+          <label>Nb pièces détachées utilisées
+            <input type="number" id="inp-pieces" min="0" step="1" value="0">
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="inp-retour">
+            Retour atelier (appareil déjà réparé qui revient)
+          </label>
+          <div class="temps-alloue-preview">
+            Temps alloué détecté&nbsp;: <strong id="temps-alloue-preview">—</strong>
+            <span id="temps-alloue-source" class="badge"></span>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="btn-add-intervention">+ Ajouter l'intervention</button>
+        <p class="form-error" id="intervention-error"></p>
+      </div>
+
+      <div class="card">
+        <h3>Récapitulatif de la journée</h3>
+        <table class="data-table" id="table-interventions">
+          <thead>
+            <tr>
+              <th>Famille</th><th>Marque</th><th>Type</th><th>Temps alloué (h)</th><th>Pièces</th><th>Retour</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="table-interventions-body"></tbody>
+          <tfoot>
+            <tr>
+              <td colspan="3"><strong>Total</strong></td>
+              <td id="total-temps-alloue"><strong>0.00</strong></td>
+              <td id="total-pieces"><strong>0</strong></td>
+              <td id="total-retours"><strong>0</strong></td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+        <button class="btn btn-success" id="btn-save-day">💾 Enregistrer la journée</button>
+        <p class="form-success" id="save-day-success"></p>
+      </div>
+    </section>
+
+    <!-- ===== VUE DASHBOARD TECHNICIEN ===== -->
+    <section id="view-dashboard" class="view hidden">
+      <h2>Mon Dashboard</h2>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-label">Efficience du jour</div><div class="stat-value" id="stat-eff-jour">—</div></div>
+        <div class="stat-card"><div class="stat-label">Efficience du mois</div><div class="stat-value" id="stat-eff-mois">—</div></div>
+        <div class="stat-card"><div class="stat-label">Conso. pièces / jour</div><div class="stat-value" id="stat-pieces-jour">—</div></div>
+        <div class="stat-card"><div class="stat-label">Conso. pièces / mois</div><div class="stat-value" id="stat-pieces-mois">—</div></div>
+        <div class="stat-card"><div class="stat-label">Taux de retour atelier</div><div class="stat-value" id="stat-taux-retour">—</div></div>
+        <div class="stat-card"><div class="stat-label">Interventions ce mois</div><div class="stat-value" id="stat-nb-interventions">—</div></div>
+      </div>
+
+      <div class="card">
+        <h3>Historique récent</h3>
+        <table class="data-table">
+          <thead><tr><th>Date</th><th>Heures réelles</th><th>Temps alloué</th><th>Efficience</th><th>Interventions</th><th>Pièces</th><th>Retours</th></tr></thead>
+          <tbody id="historique-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== VUE ADMIN ===== -->
+    <section id="view-admin" class="view hidden">
+      <h2>Statistiques Globales — Équipe</h2>
+      <div class="form-row">
+        <label>Mois
+          <input type="month" id="inp-admin-month">
+        </label>
+        <button class="btn btn-primary" id="btn-admin-refresh">Actualiser</button>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-label">Efficience moyenne équipe</div><div class="stat-value" id="admin-eff-moyenne">—</div></div>
+        <div class="stat-card"><div class="stat-label">Conso. pièces moyenne / intervention</div><div class="stat-value" id="admin-pieces-moyenne">—</div></div>
+        <div class="stat-card"><div class="stat-label">Taux de retour atelier global</div><div class="stat-value" id="admin-taux-retour">—</div></div>
+        <div class="stat-card"><div class="stat-label">Total interventions</div><div class="stat-value" id="admin-total-interventions">—</div></div>
+      </div>
+
+      <div class="card">
+        <h3>Efficience par technicien</h3>
+        <canvas id="chart-efficience" height="100"></canvas>
+      </div>
+
+      <div class="card">
+        <h3>Détail par technicien</h3>
+        <table class="data-table">
+          <thead><tr><th>Technicien</th><th>Efficience moy.</th><th>Interventions</th><th>Pièces / intervention</th><th>Taux de retour</th></tr></thead>
+          <tbody id="admin-table-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Firebase SDK (compat, version Spark gratuite) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<!-- Chart.js pour les graphiques admin -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+
+<script src="js/firebase-config.js"></script>
+<script src="js/data-temps.js"></script>
+<script src="js/temps-logic.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
