@@ -66,75 +66,103 @@
 
     <!-- ===== VUE SAISIE ===== -->
     <section id="view-saisie" class="view">
-      <div class="card">
-        <h2>Journée du <input type="date" id="inp-date"></h2>
+
+      <div class="card" id="card-ouverture">
+        <h2>Quelle journée souhaitez-vous saisir ?</h2>
         <div class="form-row">
+          <label>Date
+            <input type="date" id="inp-date">
+          </label>
+          <button class="btn btn-primary" id="btn-ouvrir-journee">Ouvrir cette journée</button>
+        </div>
+      </div>
+
+      <div id="saisie-content" class="hidden">
+
+        <div class="card">
+          <div class="form-row" style="justify-content:space-between; align-items:center;">
+            <h2 style="margin:0;">Journée du <span id="lbl-date-ouverte"></span></h2>
+            <button class="btn btn-ghost" id="btn-changer-journee">Changer de journée</button>
+          </div>
           <label>Temps de travail réel (heures)
             <input type="number" id="inp-heures-reelles" min="0" max="24" step="0.25" placeholder="ex: 7">
           </label>
-          <div class="efficience-live">
-            Efficience du jour&nbsp;:
-            <span id="efficience-jour-live">—</span>
-          </div>
+          <p class="save-status" id="save-status"></p>
         </div>
-      </div>
 
-      <div class="card">
-        <h3>Ajouter une intervention</h3>
-        <div class="form-grid">
-          <label>Famille de produit
-            <input type="text" id="inp-famille" list="dl-famille" placeholder="Rechercher une famille…" autocomplete="off">
-            <datalist id="dl-famille"></datalist>
-          </label>
-          <label>Marque <span class="optional">(optionnel)</span>
-            <select id="inp-marque">
-              <option value="">— Aucune / Autre —</option>
-            </select>
-          </label>
-          <label>Type d'intervention
-            <select id="inp-type">
-              <option value="TAR">TAR — Produit réparé</option>
-              <option value="TAN">TAN — Produit non réparé</option>
-              <option value="ETC">ETC / ECC — Produit échangé</option>
-            </select>
-          </label>
-          <label>Nb pièces détachées utilisées
-            <input type="number" id="inp-pieces" min="0" step="1" value="0">
-          </label>
-          <label class="checkbox-label">
-            <input type="checkbox" id="inp-retour">
-            Retour atelier (appareil déjà réparé qui revient)
-          </label>
-          <div class="temps-alloue-preview">
-            Temps alloué détecté&nbsp;: <strong id="temps-alloue-preview">—</strong>
-            <span id="temps-alloue-source" class="badge"></span>
-          </div>
+        <div class="stat-grid">
+          <div class="stat-card"><div class="stat-label">Efficience du jour</div><div class="stat-value" id="top-eff-jour">—</div></div>
+          <div class="stat-card"><div class="stat-label">Efficience du mois</div><div class="stat-value" id="top-eff-mois">—</div></div>
+          <div class="stat-card"><div class="stat-label">Conso. pièces / intervention (mois)</div><div class="stat-value" id="top-conso-mois">—</div></div>
         </div>
-        <button class="btn btn-primary" id="btn-add-intervention">+ Ajouter l'intervention</button>
-        <p class="form-error" id="intervention-error"></p>
-      </div>
 
-      <div class="card">
-        <h3>Récapitulatif de la journée</h3>
-        <table class="data-table" id="table-interventions">
-          <thead>
-            <tr>
-              <th>Famille</th><th>Marque</th><th>Type</th><th>Temps alloué (h)</th><th>Pièces</th><th>Retour</th><th></th>
-            </tr>
-          </thead>
-          <tbody id="table-interventions-body"></tbody>
-          <tfoot>
-            <tr>
-              <td colspan="3"><strong>Total</strong></td>
-              <td id="total-temps-alloue"><strong>0.00</strong></td>
-              <td id="total-pieces"><strong>0</strong></td>
-              <td id="total-retours"><strong>0</strong></td>
-              <td></td>
-            </tr>
-          </tfoot>
-        </table>
-        <button class="btn btn-success" id="btn-save-day">💾 Enregistrer la journée</button>
-        <p class="form-success" id="save-day-success"></p>
+        <div class="card retour-card">
+          <h3>Retours atelier — journée</h3>
+          <div class="retour-controls">
+            <button class="btn btn-ghost" id="btn-retour-moins" title="Retirer un retour">−</button>
+            <span class="retour-count" id="retour-count">0</span>
+            <button class="btn btn-ghost" id="btn-retour-plus">+ Retour atelier</button>
+          </div>
+          <p class="hint">À incrémenter chaque fois qu'un appareil déjà réparé revient, indépendamment des interventions du jour.</p>
+        </div>
+
+        <div class="card">
+          <h3>Ajouter une intervention</h3>
+          <div class="form-grid">
+            <label>Famille de produit
+              <div class="searchable-select" id="ss-famille">
+                <input type="text" id="inp-famille" placeholder="Tapez au moins 1 lettre…" autocomplete="off">
+                <div class="ss-results hidden" id="ss-famille-results"></div>
+              </div>
+            </label>
+            <label>Marque <span class="optional">(optionnel)</span>
+              <div class="searchable-select" id="ss-marque">
+                <input type="text" id="inp-marque" placeholder="Tapez au moins 1 lettre…" autocomplete="off">
+                <div class="ss-results hidden" id="ss-marque-results"></div>
+              </div>
+            </label>
+            <label>Type d'intervention
+              <select id="inp-type">
+                <option value="TAR">TAR — Produit réparé</option>
+                <option value="TAN">TAN — Produit non réparé</option>
+                <option value="ETC">ETC / ECC — Produit échangé</option>
+              </select>
+            </label>
+            <label>N° d'intervention <span class="optional">(dossier / bon)</span>
+              <input type="text" id="inp-numero" placeholder="ex: 2026-00451">
+            </label>
+            <label>Nb pièces détachées utilisées
+              <input type="number" id="inp-pieces" min="0" step="1" value="0">
+            </label>
+            <div class="temps-alloue-preview">
+              Temps alloué détecté&nbsp;: <strong id="temps-alloue-preview">—</strong>
+              <span id="temps-alloue-source" class="badge"></span>
+            </div>
+          </div>
+          <button class="btn btn-primary" id="btn-add-intervention">+ Ajouter l'intervention</button>
+          <p class="form-error" id="intervention-error"></p>
+        </div>
+
+        <div class="card">
+          <h3>Récapitulatif de la journée</h3>
+          <table class="data-table" id="table-interventions">
+            <thead>
+              <tr>
+                <th>N°</th><th>Famille</th><th>Marque</th><th>Type</th><th>Temps alloué (h)</th><th>Pièces</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="table-interventions-body"></tbody>
+            <tfoot>
+              <tr>
+                <td colspan="4"><strong>Total</strong></td>
+                <td id="total-temps-alloue"><strong>0.00</strong></td>
+                <td id="total-pieces"><strong>0</strong></td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
       </div>
     </section>
 
