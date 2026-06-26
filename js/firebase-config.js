@@ -9,12 +9,12 @@
 //    copie l'objet de configuration ci-dessous et remplace les valeurs "À_COMPLETER".
 
 const firebaseConfig = {
-  apiKey: "À_COMPLETER",
-  authDomain: "À_COMPLETER.firebaseapp.com",
-  projectId: "À_COMPLETER",
-  storageBucket: "À_COMPLETER.appspot.com",
-  messagingSenderId: "À_COMPLETER",
-  appId: "À_COMPLETER"
+  apiKey: "AIzaSyBIYalHJmKuYPCuMp4gNG3C-H7phpC-rvk",
+  authDomain: "efficience-atelier.firebaseapp.com",
+  projectId: "efficience-atelier",
+  storageBucket: "efficience-atelier.firebasestorage.app",
+  messagingSenderId: "928801038925",
+  appId: "1:928801038925:web:c46971ece9cc804b4c3204"
 };
 
 // Liste des emails qui doivent recevoir automatiquement le rôle "admin"
