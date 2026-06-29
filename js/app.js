@@ -93,6 +93,7 @@ function switchView(viewName) {
   if (viewName !== "equipe") arreterStatsEquipeLive();
   if (viewName === "dashboard") renderTechnicianDashboard();
   if (viewName === "equipe") renderStatsEquipe();
+  if (viewName === "nps") renderNPS();
   if (viewName === "admin") renderAdminDashboard();
 }
 
@@ -815,14 +816,48 @@ $("btn-dash-refresh").addEventListener("click", renderTechnicianDashboard);
 // ------------------------------------------------------------
 let chartEfficienceInstance = null;
 
-$("btn-admin-refresh").addEventListener("click", renderAdminDashboard);
+// Période sélectionnée dans la vue admin : "jour" | "semaine" | "mois" | "tout"
+let adminPeriode = "mois";
+let adminPeriodeLabel = "";
+let adminEffRows = []; // mémorisé pour l'export (efficience par technicien)
+
+/** Renvoie la plage ISO [start, end] + un libellé pour une période donnée. */
+function periodeRangeISO(periode) {
+  const iso = d => d.toISOString().slice(0, 10);
+  const now = new Date();
+  if (periode === "jour") {
+    const t = todayISO();
+    return { start: t, end: t, label: "Aujourd'hui — " + formatDateFr(t) };
+  }
+  if (periode === "semaine") {
+    const jour = (now.getDay() + 6) % 7; // lundi = 0
+    const lundi = new Date(now); lundi.setDate(now.getDate() - jour);
+    const dim = new Date(lundi); dim.setDate(lundi.getDate() + 6);
+    return { start: iso(lundi), end: iso(dim), label: "Semaine du " + formatDateFr(iso(lundi)) + " au " + formatDateFr(iso(dim)) };
+  }
+  if (periode === "tout") {
+    return { start: "0000-01-01", end: "9999-12-31", label: "Tout l'historique" };
+  }
+  const ym = todayISO().slice(0, 7);
+  const { start, end } = moisRangeISO(ym);
+  return { start, end, label: "Mois en cours — " + ym };
+}
+
+// Sélecteur de période (boutons) de la vue admin
+document.querySelectorAll("#admin-period-toggle .period-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    if (btn.classList.contains("active")) return;
+    document.querySelectorAll("#admin-period-toggle .period-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    adminPeriode = btn.dataset.periode;
+    renderAdminDashboard();
+  });
+});
 
 async function renderAdminDashboard() {
-  if (!$("inp-admin-month").value) {
-    $("inp-admin-month").value = todayISO().slice(0, 7);
-  }
-  const moisChoisi = $("inp-admin-month").value;
-  const { start, end } = moisRangeISO(moisChoisi);
+  const { start, end, label } = periodeRangeISO(adminPeriode);
+  adminPeriodeLabel = label;
+  $("admin-periode-label").textContent = label;
 
   const [daysSnap, usersSnap] = await Promise.all([
     db.collection("days").where("date", ">=", start).where("date", "<=", end).get(),
@@ -864,6 +899,7 @@ async function renderAdminDashboard() {
 
   const tbody = $("admin-table-body");
   tbody.innerHTML = "";
+  adminEffRows = []; // réinitialise le cache d'export
   lignes.forEach(t => {
     const eff = calculEfficience(t.temps, t.heures);
     const conso = calculConsoPieces(t.pieces, t.interventions);
@@ -878,6 +914,13 @@ async function renderAdminDashboard() {
       <td>${formatPct(taux)}</td>
     `;
     tbody.appendChild(tr);
+    adminEffRows.push({
+      nom: t.nom,
+      eff: eff === null ? null : Math.round(eff * 10) / 10,
+      interventions: t.interventions,
+      conso: conso === null ? null : Math.round(conso * 100) / 100,
+      taux: taux === null ? null : Math.round(taux * 10) / 10
+    });
   });
 
   // Graphique efficience par technicien
@@ -900,7 +943,67 @@ async function renderAdminDashboard() {
       scales: { y: { beginAtZero: true } }
     }
   });
+
+  // Section NPS, calculée sur la même période (date de réponse à l'enquête)
+  const npsStart = adminPeriode === "tout" ? null : new Date(start + "T00:00:00");
+  const npsEnd = adminPeriode === "tout" ? null : new Date(end + "T23:59:59");
+  renderNPSAdmin(npsStart, npsEnd);
 }
+
+// ------------------------------------------------------------
+// EXPORT — Efficience par technicien (Excel + PDF), période courante
+// ------------------------------------------------------------
+function exporterEfficienceExcel() {
+  if (!adminEffRows.length) { alert("Aucune donnée à exporter pour cette période."); return; }
+  const aoa = [
+    ["Détail efficience par technicien"],
+    ["Période", adminPeriodeLabel],
+    ["Généré le", formatDateFr(todayISO())],
+    [],
+    ["Technicien", "Efficience moy. (%)", "Interventions", "Pièces / intervention", "Taux de retour (%)"]
+  ];
+  adminEffRows.forEach(r => aoa.push([
+    r.nom,
+    r.eff === null ? "—" : r.eff,
+    r.interventions,
+    r.conso === null ? "—" : r.conso,
+    r.taux === null ? "—" : r.taux
+  ]));
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws["!cols"] = [{ wch: 28 }, { wch: 18 }, { wch: 14 }, { wch: 22 }, { wch: 18 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Efficience");
+  XLSX.writeFile(wb, `efficience-${adminPeriode}-${todayISO()}.xlsx`);
+}
+
+function exporterEfficiencePDF() {
+  if (!adminEffRows.length) { alert("Aucune donnée à exporter pour cette période."); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFontSize(15);
+  doc.text("Efficience par technicien", 14, 16);
+  doc.setFontSize(10);
+  doc.setTextColor(110);
+  doc.text("Période : " + adminPeriodeLabel, 14, 23);
+  doc.text("Généré le " + formatDateFr(todayISO()), 14, 28);
+  doc.autoTable({
+    startY: 33,
+    head: [["Technicien", "Efficience moy.", "Interventions", "Pièces / interv.", "Taux retour"]],
+    body: adminEffRows.map(r => [
+      r.nom,
+      r.eff === null ? "—" : r.eff + " %",
+      r.interventions,
+      r.conso === null ? "—" : r.conso,
+      r.taux === null ? "—" : r.taux + " %"
+    ]),
+    styles: { fontSize: 9 },
+    headStyles: { fillColor: [226, 0, 26] }
+  });
+  doc.save(`efficience-${adminPeriode}-${todayISO()}.pdf`);
+}
+
+$("btn-export-excel").addEventListener("click", exporterEfficienceExcel);
+$("btn-export-pdf").addEventListener("click", exporterEfficiencePDF);
 
 // ------------------------------------------------------------
 // STATS EQUIPE — moyennes anonymisées, visibles par tous

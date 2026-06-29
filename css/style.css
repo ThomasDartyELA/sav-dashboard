@@ -441,26 +441,139 @@ input:focus, select:focus {
   font-weight: 600;
   color: var(--text-muted);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  transition: all 0.15s ease;
 }
+.period-btn:hover { color: var(--text); }
 .period-btn.active {
   background: #fff;
   color: var(--primary);
   box-shadow: 0 1px 3px rgba(0,0,0,0.12);
 }
 
-/* ---------- CHOIX DU JOUR (carte redessinée) ---------- */
-.card-ouverture-redesign {
-  background: linear-gradient(180deg, #ffffff 0%, #fffdf8 100%);
+/* ============================================================
+   NPS — vue satisfaction client
+   ============================================================ */
+.nps-select {
+  padding: 10px 12px;
   border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  background: var(--card-bg);
+  min-width: 260px;
 }
-.ouverture-header {
+.nps-jauge-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 220px));
+  justify-content: center;
+}
+.jauge-sous {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* Liste des cartes (dossiers) */
+.nps-cartes {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 12px;
+}
+.nps-carte {
+  border: 1px solid var(--border);
+  border-left: 5px solid #9ca3af;
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  background: var(--card-bg);
+}
+.nps-carte-promoteur  { border-left-color: var(--success); }
+.nps-carte-passif     { border-left-color: var(--warning); }
+.nps-carte-detracteur { border-left-color: var(--danger); }
+
+.nps-carte-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.nps-carte-note {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1;
+}
+.nps-carte-note small { font-size: 0.7rem; font-weight: 500; color: var(--text-muted); }
+.nps-carte-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.nps-carte-dossier { font-size: 0.85rem; color: var(--text-muted); }
+.nps-carte-comment {
+  margin: 10px 0 0;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--text);
+}
+.nps-carte-comment-vide { color: var(--text-muted); font-style: italic; }
+
+.nps-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.nps-badge-promoteur  { background: var(--success-bg); color: var(--success); }
+.nps-badge-passif     { background: var(--warning-bg); color: #b45309; }
+.nps-badge-detracteur { background: var(--danger-bg);  color: var(--danger); }
+
+/* ============================================================
+   NPS / Admin — filtre de période, exports, classement
+   ============================================================ */
+.admin-controls-row { align-items: center; gap: 16px; flex-wrap: wrap; }
+.admin-periode-label { font-size: 0.85rem; color: var(--text-muted); }
+
+.card-head-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.card-head-actions h3 { margin: 0; }
+.export-btns { display: flex; gap: 8px; }
+
+/* Pastille de score NPS dans le classement */
+.nps-score-pill {
+  display: inline-block;
+  min-width: 46px;
+  text-align: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #fff;
+}
+.pill-vert   { background: var(--success); }
+.pill-orange { background: var(--warning); }
+.pill-rouge  { background: var(--danger); }
+.pill-neutre { background: #9ca3af; }
+
+/* Lignes de classement NPS cliquables (détail dépliable) */
+.admin-nps-row { cursor: pointer; }
+.admin-nps-row:hover { background: rgba(0,0,0,0.03); }
+.admin-nps-toggle { font-size: 0.75rem; color: var(--text-muted); margin-left: 6px; }
+.admin-nps-detail > td { background: rgba(0,0,0,0.02); padding: 12px 14px; }
+
+/* ---------- CARTE NOUVELLE INTERVENTION ---------- */
+.add-inter-header {
+  display: flex;
+  align-items: center;
   gap: 14px;
   margin-bottom: 16px;
 }
-.ouverture-icon {
+.add-inter-icon {
   flex: none;
   width: 44px;
   height: 44px;
@@ -470,107 +583,9 @@ input:focus, select:focus {
   align-items: center;
   justify-content: center;
   font-size: 1.3rem;
-  box-shadow: 0 3px 8px rgba(204,159,0,0.3);
 }
-.ouverture-header h2 { margin: 0 0 2px; }
-.ouverture-sub { margin: 0; font-size: 0.82rem; color: var(--text-muted); }
-
-.ouverture-shortcuts {
-  display: flex;
-  gap: 14px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-}
-.shortcut-chip {
-  flex: 1;
-  min-width: 140px;
-  border: 2px solid var(--border);
-  background: #fff;
-  border-radius: 14px;
-  padding: 16px 22px;
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: var(--text);
-  cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-  transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
-}
-.shortcut-chip:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(226,0,26,0.15);
-}
-.shortcut-chip:active { transform: scale(0.97); }
-.shortcut-chip:disabled { opacity: 0.5; cursor: default; transform: none; box-shadow: none; }
-
-.ouverture-date-row {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: stretch;
-}
-.ouverture-date-input {
-  flex: 1;
-  min-width: 160px;
-  font-size: 1rem;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-}
-.btn-ouvrir { white-space: nowrap; }
-
-.ouverture-loading {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 16px;
-  padding: 14px 18px;
-  background: var(--neutral-bg);
-  border-radius: 10px;
-  font-size: 1.05rem;
-  font-weight: 600;
-  color: var(--text);
-}
-.ouverture-spinner {
-  flex: none;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 3px solid var(--border);
-  border-top-color: var(--primary);
-  animation: spin 0.7s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ---------- AJOUTER UNE INTERVENTION (carte redessinée) ---------- */
-.card-add-inter {
-  background: linear-gradient(180deg, #ffffff 0%, #fffdf8 100%);
-  border: 1px solid var(--border);
-}
-
-.add-inter-header {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  margin-bottom: 18px;
-}
-.add-inter-icon {
-  flex: none;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.3rem;
-  box-shadow: 0 3px 8px rgba(226,0,26,0.25);
-}
-.add-inter-header h3 { margin: 0 0 2px; }
-.add-inter-sub { margin: 0; font-size: 0.82rem; color: var(--text-muted); }
-
-.form-grid-secondary { margin-top: 14px; }
+.add-inter-header h3 { margin: 0; }
+.add-inter-sub { font-size: 0.82rem; color: var(--text-muted); margin-top: 2px; }
 
 .type-field { margin: 18px 0; }
 .type-field-label {
@@ -712,6 +727,81 @@ input:focus, select:focus {
   margin-top: 16px;
   font-size: 0.95rem;
 }
+
+/* ---------- OUVERTURE JOURNÉE (carte redessinée) ---------- */
+.card-ouverture-redesign {
+  background: linear-gradient(135deg, #fff, var(--neutral-bg) 220%);
+  border-top: 4px solid var(--primary);
+}
+.ouverture-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.ouverture-icon {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+.ouverture-header h2 { margin: 0; font-size: 1.15rem; }
+.ouverture-sub { margin: 2px 0 0; font-size: 0.85rem; color: var(--text-muted); }
+
+.ouverture-shortcuts { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.shortcut-chip {
+  border: 1.5px solid var(--border);
+  background: #fff;
+  border-radius: 999px;
+  padding: 8px 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.shortcut-chip:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  transform: translateY(-1px);
+}
+.shortcut-chip:active { transform: scale(0.97); }
+
+.ouverture-date-row { display: flex; gap: 12px; align-items: stretch; flex-wrap: wrap; }
+.ouverture-date-input {
+  flex: 1;
+  min-width: 160px;
+  margin-top: 0;
+  padding: 11px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 1rem;
+}
+.btn-ouvrir { flex: none; width: auto; white-space: nowrap; }
+
+.ouverture-loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+.ouverture-spinner {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border: 3px solid var(--neutral-bg);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* ---------- RESPONSIVE ---------- */
 @media (max-width: 700px) {

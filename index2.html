@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Efficience Atelier — Suivi technique</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ================= ECRAN AUTHENTIFICATION ================= -->
+<div id="auth-screen" class="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">🛠️ <span>Efficience Atelier</span></div>
+
+    <div id="login-form" class="auth-form">
+      <h2>Connexion</h2>
+      <label>Email
+        <input type="email" id="login-email" placeholder="prenom.nom@entreprise.fr" autocomplete="username">
+      </label>
+      <label>Mot de passe
+        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+      </label>
+      <button class="btn btn-primary" id="btn-login">Se connecter</button>
+      <p class="auth-error" id="login-error"></p>
+      <p class="auth-switch"><a href="#" id="show-forgot">Mot de passe oublié ?</a></p>
+      <p class="auth-switch">Pas encore de compte ? <a href="#" id="show-signup">Créer un compte technicien</a></p>
+    </div>
+
+    <div id="signup-form" class="auth-form hidden">
+      <h2>Créer un compte</h2>
+      <label>Nom complet
+        <input type="text" id="signup-name" placeholder="Jean Dupont">
+      </label>
+      <label>Email
+        <input type="email" id="signup-email" placeholder="prenom.nom@entreprise.fr" autocomplete="username">
+      </label>
+      <label>Mot de passe
+        <input type="password" id="signup-password" placeholder="6 caractères minimum" autocomplete="new-password">
+      </label>
+      <button class="btn btn-primary" id="btn-signup">Créer mon compte</button>
+      <p class="auth-error" id="signup-error"></p>
+      <p class="auth-switch">Déjà inscrit ? <a href="#" id="show-login">Se connecter</a></p>
+    </div>
+
+    <div id="forgot-form" class="auth-form hidden">
+      <h2>Mot de passe oublié</h2>
+      <p class="auth-hint">Indique ton email : tu recevras un lien pour choisir un nouveau mot de passe.</p>
+      <label>Email
+        <input type="email" id="forgot-email" placeholder="prenom.nom@entreprise.fr" autocomplete="username">
+      </label>
+      <button class="btn btn-primary" id="btn-forgot">Envoyer le lien de réinitialisation</button>
+      <p class="auth-error" id="forgot-error"></p>
+      <p class="auth-success" id="forgot-success"></p>
+      <p class="auth-switch">Retour à la <a href="#" id="show-login-from-forgot">connexion</a></p>
+    </div>
+  </div>
+</div>
+
+<!-- ================= APPLICATION ================= -->
+<div id="app-screen" class="app-screen hidden">
+
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="logo">🛠️ Efficience Atelier</span>
+    </div>
+    <nav class="tabs" id="main-tabs">
+      <button class="tab-btn active" data-view="saisie">Saisie du jour</button>
+      <button class="tab-btn" data-view="dashboard">Mon Dashboard</button>
+      <button class="tab-btn" data-view="equipe">Stats Équipe</button>
+      <button class="tab-btn" data-view="nps">NPS</button>
+      <button class="tab-btn hidden" data-view="admin" id="tab-admin">Statistiques Globales</button>
+    </nav>
+    <div class="topbar-right">
+      <span id="user-badge" class="user-badge"></span>
+      <button class="btn btn-ghost" id="btn-logout">Déconnexion</button>
+    </div>
+  </header>
+
+  <main class="main-content">
+
+    <!-- ===== VUE SAISIE ===== -->
+    <section id="view-saisie" class="view">
+
+      <div class="card card-ouverture-redesign" id="card-ouverture">
+        <div class="ouverture-header">
+          <span class="ouverture-icon">📅</span>
+          <div>
+            <h2>Quelle journée souhaitez-vous saisir ?</h2>
+            <p class="ouverture-sub">Choisis une date ou pioche un raccourci ci-dessous.</p>
+          </div>
+        </div>
+
+        <div class="ouverture-shortcuts">
+          <button type="button" class="shortcut-chip" id="shortcut-today">Aujourd'hui</button>
+          <button type="button" class="shortcut-chip" id="shortcut-yesterday">Hier</button>
+        </div>
+
+        <div class="ouverture-date-row">
+          <input type="date" id="inp-date" class="ouverture-date-input">
+          <button class="btn btn-primary btn-ouvrir" id="btn-ouvrir-journee">
+            <span class="btn-ouvrir-label">Ouvrir cette journée</span>
+          </button>
+        </div>
+
+        <div class="ouverture-loading hidden" id="ouverture-loading">
+          <span class="ouverture-spinner"></span>
+          <span id="ouverture-loading-msg">Chargement…</span>
+        </div>
+      </div>
+
+      <div id="saisie-content" class="hidden">
+
+        <div class="card">
+          <div class="form-row" style="justify-content:space-between; align-items:center;">
+            <h2 style="margin:0;">Journée du <span id="lbl-date-ouverte"></span></h2>
+            <button class="btn btn-ghost" id="btn-changer-journee">Changer de journée</button>
+          </div>
+          <div class="heures-travail-block">
+            <div class="heures-travail-header">
+              <span class="heures-icon">⏱️</span>
+              <div>
+                <span class="heures-label">Temps de travail réel</span>
+                <span class="heures-sub">Heures effectivement travaillées sur la journée</span>
+              </div>
+            </div>
+
+            <div class="heures-travail-controls">
+              <div class="stepper stepper-lg">
+                <button type="button" class="stepper-btn" id="btn-heures-moins">−</button>
+                <input type="number" id="inp-heures-reelles" min="0" max="24" step="0.25" placeholder="ex: 7">
+                <button type="button" class="stepper-btn" id="btn-heures-plus">+</button>
+              </div>
+              <span class="heures-unite">heures</span>
+            </div>
+
+            <div class="heures-presets">
+              <button type="button" class="heures-preset-chip" data-val="7">7h</button>
+              <button type="button" class="heures-preset-chip" data-val="7.5">7h30</button>
+              <button type="button" class="heures-preset-chip" data-val="8">8h</button>
+            </div>
+          </div>
+          <p class="save-status" id="save-status"></p>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat-card"><div class="stat-label">Efficience du jour</div><div class="stat-value" id="top-eff-jour">—</div></div>
+          <div class="stat-card"><div class="stat-label">Efficience du mois</div><div class="stat-value" id="top-eff-mois">—</div></div>
+          <div class="stat-card"><div class="stat-label">Conso. pièces / intervention (mois)</div><div class="stat-value" id="top-conso-mois">—</div></div>
+        </div>
+
+        <div class="card retour-card">
+          <h3>Retours atelier — journée</h3>
+          <div class="retour-controls">
+            <button class="btn btn-ghost" id="btn-retour-moins" title="Retirer un retour">−</button>
+            <span class="retour-count" id="retour-count">0</span>
+            <button class="btn btn-ghost" id="btn-retour-plus">+ Retour atelier</button>
+          </div>
+          <p class="hint">À incrémenter chaque fois qu'un appareil déjà réparé revient, indépendamment des interventions du jour.</p>
+        </div>
+
+        <div class="card card-add-inter">
+          <div class="add-inter-header">
+            <span class="add-inter-icon">🔧</span>
+            <div>
+              <h3>Nouvelle intervention</h3>
+              <p class="add-inter-sub">Renseigne le produit, le type, puis ajoute-la au récap du jour.</p>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <label>Famille de produit
+              <div class="searchable-select" id="ss-famille">
+                <input type="text" id="inp-famille" placeholder="Tapez au moins 1 lettre…" autocomplete="off">
+                <div class="ss-results hidden" id="ss-famille-results"></div>
+              </div>
+            </label>
+            <label>Marque <span class="optional">(optionnel)</span>
+              <div class="searchable-select" id="ss-marque">
+                <input type="text" id="inp-marque" placeholder="Tapez au moins 1 lettre…" autocomplete="off">
+                <div class="ss-results hidden" id="ss-marque-results"></div>
+              </div>
+            </label>
+          </div>
+
+          <div class="type-field">
+            <span class="type-field-label">Type d'intervention</span>
+            <div class="type-select" id="type-select">
+              <button type="button" class="type-chip type-chip-tar active" data-type="TAR">
+                <span class="type-chip-code">TAR</span>
+                <span class="type-chip-sub">Réparé</span>
+              </button>
+              <button type="button" class="type-chip type-chip-tan" data-type="TAN">
+                <span class="type-chip-code">TAN</span>
+                <span class="type-chip-sub">Non réparé</span>
+              </button>
+              <button type="button" class="type-chip type-chip-etc" data-type="ETC">
+                <span class="type-chip-code">ETC/ECC</span>
+                <span class="type-chip-sub">Échangé</span>
+              </button>
+            </div>
+            <select id="inp-type" class="hidden">
+              <option value="TAR">TAR — Produit réparé</option>
+              <option value="TAN">TAN — Produit non réparé</option>
+              <option value="ETC">ETC / ECC — Produit échangé</option>
+            </select>
+          </div>
+
+          <div class="form-grid form-grid-secondary">
+            <label>N° d'intervention <span class="optional">(dossier / bon)</span>
+              <input type="text" id="inp-numero" placeholder="ex: 2026-00451">
+            </label>
+            <label>Pièces détachées utilisées
+              <div class="stepper">
+                <button type="button" class="stepper-btn" id="btn-pieces-moins">−</button>
+                <input type="number" id="inp-pieces" min="0" step="1" value="0">
+                <button type="button" class="stepper-btn" id="btn-pieces-plus">+</button>
+              </div>
+            </label>
+          </div>
+
+          <div class="temps-alloue-preview">
+            <span class="tap-icon">⏱️</span>
+            <div>
+              <div class="tap-value">Temps alloué détecté&nbsp;: <strong id="temps-alloue-preview">—</strong></div>
+              <span id="temps-alloue-source" class="badge"></span>
+            </div>
+          </div>
+
+          <button class="btn btn-primary btn-add-inter" id="btn-add-intervention">+ Ajouter l'intervention</button>
+          <p class="form-error" id="intervention-error"></p>
+        </div>
+
+        <div class="card">
+          <h3>Récapitulatif de la journée</h3>
+          <table class="data-table" id="table-interventions">
+            <thead>
+              <tr>
+                <th>N°</th><th>Famille</th><th>Marque</th><th>Type</th><th>Temps alloué (h)</th><th>Pièces</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="table-interventions-body"></tbody>
+            <tfoot>
+              <tr>
+                <td colspan="4"><strong>Total</strong></td>
+                <td id="total-temps-alloue"><strong>0.00</strong></td>
+                <td id="total-pieces"><strong>0</strong></td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ===== VUE DASHBOARD TECHNICIEN ===== -->
+    <section id="view-dashboard" class="view hidden">
+      <h2>Mon Dashboard</h2>
+      <div class="form-row">
+        <label>Mois
+          <input type="month" id="inp-dash-month">
+        </label>
+        <button class="btn btn-primary" id="btn-dash-refresh">Actualiser</button>
+      </div>
+
+      <div class="jauge-grid">
+        <div class="jauge-card">
+          <div class="jauge-circle jauge-neutre" id="jauge-eff-mois">
+            <span class="jauge-value">—</span>
+          </div>
+          <div class="jauge-label">Efficience du mois</div>
+        </div>
+        <div class="jauge-card">
+          <div class="jauge-circle jauge-neutre" id="jauge-conso-mois">
+            <span class="jauge-value">—</span>
+          </div>
+          <div class="jauge-label">Conso. pièces / intervention (mois)</div>
+        </div>
+        <div class="jauge-card">
+          <div class="jauge-circle jauge-neutre" id="jauge-retour-mois">
+            <span class="jauge-value">—</span>
+          </div>
+          <div class="jauge-label">Taux de retour atelier (mois)</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Résumé du mois</h3>
+        <div class="mini-stats">
+          <div class="mini-stat"><div class="mini-stat-value" id="stat-jours-travailles">—</div><div class="mini-stat-label">Jours travaillés</div></div>
+          <div class="mini-stat"><div class="mini-stat-value" id="stat-heures-mois">—</div><div class="mini-stat-label">Heures travaillées</div></div>
+          <div class="mini-stat"><div class="mini-stat-value" id="stat-nb-interventions">—</div><div class="mini-stat-label">Interventions</div></div>
+          <div class="mini-stat"><div class="mini-stat-value" id="stat-pieces-total-mois">—</div><div class="mini-stat-label">Pièces utilisées</div></div>
+          <div class="mini-stat"><div class="mini-stat-value" id="stat-meilleur-jour">—</div><div class="mini-stat-label">Meilleure journée</div></div>
+          <div class="mini-stat"><div class="mini-stat-value" id="stat-moy-jour">—</div><div class="mini-stat-label">Efficience moy. / jour</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Répartition des interventions (mois)</h3>
+        <div class="repartition-bar" id="repartition-bar"></div>
+        <div class="repartition-legende">
+          <span class="leg-tar">TAR — réparé : <span id="rep-tar-txt">—</span></span>
+          <span class="leg-tan">TAN — non réparé : <span id="rep-tan-txt">—</span></span>
+          <span class="leg-etc">ETC/ECC — échangé : <span id="rep-etc-txt">—</span></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Historique récent</h3>
+        <table class="data-table">
+          <thead><tr><th>Date</th><th>Heures réelles</th><th>Temps alloué</th><th>Efficience</th><th>Interventions</th><th>Pièces</th><th>Retours</th></tr></thead>
+          <tbody id="historique-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== VUE STATS EQUIPE (anonyme, visible par tous) ===== -->
+    <section id="view-equipe" class="view hidden">
+      <h2>Stats Équipe — Anonymisées</h2>
+      <p class="hint" id="eq-hint">Moyennes calculées sur l'ensemble des techniciens pour le mois en cours. Aucun nom n'est affiché ici.</p>
+
+      <div class="form-row eq-controls-row">
+        <div class="period-toggle" id="eq-period-toggle">
+          <button type="button" class="period-btn" data-periode="jour">⚡ Aujourd'hui (temps réel)</button>
+          <button type="button" class="period-btn active" data-periode="mois">Ce mois</button>
+        </div>
+        <label id="eq-month-label">Mois
+          <input type="month" id="inp-equipe-month">
+        </label>
+      </div>
+
+      <div class="jauge-grid">
+        <div class="jauge-card">
+          <div class="jauge-circle jauge-neutre" id="jauge-eq-eff">
+            <span class="jauge-value">—</span>
+          </div>
+          <div class="jauge-label">Efficience moyenne équipe</div>
+        </div>
+        <div class="jauge-card">
+          <div class="jauge-circle jauge-neutre" id="jauge-eq-conso">
+            <span class="jauge-value">—</span>
+          </div>
+          <div class="jauge-label">Conso. pièces / intervention</div>
+        </div>
+        <div class="jauge-card">
+          <div class="jauge-circle jauge-neutre" id="jauge-eq-retour">
+            <span class="jauge-value">—</span>
+          </div>
+          <div class="jauge-label">Taux de retour atelier</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 id="eq-resume-title">Résumé du mois — toute l'équipe</h3>
+        <div class="mini-stats">
+          <div class="mini-stat"><div class="mini-stat-value" id="eq-nb-techniciens">—</div><div class="mini-stat-label">Techniciens actifs</div></div>
+          <div class="mini-stat"><div class="mini-stat-value" id="eq-total-interventions">—</div><div class="mini-stat-label" id="eq-total-interventions-label">Interventions (mois)</div></div>
+          <div class="mini-stat"><div class="mini-stat-value" id="eq-total-pieces">—</div><div class="mini-stat-label">Pièces utilisées</div></div>
+          <div class="mini-stat"><div class="mini-stat-value" id="eq-total-heures">—</div><div class="mini-stat-label">Heures cumulées</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Répartition des interventions — équipe</h3>
+        <div class="repartition-bar" id="eq-repartition-bar"></div>
+        <div class="repartition-legende">
+          <span class="leg-tar">TAR — réparé : <span id="eq-rep-tar-txt">—</span></span>
+          <span class="leg-tan">TAN — non réparé : <span id="eq-rep-tan-txt">—</span></span>
+          <span class="leg-etc">ETC/ECC — échangé : <span id="eq-rep-etc-txt">—</span></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Top familles de produits (par nb d'interventions)</h3>
+        <table class="data-table">
+          <thead><tr><th>Famille</th><th>Interventions</th><th>Temps alloué moyen</th><th>Pièces / intervention</th></tr></thead>
+          <tbody id="eq-familles-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== VUE NPS ===== -->
+    <section id="view-nps" class="view hidden">
+      <h2>NPS — Satisfaction client</h2>
+      <p class="hint">Net Promoter Score calculé sur les notes de l'enquête (0 à 10). Promoteur&nbsp;: 9-10 · Passif&nbsp;: 7-8 · Détracteur&nbsp;: 0-6. Score sur une échelle de −100 à +100.</p>
+
+      <p class="save-status hidden" id="nps-statut"></p>
+
+      <div class="form-row">
+        <label>Mon code technicien
+          <select id="nps-tech-select" class="nps-select">
+            <option value="">— Choisis ton code technicien —</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="jauge-grid nps-jauge-grid">
+        <div class="jauge-card nps-bloc-tech hidden" id="nps-bloc-tech">
+          <div class="jauge-circle jauge-neutre" id="nps-jauge-tech">
+            <span class="jauge-value" id="nps-jauge-tech-val">—</span>
+          </div>
+          <div class="jauge-label">Mon NPS</div>
+          <div class="jauge-sous" id="nps-jauge-tech-sous"></div>
+        </div>
+        <div class="jauge-card">
+          <div class="jauge-circle jauge-neutre" id="nps-jauge-global">
+            <span class="jauge-value" id="nps-jauge-global-val">—</span>
+          </div>
+          <div class="jauge-label">NPS global atelier</div>
+          <div class="jauge-sous" id="nps-jauge-global-sous"></div>
+        </div>
+      </div>
+
+      <div class="card nps-bloc-tech hidden">
+        <h3 id="nps-cartes-titre">Mes cartes</h3>
+        <div id="nps-cartes" class="nps-cartes"></div>
+      </div>
+    </section>
+
+    <!-- ===== VUE ADMIN ===== -->
+    <section id="view-admin" class="view hidden">
+      <h2>Statistiques Globales — Équipe</h2>
+
+      <div class="form-row admin-controls-row">
+        <div class="period-toggle" id="admin-period-toggle">
+          <button type="button" class="period-btn" data-periode="jour">Aujourd'hui</button>
+          <button type="button" class="period-btn" data-periode="semaine">Cette semaine</button>
+          <button type="button" class="period-btn active" data-periode="mois">Ce mois</button>
+          <button type="button" class="period-btn" data-periode="tout">Tout</button>
+        </div>
+        <span class="admin-periode-label" id="admin-periode-label"></span>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-label">Efficience moyenne équipe</div><div class="stat-value" id="admin-eff-moyenne">—</div></div>
+        <div class="stat-card"><div class="stat-label">Conso. pièces moyenne / intervention</div><div class="stat-value" id="admin-pieces-moyenne">—</div></div>
+        <div class="stat-card"><div class="stat-label">Taux de retour atelier global</div><div class="stat-value" id="admin-taux-retour">—</div></div>
+        <div class="stat-card"><div class="stat-label">Total interventions</div><div class="stat-value" id="admin-total-interventions">—</div></div>
+      </div>
+
+      <div class="card">
+        <h3>Efficience par technicien</h3>
+        <canvas id="chart-efficience" height="100"></canvas>
+      </div>
+
+      <div class="card">
+        <div class="card-head-actions">
+          <h3>Détail par technicien — Efficience</h3>
+          <div class="export-btns">
+            <button class="btn btn-ghost" id="btn-export-excel">⬇ Excel</button>
+            <button class="btn btn-ghost" id="btn-export-pdf">⬇ PDF</button>
+          </div>
+        </div>
+        <table class="data-table">
+          <thead><tr><th>Technicien</th><th>Efficience moy.</th><th>Interventions</th><th>Pièces / intervention</th><th>Taux de retour</th></tr></thead>
+          <tbody id="admin-table-body"></tbody>
+        </table>
+      </div>
+
+      <!-- ===== Section NPS (admin) ===== -->
+      <div class="card">
+        <h3>NPS — Satisfaction client</h3>
+        <p class="hint">Calculé sur la même période (date de réponse à l'enquête). Identifié par code technicien.</p>
+        <p class="save-status hidden" id="admin-nps-statut"></p>
+
+        <div class="jauge-grid nps-jauge-grid">
+          <div class="jauge-card">
+            <div class="jauge-circle jauge-neutre" id="admin-nps-jauge-global">
+              <span class="jauge-value" id="admin-nps-jauge-global-val">—</span>
+            </div>
+            <div class="jauge-label">NPS global atelier</div>
+            <div class="jauge-sous" id="admin-nps-jauge-global-sous"></div>
+          </div>
+        </div>
+
+        <p class="hint">Clique sur une ligne pour voir le détail des cartes (dossier, note, commentaire).</p>
+        <table class="data-table">
+          <thead><tr><th>Technicien</th><th>NPS</th><th>Note moy.</th><th>Réponses</th><th>Promoteurs</th><th>Passifs</th><th>Détracteurs</th></tr></thead>
+          <tbody id="admin-nps-table-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Firebase SDK (compat, version Spark gratuite) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<!-- Chart.js pour les graphiques admin -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<!-- SheetJS : lecture de l'export NPS + génération des exports Excel -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- jsPDF + autotable pour l'export PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+<script src="js/firebase-config.js"></script>
+<script src="js/data-temps.js"></script>
+<script src="js/temps-logic.js"></script>
+<script src="js/nps-logic.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
