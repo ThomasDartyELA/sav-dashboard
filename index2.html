@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Efficience Atelier — Suivi technique</title>
+<title>Efficience Atelier — Mode Manager</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -385,6 +385,7 @@
     <section id="view-nps" class="view hidden">
       <h2>NPS — Satisfaction client</h2>
       <p class="hint">Net Promoter Score calculé sur les notes de l'enquête (0 à 10). Promoteur&nbsp;: 9-10 · Passif&nbsp;: 7-8 · Détracteur&nbsp;: 0-6. Score sur une échelle de −100 à +100.</p>
+      <p class="nps-date" id="nps-date"></p>
 
       <p class="save-status hidden" id="nps-statut"></p>
 
@@ -467,9 +468,30 @@
         </table>
       </div>
 
+      <!-- ===== Synthèse satisfaction (NPS) — extras Manager ===== -->
+      <div class="card" id="admin-extras">
+        <div class="card-head-actions">
+          <h3>Synthèse satisfaction (NPS)</h3>
+          <span class="nps-date" id="admin-nps-date"></span>
+        </div>
+        <div class="topflop-grid">
+          <div class="topflop-col">
+            <h4 class="topflop-titre">🏆 Top techniciens</h4>
+            <div id="admin-top-techs"></div>
+          </div>
+          <div class="topflop-col">
+            <h4 class="topflop-titre">📉 À accompagner</h4>
+            <div id="admin-flop-techs"></div>
+          </div>
+        </div>
+        <h4 class="topflop-titre topflop-titre-alerte">🔎 À surveiller — NPS négatif</h4>
+        <div id="admin-surveiller"></div>
+        <p class="hint">Top / Flop calculés sur les techniciens ayant au moins 5 réponses sur la période sélectionnée.</p>
+      </div>
+
       <!-- ===== Section NPS (admin) ===== -->
       <div class="card">
-        <h3>NPS — Satisfaction client</h3>
+        <h3>NPS — Classement par technicien</h3>
         <p class="hint">Calculé sur la même période (date de réponse à l'enquête). Identifié par code technicien.</p>
         <p class="save-status hidden" id="admin-nps-statut"></p>
 
@@ -511,5 +533,7 @@
 <script src="js/temps-logic.js"></script>
 <script src="js/nps-logic.js"></script>
 <script src="js/app.js"></script>
+<!-- Extensions MODE ADMIN — propre à index2.html (ne touche pas index.html) -->
+<script src="js/admin2.js"></script>
 </body>
 </html>

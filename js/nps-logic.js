@@ -23,6 +23,7 @@ const NPS_COL = { date: 0, tech: 8, dossier: 9, note: 16, commentaire: 17 };
 let npsData = null;           // tableau de { tech, dossier, note, commentaire }
 let npsLoading = null;        // promesse de chargement (anti double-chargement)
 let npsSelectedTech = localStorage.getItem("npsSelectedTech") || "";
+let npsFileDate = null;       // date de dernière modification du fichier xlsx (en-tête Last-Modified)
 
 // ------------------------------------------------------------
 // Classification NPS standard à partir de la note 0-10
@@ -44,6 +45,17 @@ function parseDateNPS(v) {
   }
   const d = new Date(v);
   return isNaN(d) ? null : d;
+}
+
+// Affiche la date de dernière modification du fichier xlsx dans un élément (si présent)
+function afficherDateFichierNPS(elId) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  if (!npsFileDate) { el.textContent = ""; return; }
+  const d = new Date(npsFileDate);
+  if (isNaN(d)) { el.textContent = ""; return; }
+  el.textContent = "📄 Données à jour au " + d.toLocaleDateString("fr-FR") +
+    " à " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
 }
 
 // Calcule le score NPS (-100 à +100) + détail d'un ensemble de notes
@@ -73,6 +85,7 @@ async function chargerDonneesNPS() {
   npsLoading = (async () => {
     const resp = await fetch(NPS_FILE, { cache: "no-store" });
     if (!resp.ok) throw new Error(`Fichier NPS introuvable (${NPS_FILE}) — code ${resp.status}`);
+    npsFileDate = resp.headers.get("Last-Modified"); // date de dernière modif du fichier (si fournie par le serveur)
     const buf = await resp.arrayBuffer();
     // cellDates:true => la colonne date est lue comme objet Date JS
     const wb = XLSX.read(buf, { type: "array", cellDates: true });
@@ -226,6 +239,9 @@ async function renderNPS() {
   // Jauge globale atelier (toujours calculée sur l'ensemble des réponses)
   const globalRes = calculerNPS(npsData.map(d => d.note));
   majJaugeNPS("nps-jauge-global", "nps-jauge-global-val", "nps-jauge-global-sous", globalRes);
+
+  // Date de dernière modif du fichier (élément présent uniquement dans index2.html)
+  afficherDateFichierNPS("nps-date");
 
   // Initialise la barre de recherche + les filtres (une seule fois)
   if (!npsInitialise) {

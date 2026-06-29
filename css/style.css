@@ -608,6 +608,44 @@ input:focus, select:focus {
 .pill-rouge  { background: var(--danger); }
 .pill-neutre { background: #9ca3af; }
 
+/* Date de dernière modif du fichier NPS */
+.nps-date { font-size: 0.8rem; color: var(--text-muted); margin: 4px 0 0; }
+
+/* Synthèse Top / Flop / À surveiller (mode Manager) */
+.topflop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+  margin-bottom: 10px;
+}
+.topflop-titre { font-size: 0.95rem; margin: 12px 0 8px; }
+.topflop-titre-alerte { color: var(--danger); }
+.tf-ligne {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+.tf-ligne-alerte { border-left: 4px solid var(--danger); }
+.tf-rang {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--neutral-bg);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tf-tech { font-weight: 700; min-width: 44px; }
+.tf-detail { font-size: 0.8rem; color: var(--text-muted); margin-left: auto; text-align: right; }
+
 /* Lignes de classement NPS cliquables (détail dépliable) */
 .admin-nps-row { cursor: pointer; }
 .admin-nps-row:hover { background: rgba(0,0,0,0.03); }
