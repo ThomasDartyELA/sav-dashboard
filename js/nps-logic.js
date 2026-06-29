@@ -144,13 +144,27 @@ function categorieBadge(note) {
 function renderCartesTech(tech) {
   const cont = document.getElementById("nps-cartes");
   const titre = document.getElementById("nps-cartes-titre");
-  const cartes = npsData.filter(d => d.tech === tech)
-    .sort((a, b) => a.note - b.note); // détracteurs d'abord (plus utile à lire)
 
-  titre.textContent = `Cartes du technicien ${tech} — ${cartes.length} réponse${cartes.length > 1 ? "s" : ""}`;
+  let cartes = npsData.filter(d => d.tech === tech);
+  const total = cartes.length;
+
+  // Filtre par catégorie (tous / détracteur / passif / promoteur)
+  if (npsFiltreCategorie !== "tous") {
+    cartes = cartes.filter(c => npsCategorie(c.note) === npsFiltreCategorie);
+  }
+  // Filtre « avec commentaire uniquement »
+  if (npsFiltreCommentaire) {
+    cartes = cartes.filter(c => c.commentaire);
+  }
+  cartes.sort((a, b) => a.note - b.note); // détracteurs d'abord (plus utile à lire)
+
+  const filtreActif = npsFiltreCategorie !== "tous" || npsFiltreCommentaire;
+  titre.textContent = filtreActif
+    ? `Cartes du technicien ${tech} — ${cartes.length} affichée${cartes.length > 1 ? "s" : ""} sur ${total}`
+    : `Cartes du technicien ${tech} — ${total} réponse${total > 1 ? "s" : ""}`;
 
   if (!cartes.length) {
-    cont.innerHTML = `<p class="hint">Aucune réponse NPS pour ce code technicien.</p>`;
+    cont.innerHTML = `<p class="hint">Aucune carte ne correspond à ce filtre.</p>`;
     return;
   }
 
@@ -180,9 +194,20 @@ function escapeHtml(s) {
 // Rendu complet de la vue NPS (appelé par switchView dans app.js)
 // ------------------------------------------------------------
 let npsInitialise = false;
+let npsFiltreCategorie = "tous";   // tous | detracteur | passif | promoteur
+let npsFiltreCommentaire = false;  // n'afficher que les cartes avec commentaire
+
+// Liste triée des codes techniciens disponibles
+function npsCodesDisponibles() {
+  return [...new Set(npsData.map(d => d.tech))].sort();
+}
+// Libellé affiché dans la recherche : "L78 (141)"
+function npsLabelTech(code) {
+  const n = npsData.filter(d => d.tech === code).length;
+  return `${code} (${n})`;
+}
 
 async function renderNPS() {
-  const select = document.getElementById("nps-tech-select");
   const statut = document.getElementById("nps-statut");
 
   try {
@@ -202,32 +227,90 @@ async function renderNPS() {
   const globalRes = calculerNPS(npsData.map(d => d.note));
   majJaugeNPS("nps-jauge-global", "nps-jauge-global-val", "nps-jauge-global-sous", globalRes);
 
-  // Remplit le menu déroulant des codes techniciens (une seule fois)
+  // Initialise la barre de recherche + les filtres (une seule fois)
   if (!npsInitialise) {
-    const codes = [...new Set(npsData.map(d => d.tech))].sort();
-    select.innerHTML = `<option value="">— Choisis ton code technicien —</option>` +
-      codes.map(c => {
-        const n = npsData.filter(d => d.tech === c).length;
-        return `<option value="${c}">${c} (${n})</option>`;
-      }).join("");
-
-    select.addEventListener("change", () => {
-      npsSelectedTech = select.value;
-      localStorage.setItem("npsSelectedTech", npsSelectedTech);
-      majVueTech();
-    });
+    setupNpsTechSearch();
+    setupNpsFiltres();
     npsInitialise = true;
   }
 
-  // Restaure la sélection précédente si elle existe encore
-  if (npsSelectedTech && [...select.options].some(o => o.value === npsSelectedTech)) {
-    select.value = npsSelectedTech;
+  // Restaure le choix mémorisé s'il existe encore dans les données
+  if (npsSelectedTech && npsCodesDisponibles().includes(npsSelectedTech)) {
+    document.getElementById("nps-tech-input").value = npsLabelTech(npsSelectedTech);
+    majVueTech(npsSelectedTech);
+  } else {
+    majVueTech(null);
   }
-  majVueTech();
 }
 
-function majVueTech() {
-  const tech = document.getElementById("nps-tech-select").value;
+// Barre de recherche du code technicien (champ texte + liste filtrée)
+function setupNpsTechSearch() {
+  const input = document.getElementById("nps-tech-input");
+  const results = document.getElementById("nps-tech-results");
+
+  const afficher = (liste) => {
+    results.innerHTML = "";
+    if (!liste.length) { results.classList.add("hidden"); return; }
+    liste.forEach(code => {
+      const div = document.createElement("div");
+      div.textContent = npsLabelTech(code);
+      // mousedown : se déclenche avant le blur du champ
+      div.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        input.value = npsLabelTech(code);
+        results.classList.add("hidden");
+        npsSelectedTech = code;
+        localStorage.setItem("npsSelectedTech", code);
+        majVueTech(code);
+      });
+      results.appendChild(div);
+    });
+    results.classList.remove("hidden");
+  };
+
+  const filtrer = (q) => {
+    q = (q || "").toLowerCase().replace(/\s*\(\d+\)\s*$/, "").trim(); // ignore le "(nb)" éventuel
+    const codes = npsCodesDisponibles();
+    return q ? codes.filter(c => c.toLowerCase().includes(q)) : codes;
+  };
+
+  // Au focus : on sélectionne le texte et on montre tous les codes
+  input.addEventListener("focus", () => { input.select(); afficher(npsCodesDisponibles()); });
+  input.addEventListener("input", () => afficher(filtrer(input.value)));
+  document.addEventListener("click", (e) => {
+    if (e.target !== input && !results.contains(e.target)) results.classList.add("hidden");
+  });
+}
+
+// Filtres des cartes : catégorie + commentaire
+function setupNpsFiltres() {
+  document.querySelectorAll("#nps-filtres .nps-filtre-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      document.querySelectorAll("#nps-filtres .nps-filtre-chip").forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      npsFiltreCategorie = chip.dataset.filtre;
+      if (npsSelectedTech) renderCartesTech(npsSelectedTech);
+    });
+  });
+  const cb = document.getElementById("nps-filtre-comment");
+  if (cb) cb.addEventListener("change", () => {
+    npsFiltreCommentaire = cb.checked;
+    if (npsSelectedTech) renderCartesTech(npsSelectedTech);
+  });
+}
+
+// Met à jour les compteurs affichés sur les chips de filtre
+function majCompteursFiltres(tech) {
+  const cartes = npsData.filter(d => d.tech === tech);
+  const n = { tous: cartes.length, detracteur: 0, passif: 0, promoteur: 0 };
+  cartes.forEach(c => n[npsCategorie(c.note)]++);
+  document.querySelectorAll("#nps-filtres .nps-filtre-chip").forEach(chip => {
+    const span = chip.querySelector(".chip-count");
+    if (span) span.textContent = n[chip.dataset.filtre];
+  });
+}
+
+function majVueTech(tech) {
   const blocs = document.querySelectorAll(".nps-bloc-tech");
 
   if (!tech) {
@@ -238,6 +321,7 @@ function majVueTech() {
 
   const res = calculerNPS(npsData.filter(d => d.tech === tech).map(d => d.note));
   majJaugeNPS("nps-jauge-tech", "nps-jauge-tech-val", "nps-jauge-tech-sous", res);
+  majCompteursFiltres(tech);
   renderCartesTech(tech);
 }
 

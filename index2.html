@@ -390,9 +390,10 @@
 
       <div class="form-row">
         <label>Mon code technicien
-          <select id="nps-tech-select" class="nps-select">
-            <option value="">— Choisis ton code technicien —</option>
-          </select>
+          <div class="searchable-select nps-search" id="ss-nps-tech">
+            <input type="text" id="nps-tech-input" placeholder="Tape ou choisis ton code (ex. L78)…" autocomplete="off">
+            <div class="ss-results hidden" id="nps-tech-results"></div>
+          </div>
         </label>
       </div>
 
@@ -415,6 +416,13 @@
 
       <div class="card nps-bloc-tech hidden">
         <h3 id="nps-cartes-titre">Mes cartes</h3>
+        <div class="nps-filtres" id="nps-filtres">
+          <button type="button" class="nps-filtre-chip active" data-filtre="tous">Toutes <span class="chip-count"></span></button>
+          <button type="button" class="nps-filtre-chip nps-filtre-detracteur" data-filtre="detracteur">😞 Détracteurs <span class="chip-count"></span></button>
+          <button type="button" class="nps-filtre-chip nps-filtre-passif" data-filtre="passif">😐 Passifs <span class="chip-count"></span></button>
+          <button type="button" class="nps-filtre-chip nps-filtre-promoteur" data-filtre="promoteur">😀 Promoteurs <span class="chip-count"></span></button>
+          <label class="nps-filtre-comment"><input type="checkbox" id="nps-filtre-comment"> Avec commentaire</label>
+        </div>
         <div id="nps-cartes" class="nps-cartes"></div>
       </div>
     </section>

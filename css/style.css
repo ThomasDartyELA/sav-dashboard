@@ -471,6 +471,54 @@ input:focus, select:focus {
   margin-top: 4px;
 }
 
+.nps-search input { width: 100%; }
+
+/* Filtres des cartes NPS */
+.nps-filtres {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 4px 0 16px;
+}
+.nps-filtre-chip {
+  border: 1.5px solid var(--border);
+  background: #fff;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.nps-filtre-chip:hover { transform: translateY(-1px); border-color: #c9c7c1; }
+.nps-filtre-chip .chip-count {
+  display: inline-block;
+  min-width: 20px;
+  padding: 0 6px;
+  margin-left: 4px;
+  border-radius: 999px;
+  background: var(--neutral-bg);
+  font-size: 0.72rem;
+}
+.nps-filtre-chip.active { color: #fff; border-color: transparent; }
+.nps-filtre-chip.active .chip-count { background: rgba(255,255,255,0.3); color: #fff; }
+.nps-filtre-chip[data-filtre="tous"].active { background: var(--text); }
+.nps-filtre-detracteur.active { background: var(--danger); }
+.nps-filtre-passif.active { background: var(--warning); }
+.nps-filtre-promoteur.active { background: var(--success); }
+.nps-filtre-comment {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  margin-left: auto;
+}
+.nps-filtre-comment input { width: auto; margin: 0; }
+
 /* Liste des cartes (dossiers) */
 .nps-cartes {
   display: flex;
