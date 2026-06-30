@@ -21,6 +21,106 @@ function npsDeTech(entry) {
   return calculerNPS(npsData.filter(d => d.tech === entry.code).map(d => d.note));
 }
 
+// --- Efficience mensuelle (depuis Firestore "days", agrégée par NOM) --------
+let efficienceMois = null;     // { motsTriés -> { nom, temps, heures, interventions, eff } }
+let monEfficienceMois = null;  // efficience du COMPTE connecté (jamais celle d'un autre)
+function estManager() { return (typeof currentUser !== "undefined" && currentUser && currentUser.role === "admin"); }
+
+async function chargerEfficienceMois() {
+  if (efficienceMois) return efficienceMois;
+  const ym = (typeof todayISO === "function" ? todayISO() : new Date().toISOString().slice(0, 10)).slice(0, 7);
+  const { start, end } = moisRangeISO(ym);
+  const monUid = (typeof currentUser !== "undefined" && currentUser) ? currentUser.uid : null;
+  const parNom = {};
+  let mt = 0, mh = 0, mi = 0; // agrégat du compte connecté
+  try {
+    const snap = await db.collection("days").where("date", ">=", start).where("date", "<=", end).get();
+    snap.forEach(doc => {
+      const j = doc.data();
+      const key = techNormMots(j.technicienNom || "");
+      if (key) {
+        const e = parNom[key] || (parNom[key] = { nom: j.technicienNom, temps: 0, heures: 0, interventions: 0 });
+        e.temps += j.totalTempsAlloue || 0;
+        e.heures += j.heuresReelles || 0;
+        e.interventions += j.totalInterventions || 0;
+      }
+      if (monUid && j.uid === monUid) { mt += j.totalTempsAlloue || 0; mh += j.heuresReelles || 0; mi += j.totalInterventions || 0; }
+    });
+  } catch (e) { /* lecture impossible -> efficience indisponible */ }
+  Object.values(parNom).forEach(e => { e.eff = calculEfficience(e.temps, e.heures); });
+  efficienceMois = parNom;
+  monEfficienceMois = { temps: mt, heures: mh, interventions: mi, eff: calculEfficience(mt, mh) };
+  return parNom;
+}
+
+// Rang d'une valeur d'efficience donnée parmi tous les techniciens (sans dévoiler les valeurs)
+function rangEffValeur(eff) {
+  if (eff === null || eff === undefined || !efficienceMois) return { pos: 0, total: 0 };
+  const cl = Object.values(efficienceMois).filter(e => e.heures > 0 && e.eff !== null);
+  const meilleurs = cl.filter(e => e.eff > eff).length;
+  return { pos: meilleurs + 1, total: cl.length };
+}
+
+function couleurEff(eff) {
+  if (eff === null || eff === undefined) return "jauge-neutre";
+  if (eff >= 100) return "jauge-vert";
+  if (eff >= 85) return "jauge-orange";
+  return "jauge-rouge";
+}
+function majJaugeEff(circleId, valId, sousId, eff, sousText) {
+  const c = document.getElementById(circleId);
+  if (!c) return;
+  c.className = "jauge-circle " + couleurEff(eff);
+  c.style.setProperty("--pct", (eff === null || eff === undefined) ? 0 : Math.min(eff, 100));
+  const v = document.getElementById(valId);
+  if (v) v.textContent = (eff === null || eff === undefined) ? "—" : Math.round(eff) + "%";
+  const s = sousId ? document.getElementById(sousId) : null;
+  if (s) s.textContent = sousText || "";
+}
+
+// --- Classements (affichés si dans le top 15) -------------------------------
+function rangBadge(pos, total) {
+  if (!pos || pos < 1 || pos > 15) return "";
+  const m = pos === 1 ? "🥇" : pos === 2 ? "🥈" : pos === 3 ? "🥉" : "🏅";
+  return `${m} <strong>${pos}<sup>${pos === 1 ? "er" : "e"}</sup></strong> / ${total}`;
+}
+function setRang(elId, pos, total) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const b = rangBadge(pos, total);
+  el.innerHTML = b;
+  el.classList.toggle("hidden", !b);
+}
+// NPS : score décroissant, techniciens ayant ≥ 5 réponses
+function rangNPS(code) {
+  const parCode = {};
+  npsData.forEach(d => (parCode[d.tech] = parCode[d.tech] || []).push(d.note));
+  const cl = Object.keys(parCode).map(c => ({ c, ...calculerNPS(parCode[c]) }))
+    .filter(l => l.total >= 5).sort((a, b) => (b.score - a.score) || (b.total - a.total));
+  return { pos: cl.findIndex(l => l.c === code) + 1, total: cl.length };
+}
+// Retour : taux croissant (le plus bas = meilleur), ≥ 10 interventions
+function rangRetour(retNom) {
+  if (!retNom) return { pos: 0, total: 0 };
+  const parTech = {};
+  retoursData.forEach(r => {
+    if (r.techActuel) { const e = parTech[r.techActuel] || (parTech[r.techActuel] = { interv: 0, ret: 0 }); e.interv++; }
+  });
+  retoursData.forEach(r => {
+    if (retourCompte(r) && parTech[r.techRetour]) parTech[r.techRetour].ret++;
+  });
+  const cl = Object.keys(parTech).map(t => ({ t, interv: parTech[t].interv, taux: parTech[t].interv ? parTech[t].ret / parTech[t].interv * 100 : null }))
+    .filter(l => l.interv >= 10 && l.taux !== null).sort((a, b) => a.taux - b.taux);
+  return { pos: cl.findIndex(l => l.t === retNom) + 1, total: cl.length };
+}
+// Efficience : efficience décroissante, techniciens ayant des heures ce mois
+function rangEff(entry) {
+  if (!efficienceMois) return { pos: 0, total: 0 };
+  const cl = Object.values(efficienceMois).filter(e => e.heures > 0 && e.eff !== null).sort((a, b) => b.eff - a.eff);
+  const key = entry._mots || techNormMots(entry.nom);
+  return { pos: cl.findIndex(e => techNormMots(e.nom) === key) + 1, total: cl.length };
+}
+
 // ============================================================
 // VUE BILAN
 // ============================================================
@@ -44,9 +144,19 @@ async function renderBilan() {
     dEl.textContent = `📄 NPS au ${f(typeof npsFileDate !== "undefined" ? npsFileDate : null)} · Retours au ${f(typeof retoursFileDate !== "undefined" ? retoursFileDate : null)}`;
   }
 
+  // Efficience du mois (Firestore) — chargée une fois, mise en cache
+  await chargerEfficienceMois();
+
   // Repères atelier (toujours visibles)
   majJaugeNPS("bilan-glob-nps-jauge", "bilan-glob-nps-val", "bilan-glob-nps-sous", calculerNPS(npsData.map(d => d.note)));
   majJaugeRetour("bilan-glob-retour-jauge", "bilan-glob-retour-val", "bilan-glob-retour-sous", calculTauxRetourGlobal());
+  if (estManager()) {
+    let gt = 0, gh = 0;
+    if (efficienceMois) Object.values(efficienceMois).forEach(e => { gt += e.temps; gh += e.heures; });
+    majJaugeEff("bilan-glob-eff-jauge", "bilan-glob-eff-val", "bilan-glob-eff-sous", calculEfficience(gt, gh), "Moyenne équipe (mois)");
+  } else {
+    majJaugeEff("bilan-glob-eff-jauge", "bilan-glob-eff-val", "bilan-glob-eff-sous", null, "🔒 Réservé manager");
+  }
 
   if (!bilanInitialise) {
     setupBilanSearch();
@@ -122,7 +232,10 @@ function setupBilanFiltres() {
     localStorage.setItem("retoursExclureTAN", retoursExclureTAN);
     majJaugeRetour("bilan-glob-retour-jauge", "bilan-glob-retour-val", "bilan-glob-retour-sous", calculTauxRetourGlobal());
     const e = bilanSelectedCode ? techParCode(bilanSelectedCode) : null;
-    if (e) { majJaugeRetourTech(e); renderBilanRetours(e); }
+    if (e) {
+      majJaugeRetourTech(e); renderBilanRetours(e);
+      const rR = rangRetour(retourNomDe(e)); setRang("bilan-retour-rang", rR.pos, rR.total);
+    }
   });
 }
 
@@ -148,13 +261,31 @@ function majFicheBilan(entry) {
   document.getElementById("bilan-nom").textContent = entry.nom;
   document.getElementById("bilan-code").textContent = "Code NPS : " + entry.code;
 
-  // Jauge NPS + rang
+  // Jauges NPS / Retour / Efficience
   const npsRes = npsDeTech(entry) || { score: null, total: 0, moyenne: null };
   majJaugeNPS("bilan-nps-jauge", "bilan-nps-val", "bilan-nps-sous", npsRes);
-  afficherRangBilan(entry);
-
-  // Jauge retour
   majJaugeRetourTech(entry);
+  // Efficience : confidentielle. Le manager voit celle du technicien affiché ;
+  // un technicien ne voit QUE la sienne (liée à son compte connecté), jamais
+  // celle d'un autre — même en changeant « qui es-tu ».
+  const estMonIdentite = (typeof monIdentiteCode !== "undefined" && monIdentiteCode && entry.code === monIdentiteCode);
+  if (estManager()) {
+    const effE = efficienceMois ? efficienceMois[entry._mots || techNormMots(entry.nom)] : null;
+    majJaugeEff("bilan-eff-jauge", "bilan-eff-val", "bilan-eff-sous",
+      effE ? effE.eff : null, effE ? `${effE.interventions} interv. ce mois` : "Pas de données ce mois");
+    const rE = rangEff(entry); setRang("bilan-eff-rang", rE.pos, rE.total);
+  } else if (estMonIdentite && monEfficienceMois) {
+    majJaugeEff("bilan-eff-jauge", "bilan-eff-val", "bilan-eff-sous", monEfficienceMois.eff,
+      monEfficienceMois.heures ? `${monEfficienceMois.interventions} interv. ce mois` : "Pas de données ce mois");
+    const rE = rangEffValeur(monEfficienceMois.eff); setRang("bilan-eff-rang", rE.pos, rE.total);
+  } else {
+    majJaugeEff("bilan-eff-jauge", "bilan-eff-val", "bilan-eff-sous", null, "🔒 Efficience privée");
+    setRang("bilan-eff-rang", 0, 0);
+  }
+
+  // Classements NPS / Retour (affichés si dans le top 15)
+  const rN = rangNPS(entry.code); setRang("bilan-nps-rang", rN.pos, rN.total);
+  const rR = rangRetour(retourNomDe(entry)); setRang("bilan-retour-rang", rR.pos, rR.total);
 
   // Note d'absence éventuelle
   const retNom = retourNomDe(entry);
