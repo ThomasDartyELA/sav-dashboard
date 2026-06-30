@@ -70,6 +70,7 @@
       <button class="tab-btn" data-view="dashboard">Synthèse mensuelle</button>
       <button class="tab-btn" data-view="equipe">Stats Équipe</button>
       <button class="tab-btn" data-view="nps">NPS</button>
+      <button class="tab-btn" data-view="retours">Retours</button>
       <button class="tab-btn hidden" data-view="admin" id="tab-admin">Statistiques Globales</button>
     </nav>
     <div class="topbar-right">
@@ -431,6 +432,48 @@
       </div>
     </section>
 
+    <!-- ===== VUE RETOURS ATELIER ===== -->
+    <section id="view-retours" class="view hidden">
+      <h2>Retours atelier</h2>
+      <p class="hint">Un « retour » = un appareil déjà réparé qui revient à l'atelier. Le retour est attribué au technicien de la réparation d'origine. Par défaut, les retours dont la réparation d'origine était un <strong>TAN</strong> (non réparé) ne sont pas comptés.</p>
+      <p class="nps-date" id="retours-date"></p>
+      <p class="save-status hidden" id="retours-statut"></p>
+
+      <div class="form-row" style="align-items:center; gap:24px;">
+        <label>Mon nom (technicien)
+          <div class="searchable-select nps-search" id="ss-retours-tech">
+            <input type="text" id="retours-tech-input" placeholder="Tape ou choisis ton nom (ex. BURON EDITH)…" autocomplete="off">
+            <div class="ss-results hidden" id="retours-tech-results"></div>
+          </div>
+        </label>
+        <label class="nps-filtre-comment" style="margin-top:18px;">
+          <input type="checkbox" id="retours-exclure-tan" checked> Exclure les retours sur réparation TAN
+        </label>
+      </div>
+
+      <div class="jauge-grid nps-jauge-grid">
+        <div class="jauge-card retours-bloc-tech hidden">
+          <div class="jauge-circle jauge-neutre" id="retours-jauge-tech">
+            <span class="jauge-value" id="retours-jauge-tech-val">—</span>
+          </div>
+          <div class="jauge-label">Mon taux de retour</div>
+          <div class="jauge-sous" id="retours-jauge-tech-sous"></div>
+        </div>
+        <div class="jauge-card">
+          <div class="jauge-circle jauge-neutre" id="retours-jauge-global">
+            <span class="jauge-value" id="retours-jauge-global-val">—</span>
+          </div>
+          <div class="jauge-label">Taux de retour global atelier</div>
+          <div class="jauge-sous" id="retours-jauge-global-sous"></div>
+        </div>
+      </div>
+
+      <div class="card retours-bloc-tech hidden">
+        <h3 id="retours-liste-titre">Appareils revenus</h3>
+        <div id="retours-liste" class="nps-cartes"></div>
+      </div>
+    </section>
+
     <!-- ===== VUE ADMIN ===== -->
     <section id="view-admin" class="view hidden">
       <h2>Statistiques Globales — Équipe</h2>
@@ -536,7 +579,8 @@
 <script src="js/temps-logic.js"></script>
 <script src="js/nps-logic.js"></script>
 <script src="js/app.js"></script>
-<!-- Extensions MODE ADMIN — propre à index2.html (ne touche pas index.html) -->
+<!-- Extensions propres à index2.html (ne touchent pas index.html / app.js) -->
+<script src="js/retours-logic.js"></script>
 <script src="js/admin2.js"></script>
 <script src="js/tech2.js"></script>
 </body>
