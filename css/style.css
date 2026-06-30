@@ -998,6 +998,23 @@ input:focus, select:focus {
 .retour-topage-tan { background: var(--warning-bg); color: #92400e; }
 .retour-topage-ecc { background: #e0e7ff; color: #3730a3; }
 
+/* ---------- BILAN TECHNICIEN UNIFIÉ (index2) ---------- */
+.bilan-entete {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 16px 0 4px;
+}
+.bilan-entete h3 { margin: 0; font-size: 1.3rem; }
+.bilan-code {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  background: var(--neutral-bg);
+  padding: 2px 10px;
+  border-radius: 999px;
+}
+
 /* ---------- RESPONSIVE ---------- */
 @media (max-width: 700px) {
   .topbar { flex-direction: column; align-items: stretch; }

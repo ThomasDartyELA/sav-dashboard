@@ -71,6 +71,7 @@
       <button class="tab-btn" data-view="equipe">Stats Équipe</button>
       <button class="tab-btn" data-view="nps">NPS</button>
       <button class="tab-btn" data-view="retours">Retours</button>
+      <button class="tab-btn" data-view="bilan">Bilan technicien</button>
       <button class="tab-btn hidden" data-view="admin" id="tab-admin">Statistiques Globales</button>
     </nav>
     <div class="topbar-right">
@@ -474,6 +475,47 @@
       </div>
     </section>
 
+    <!-- ===== VUE BILAN TECHNICIEN (unifié NPS + Retours) ===== -->
+    <section id="view-bilan" class="view hidden">
+      <h2>Bilan technicien</h2>
+      <p class="hint">Vue unifiée par technicien : satisfaction client (NPS) et taux de retour réunis. Choisis un technicien par son nom.</p>
+      <p class="save-status hidden" id="bilan-statut"></p>
+
+      <div class="form-row">
+        <label>Technicien
+          <div class="searchable-select nps-search" id="ss-bilan-tech">
+            <input type="text" id="bilan-tech-input" placeholder="Tape ou choisis un nom (ex. EDITH BURON)…" autocomplete="off">
+            <div class="ss-results hidden" id="bilan-tech-results"></div>
+          </div>
+        </label>
+      </div>
+
+      <div id="bilan-fiche" class="hidden">
+        <div class="bilan-entete">
+          <h3 id="bilan-nom">—</h3>
+          <span class="bilan-code" id="bilan-code"></span>
+        </div>
+        <p class="hint hidden" id="bilan-note"></p>
+
+        <div class="jauge-grid nps-jauge-grid">
+          <div class="jauge-card">
+            <div class="jauge-circle jauge-neutre" id="bilan-nps-jauge">
+              <span class="jauge-value" id="bilan-nps-val">—</span>
+            </div>
+            <div class="jauge-label">NPS — satisfaction client</div>
+            <div class="jauge-sous" id="bilan-nps-sous"></div>
+          </div>
+          <div class="jauge-card">
+            <div class="jauge-circle jauge-neutre" id="bilan-retour-jauge">
+              <span class="jauge-value" id="bilan-retour-val">—</span>
+            </div>
+            <div class="jauge-label">Taux de retour atelier</div>
+            <div class="jauge-sous" id="bilan-retour-sous"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- ===== VUE ADMIN ===== -->
     <section id="view-admin" class="view hidden">
       <h2>Statistiques Globales — Équipe</h2>
@@ -511,6 +553,16 @@
         <table class="data-table">
           <thead><tr><th>Technicien</th><th>Efficience moy.</th><th>Interventions</th><th>Pièces / intervention</th><th>Taux de retour</th></tr></thead>
           <tbody id="admin-table-body"></tbody>
+        </table>
+      </div>
+
+      <!-- ===== Scorecard combinée (NPS + Retours) ===== -->
+      <div class="card">
+        <h3>Scorecard technicien — NPS &amp; Retours</h3>
+        <p class="hint">Vue combinée par technicien (basée sur la table de correspondance). Triée par NPS décroissant.</p>
+        <table class="data-table">
+          <thead><tr><th>Technicien</th><th>Code</th><th>NPS</th><th>Note moy.</th><th>Réponses</th><th>Taux retour</th><th>Retours/interv.</th></tr></thead>
+          <tbody id="scorecard-body"></tbody>
         </table>
       </div>
 
@@ -578,9 +630,11 @@
 <script src="js/data-temps.js"></script>
 <script src="js/temps-logic.js"></script>
 <script src="js/nps-logic.js"></script>
+<script src="js/techniciens.js"></script>
 <script src="js/app.js"></script>
 <!-- Extensions propres à index2.html (ne touchent pas index.html / app.js) -->
 <script src="js/retours-logic.js"></script>
+<script src="js/bilan.js"></script>
 <script src="js/admin2.js"></script>
 <script src="js/tech2.js"></script>
 </body>
