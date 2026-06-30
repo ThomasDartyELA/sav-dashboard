@@ -21,6 +21,18 @@ function npsDeTech(entry) {
   return calculerNPS(npsData.filter(d => d.tech === entry.code).map(d => d.note));
 }
 
+// « Qui suis-je » déduit automatiquement du nom du compte connecté (sans bouton)
+function monCodeAuto() {
+  if (typeof currentUser === "undefined" || !currentUser || !currentUser.displayName) return null;
+  const t = (typeof techParNom === "function") ? techParNom(currentUser.displayName) : null;
+  return t ? t.code : null;
+}
+// La fiche affichée est-elle celle du compte connecté ?
+function monEstCe(entry) {
+  if (!entry || typeof currentUser === "undefined" || !currentUser || !currentUser.displayName) return false;
+  return techNormMots(currentUser.displayName) === (entry._mots || techNormMots(entry.nom));
+}
+
 // --- Efficience mensuelle (depuis Firestore "days", agrégée par NOM) --------
 let efficienceMois = null;     // { motsTriés -> { nom, temps, heures, interventions, eff } }
 let monEfficienceMois = null;  // efficience du COMPTE connecté (jamais celle d'un autre)
@@ -165,6 +177,9 @@ async function renderBilan() {
     bilanInitialise = true;
   }
 
+  // Par défaut, on ouvre sur la fiche du compte connecté (déduit du nom)
+  if (!bilanSelectedCode) { const auto = monCodeAuto(); if (auto) bilanSelectedCode = auto; }
+
   const entry = bilanSelectedCode ? techParCode(bilanSelectedCode) : null;
   if (entry) {
     document.getElementById("bilan-tech-input").value = entry.nom;
@@ -268,13 +283,12 @@ function majFicheBilan(entry) {
   // Efficience : confidentielle. Le manager voit celle du technicien affiché ;
   // un technicien ne voit QUE la sienne (liée à son compte connecté), jamais
   // celle d'un autre — même en changeant « qui es-tu ».
-  const estMonIdentite = (typeof monIdentiteCode !== "undefined" && monIdentiteCode && entry.code === monIdentiteCode);
   if (estManager()) {
     const effE = efficienceMois ? efficienceMois[entry._mots || techNormMots(entry.nom)] : null;
     majJaugeEff("bilan-eff-jauge", "bilan-eff-val", "bilan-eff-sous",
       effE ? effE.eff : null, effE ? `${effE.interventions} interv. ce mois` : "Pas de données ce mois");
     const rE = rangEff(entry); setRang("bilan-eff-rang", rE.pos, rE.total);
-  } else if (estMonIdentite && monEfficienceMois) {
+  } else if (monEstCe(entry) && monEfficienceMois) {
     majJaugeEff("bilan-eff-jauge", "bilan-eff-val", "bilan-eff-sous", monEfficienceMois.eff,
       monEfficienceMois.heures ? `${monEfficienceMois.interventions} interv. ce mois` : "Pas de données ce mois");
     const rE = rangEffValeur(monEfficienceMois.eff); setRang("bilan-eff-rang", rE.pos, rE.total);
