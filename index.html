@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Efficience Atelier — Suivi technique</title>
+<link rel="icon" type="image/png" href="favicon.png">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -11,7 +12,7 @@
 <!-- ================= ECRAN AUTHENTIFICATION ================= -->
 <div id="auth-screen" class="auth-screen">
   <div class="auth-card">
-    <div class="auth-logo">🛠️ <span>Efficience Atelier</span></div>
+    <div class="auth-logo"><img src="logo-header.png" alt="Efficience Atelier" class="auth-logo-img"></div>
 
     <div id="login-form" class="auth-form">
       <h2>Connexion</h2>
@@ -62,15 +63,17 @@
 
   <header class="topbar">
     <div class="topbar-left">
-      <span class="logo">🛠️ Efficience Atelier</span>
+      <img src="logo-header.png" alt="Efficience Atelier" class="logo-img">
     </div>
     <nav class="tabs" id="main-tabs">
       <button class="tab-btn active" data-view="saisie">Saisie du jour</button>
-      <button class="tab-btn" data-view="dashboard">Mon Dashboard</button>
+      <button class="tab-btn" data-view="dashboard">Synthèse mensuelle</button>
       <button class="tab-btn" data-view="equipe">Stats Équipe</button>
+      <button class="tab-btn" data-view="bilan">Bilan technicien</button>
       <button class="tab-btn hidden" data-view="admin" id="tab-admin">Statistiques Globales</button>
     </nav>
     <div class="topbar-right">
+      <span id="identite-badge" class="identite-badge"></span>
       <span id="user-badge" class="user-badge"></span>
       <button class="btn btn-ghost" id="btn-logout">Déconnexion</button>
     </div>
@@ -255,7 +258,7 @@
 
     <!-- ===== VUE DASHBOARD TECHNICIEN ===== -->
     <section id="view-dashboard" class="view hidden">
-      <h2>Mon Dashboard</h2>
+      <h2>Synthèse mensuelle</h2>
       <div class="form-row">
         <label>Mois
           <input type="month" id="inp-dash-month">
@@ -380,14 +383,94 @@
       </div>
     </section>
 
+    <!-- ===== VUE BILAN TECHNICIEN — NPS + Retours réunis (page unique) ===== -->
+    <section id="view-bilan" class="view hidden">
+      <h2>Bilan technicien</h2>
+      <p class="hint">Satisfaction client (NPS) et retours atelier réunis sur une seule page. Choisis un technicien par son nom.</p>
+      <p class="nps-date" id="bilan-dates"></p>
+      <p class="save-status hidden" id="bilan-statut"></p>
+
+      <div class="form-row" style="align-items:center; gap:24px;">
+        <label>Technicien
+          <div class="searchable-select nps-search" id="ss-bilan-tech">
+            <input type="text" id="bilan-tech-input" placeholder="Tape ou choisis un nom (ex. EDITH BURON)…" autocomplete="off">
+            <div class="ss-results hidden" id="bilan-tech-results"></div>
+          </div>
+        </label>
+        <label class="nps-filtre-comment" style="margin-top:18px;">
+          <input type="checkbox" id="bilan-exclure-tan" checked> Exclure les retours sur réparation TAN
+        </label>
+      </div>
+
+      <!-- Encarts : Atelier (global) | Individuel (technicien) -->
+      <div class="bilan-encarts">
+        <div class="encart encart-global">
+          <div class="encart-titre">🏭 Atelier — global</div>
+          <div class="jauge-grid encart-jauges">
+            <div class="jauge-card">
+              <div class="jauge-circle jauge-neutre" id="bilan-glob-nps-jauge"><span class="jauge-value" id="bilan-glob-nps-val">—</span></div>
+              <div class="jauge-label">NPS global</div>
+              <div class="jauge-sous" id="bilan-glob-nps-sous"></div>
+            </div>
+            <div class="jauge-card">
+              <div class="jauge-circle jauge-neutre" id="bilan-glob-retour-jauge"><span class="jauge-value" id="bilan-glob-retour-val">—</span></div>
+              <div class="jauge-label">Taux de retour global</div>
+              <div class="jauge-sous" id="bilan-glob-retour-sous"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="encart encart-indiv bilan-bloc-tech hidden">
+          <div class="encart-titre">👤 <span id="bilan-nom">—</span> <span class="bilan-code" id="bilan-code"></span></div>
+          <div class="jauge-grid encart-jauges">
+            <div class="jauge-card jauge-clickable" data-scroll="bilan-section-nps" title="Voir mes réponses NPS">
+              <div class="jauge-circle jauge-neutre" id="bilan-nps-jauge"><span class="jauge-value" id="bilan-nps-val">—</span></div>
+              <div class="jauge-label">Mon NPS <span class="jauge-fleche">↓</span></div>
+              <div class="jauge-sous" id="bilan-nps-sous"></div>
+            </div>
+            <div class="jauge-card jauge-clickable" data-scroll="bilan-section-retour" title="Voir mes retours">
+              <div class="jauge-circle jauge-neutre" id="bilan-retour-jauge"><span class="jauge-value" id="bilan-retour-val">—</span></div>
+              <div class="jauge-label">Mon taux de retour <span class="jauge-fleche">↓</span></div>
+              <div class="jauge-sous" id="bilan-retour-sous"></div>
+            </div>
+          </div>
+          <p class="nps-rang hidden" id="bilan-rang"></p>
+        </div>
+      </div>
+
+      <!-- Détail (visible quand un technicien est sélectionné) -->
+      <div class="bilan-bloc-tech hidden">
+        <p class="hint hidden" id="bilan-note"></p>
+        <div class="card" id="bilan-section-nps">
+          <h3 id="bilan-nps-titre">Satisfaction client — mes réponses</h3>
+          <div class="nps-filtres" id="bilan-nps-filtres">
+            <button type="button" class="nps-filtre-chip active" data-filtre="tous">Toutes <span class="chip-count"></span></button>
+            <button type="button" class="nps-filtre-chip nps-filtre-detracteur" data-filtre="detracteur">😞 Détracteurs <span class="chip-count"></span></button>
+            <button type="button" class="nps-filtre-chip nps-filtre-passif" data-filtre="passif">😐 Passifs <span class="chip-count"></span></button>
+            <button type="button" class="nps-filtre-chip nps-filtre-promoteur" data-filtre="promoteur">😀 Promoteurs <span class="chip-count"></span></button>
+            <label class="nps-filtre-comment"><input type="checkbox" id="bilan-nps-comment"> Avec commentaire</label>
+          </div>
+          <div id="bilan-nps-cartes" class="nps-cartes"></div>
+        </div>
+        <div class="card" id="bilan-section-retour">
+          <h3 id="bilan-retour-titre">Appareils revenus</h3>
+          <div id="bilan-retour-liste" class="nps-cartes"></div>
+        </div>
+      </div>
+    </section>
+
     <!-- ===== VUE ADMIN ===== -->
     <section id="view-admin" class="view hidden">
       <h2>Statistiques Globales — Équipe</h2>
-      <div class="form-row">
-        <label>Mois
-          <input type="month" id="inp-admin-month">
-        </label>
-        <button class="btn btn-primary" id="btn-admin-refresh">Actualiser</button>
+
+      <div class="form-row admin-controls-row">
+        <div class="period-toggle" id="admin-period-toggle">
+          <button type="button" class="period-btn active" data-periode="jour">Aujourd'hui</button>
+          <button type="button" class="period-btn" data-periode="semaine">Cette semaine</button>
+          <button type="button" class="period-btn" data-periode="mois">Ce mois</button>
+          <button type="button" class="period-btn" data-periode="tout">Tout</button>
+        </div>
+        <span class="admin-periode-label" id="admin-periode-label"></span>
       </div>
 
       <div class="stat-grid">
@@ -403,15 +486,90 @@
       </div>
 
       <div class="card">
-        <h3>Détail par technicien</h3>
+        <div class="card-head-actions">
+          <h3>Détail par technicien — Efficience</h3>
+          <div class="export-btns">
+            <button class="btn btn-ghost" id="btn-export-excel">⬇ Excel</button>
+            <button class="btn btn-ghost" id="btn-export-pdf">⬇ PDF</button>
+          </div>
+        </div>
         <table class="data-table">
           <thead><tr><th>Technicien</th><th>Efficience moy.</th><th>Interventions</th><th>Pièces / intervention</th><th>Taux de retour</th></tr></thead>
           <tbody id="admin-table-body"></tbody>
         </table>
       </div>
+
+      <!-- ===== Scorecard combinée (NPS + Retours) ===== -->
+      <div class="card">
+        <h3>Scorecard technicien — NPS &amp; Retours</h3>
+        <p class="hint">Vue combinée par technicien (basée sur la table de correspondance). Triée par NPS décroissant.</p>
+        <table class="data-table">
+          <thead><tr><th>Technicien</th><th>Code</th><th>NPS</th><th>Note moy.</th><th>Réponses</th><th>Taux retour</th><th>Retours/interv.</th></tr></thead>
+          <tbody id="scorecard-body"></tbody>
+        </table>
+      </div>
+
+      <!-- ===== Synthèse satisfaction (NPS) — extras Manager ===== -->
+      <div class="card" id="admin-extras">
+        <div class="card-head-actions">
+          <h3>Synthèse satisfaction (NPS)</h3>
+          <span class="nps-date" id="admin-nps-date"></span>
+        </div>
+        <div class="topflop-grid">
+          <div class="topflop-col">
+            <h4 class="topflop-titre">🏆 Top techniciens</h4>
+            <div id="admin-top-techs"></div>
+          </div>
+          <div class="topflop-col">
+            <h4 class="topflop-titre">📉 À accompagner</h4>
+            <div id="admin-flop-techs"></div>
+          </div>
+        </div>
+        <h4 class="topflop-titre topflop-titre-alerte">🔎 À surveiller — NPS négatif</h4>
+        <div id="admin-surveiller"></div>
+        <p class="hint">Top / Flop calculés sur les techniciens ayant au moins 5 réponses sur la période sélectionnée.</p>
+      </div>
+
+      <!-- ===== Section NPS (admin) ===== -->
+      <div class="card">
+        <h3>NPS — Classement par technicien</h3>
+        <p class="hint">Calculé sur la même période (date de réponse à l'enquête). Identifié par code technicien.</p>
+        <p class="save-status hidden" id="admin-nps-statut"></p>
+
+        <div class="jauge-grid nps-jauge-grid">
+          <div class="jauge-card">
+            <div class="jauge-circle jauge-neutre" id="admin-nps-jauge-global">
+              <span class="jauge-value" id="admin-nps-jauge-global-val">—</span>
+            </div>
+            <div class="jauge-label">NPS global atelier</div>
+            <div class="jauge-sous" id="admin-nps-jauge-global-sous"></div>
+          </div>
+        </div>
+
+        <p class="hint">Clique sur une ligne pour voir le détail des cartes (dossier, note, commentaire).</p>
+        <table class="data-table">
+          <thead><tr><th>Technicien</th><th>NPS</th><th>Note moy.</th><th>Réponses</th><th>Promoteurs</th><th>Passifs</th><th>Détracteurs</th></tr></thead>
+          <tbody id="admin-nps-table-body"></tbody>
+        </table>
+      </div>
     </section>
 
   </main>
+</div>
+
+<!-- ===== Modal « Qui es-tu ? » ===== -->
+<div id="modal-identite" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h3>Qui es-tu ?</h3>
+    <p class="hint">Choisis ton nom : ton bilan (NPS et retours) sera pré-rempli pour toi. Tu pourras le changer à tout moment en haut à droite.</p>
+    <div class="searchable-select nps-search" id="ss-identite">
+      <input type="text" id="identite-input" placeholder="Tape ton nom…" autocomplete="off">
+      <div class="ss-results hidden" id="identite-results"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="identite-manager">Je suis manager / passer</button>
+    </div>
+  </div>
 </div>
 
 <!-- Firebase SDK (compat, version Spark gratuite) -->
@@ -420,10 +578,23 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <!-- Chart.js pour les graphiques admin -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<!-- SheetJS : lecture des exports NPS / Retours + génération des exports Excel -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- jsPDF + autotable pour l'export PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 
 <script src="js/firebase-config.js"></script>
 <script src="js/data-temps.js"></script>
 <script src="js/temps-logic.js"></script>
+<script src="js/nps-logic.js"></script>
+<script src="js/techniciens.js"></script>
 <script src="js/app.js"></script>
+<!-- Modules : NPS, Retours, Bilan unifié, identité, mode admin -->
+<script src="js/retours-logic.js"></script>
+<script src="js/bilan.js"></script>
+<script src="js/admin2.js"></script>
+<script src="js/tech2.js"></script>
+<script src="js/identite.js"></script>
 </body>
 </html>
