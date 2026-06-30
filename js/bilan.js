@@ -1,30 +1,29 @@
 // ============================================================
-// bilan.js — Fiche technicien unifiée (NPS + Retours) + Scorecard manager
-// ------------------------------------------------------------
-// Croise les données NPS (par code) et Retours (par nom) grâce à la table
-// de correspondance techniciens.js. Chargé uniquement par index2.html ;
-// s'enveloppe autour de switchView SANS modifier app.js.
+// bilan.js — Page UNIQUE « Bilan technicien » : NPS + Retours réunis en détail
+//            + Scorecard manager. Chargé uniquement par index2.html ;
+//            s'enveloppe autour de switchView SANS modifier app.js.
+// Réutilise les fonctions « pures » de nps-logic.js et retours-logic.js.
 // ============================================================
 
 let bilanInitialise = false;
 let bilanSelectedCode = localStorage.getItem("bilanSelectedCode") || "";
+let bilanFiltreCat = "tous";       // tous | detracteur | passif | promoteur
+let bilanFiltreComment = false;
 
-// Retrouve le nom tel qu'écrit dans le fichier Retours pour une entrée technicien
+// --- helpers de croisement -------------------------------------------------
 function retourNomDe(entry) {
   if (!entry || typeof retoursTechniciens !== "function" || !retoursData) return null;
   const cible = entry._mots || techNormMots(entry.nom);
   return retoursTechniciens().find(n => techNormMots(n) === cible) || null;
 }
-
-// NPS d'un technicien (par code)
 function npsDeTech(entry) {
   if (!npsData) return null;
   return calculerNPS(npsData.filter(d => d.tech === entry.code).map(d => d.note));
 }
 
-// ------------------------------------------------------------
-// VUE BILAN (fiche d'un technicien)
-// ------------------------------------------------------------
+// ============================================================
+// VUE BILAN
+// ============================================================
 async function renderBilan() {
   const statut = document.getElementById("bilan-statut");
   try {
@@ -38,8 +37,20 @@ async function renderBilan() {
     return;
   }
 
+  // Dates des fichiers
+  const dEl = document.getElementById("bilan-dates");
+  if (dEl) {
+    const f = (d) => d ? new Date(d).toLocaleDateString("fr-FR") : "—";
+    dEl.textContent = `📄 NPS au ${f(typeof npsFileDate !== "undefined" ? npsFileDate : null)} · Retours au ${f(typeof retoursFileDate !== "undefined" ? retoursFileDate : null)}`;
+  }
+
+  // Repères atelier (toujours visibles)
+  majJaugeNPS("bilan-glob-nps-jauge", "bilan-glob-nps-val", "bilan-glob-nps-sous", calculerNPS(npsData.map(d => d.note)));
+  majJaugeRetour("bilan-glob-retour-jauge", "bilan-glob-retour-val", "bilan-glob-retour-sous", calculTauxRetourGlobal());
+
   if (!bilanInitialise) {
     setupBilanSearch();
+    setupBilanFiltres();
     bilanInitialise = true;
   }
 
@@ -87,6 +98,33 @@ function setupBilanSearch() {
   });
 }
 
+function setupBilanFiltres() {
+  document.querySelectorAll("#bilan-nps-filtres .nps-filtre-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      document.querySelectorAll("#bilan-nps-filtres .nps-filtre-chip").forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      bilanFiltreCat = chip.dataset.filtre;
+      const e = bilanSelectedCode ? techParCode(bilanSelectedCode) : null;
+      if (e) renderBilanNpsCartes(e);
+    });
+  });
+  const cbComment = document.getElementById("bilan-nps-comment");
+  if (cbComment) cbComment.addEventListener("change", () => {
+    bilanFiltreComment = cbComment.checked;
+    const e = bilanSelectedCode ? techParCode(bilanSelectedCode) : null;
+    if (e) renderBilanNpsCartes(e);
+  });
+  const cbTan = document.getElementById("bilan-exclure-tan");
+  if (cbTan) cbTan.checked = retoursExclureTAN; // synchronise avec l'état mémorisé
+  if (cbTan) cbTan.addEventListener("change", () => {
+    retoursExclureTAN = cbTan.checked; // variable globale de retours-logic.js
+    localStorage.setItem("retoursExclureTAN", retoursExclureTAN);
+    majJaugeRetour("bilan-glob-retour-jauge", "bilan-glob-retour-val", "bilan-glob-retour-sous", calculTauxRetourGlobal());
+    const e = bilanSelectedCode ? techParCode(bilanSelectedCode) : null;
+    if (e) { majJaugeRetourTech(e); renderBilanRetours(e); }
+  });
+}
+
 function majFicheBilan(entry) {
   const bloc = document.getElementById("bilan-fiche");
   if (!entry) { if (bloc) bloc.classList.add("hidden"); return; }
@@ -95,27 +133,130 @@ function majFicheBilan(entry) {
   document.getElementById("bilan-nom").textContent = entry.nom;
   document.getElementById("bilan-code").textContent = "Code NPS : " + entry.code;
 
-  // NPS
-  const npsRes = npsDeTech(entry);
-  majJaugeNPS("bilan-nps-jauge", "bilan-nps-val", "bilan-nps-sous", npsRes || { score: null, total: 0, moyenne: null });
+  // Jauge NPS + rang
+  const npsRes = npsDeTech(entry) || { score: null, total: 0, moyenne: null };
+  majJaugeNPS("bilan-nps-jauge", "bilan-nps-val", "bilan-nps-sous", npsRes);
+  afficherRangBilan(entry);
 
-  // Retours
+  // Jauge retour
+  majJaugeRetourTech(entry);
+
+  // Note d'absence éventuelle
+  const retNom = retourNomDe(entry);
+  const note = document.getElementById("bilan-note");
+  const manques = [];
+  if (!npsRes.total) manques.push("aucune réponse NPS");
+  if (!retNom) manques.push("non trouvé dans le fichier Retours");
+  if (note) {
+    note.textContent = manques.length ? "ℹ️ " + manques.join(" · ") + " pour ce technicien." : "";
+    note.classList.toggle("hidden", !manques.length);
+  }
+
+  // Détails
+  renderBilanNpsCartes(entry);
+  renderBilanRetours(entry);
+}
+
+function majJaugeRetourTech(entry) {
   const retNom = retourNomDe(entry);
   const retRes = retNom ? calculTauxRetourTech(retNom) : { interventions: 0, retours: 0, taux: null };
   majJaugeRetour("bilan-retour-jauge", "bilan-retour-val", "bilan-retour-sous", retRes);
-
-  // Note d'absence de données
-  const note = document.getElementById("bilan-note");
-  const manques = [];
-  if (!npsRes || !npsRes.total) manques.push("aucune réponse NPS");
-  if (!retNom) manques.push("non trouvé dans le fichier Retours");
-  note.textContent = manques.length ? "ℹ️ " + manques.join(" · ") + " pour ce technicien sur la période." : "";
-  note.classList.toggle("hidden", !manques.length);
 }
 
-// ------------------------------------------------------------
+// Cartes NPS (commentaires) du technicien, avec filtres
+function renderBilanNpsCartes(entry) {
+  const cont = document.getElementById("bilan-nps-cartes");
+  const titre = document.getElementById("bilan-nps-titre");
+  if (!cont) return;
+  let cartes = npsData.filter(d => d.tech === entry.code);
+  const total = cartes.length;
+
+  // compteurs sur les chips
+  const n = { tous: total, detracteur: 0, passif: 0, promoteur: 0 };
+  cartes.forEach(c => n[npsCategorie(c.note)]++);
+  document.querySelectorAll("#bilan-nps-filtres .nps-filtre-chip").forEach(chip => {
+    const span = chip.querySelector(".chip-count");
+    if (span) span.textContent = n[chip.dataset.filtre];
+  });
+
+  if (bilanFiltreCat !== "tous") cartes = cartes.filter(c => npsCategorie(c.note) === bilanFiltreCat);
+  if (bilanFiltreComment) cartes = cartes.filter(c => c.commentaire);
+  cartes.sort((a, b) => a.note - b.note);
+
+  if (titre) titre.textContent = `Satisfaction client — ${total ? cartes.length + " / " + total + " réponse(s)" : "aucune réponse"}`;
+
+  if (!total) { cont.innerHTML = `<p class="hint">Aucune réponse NPS pour ce technicien.</p>`; return; }
+  if (!cartes.length) { cont.innerHTML = `<p class="hint">Aucune carte ne correspond à ce filtre.</p>`; return; }
+
+  cont.innerHTML = cartes.map(c => `
+    <div class="nps-carte nps-carte-${npsCategorie(c.note)}">
+      <div class="nps-carte-head">
+        <span class="nps-carte-note">${c.note}<small>/10</small></span>
+        <div class="nps-carte-meta">
+          ${categorieBadge(c.note)}
+          <span class="nps-carte-dossier">Dossier&nbsp;: ${c.dossier || "—"}</span>
+        </div>
+      </div>
+      ${c.commentaire
+        ? `<p class="nps-carte-comment">${escapeHtml(c.commentaire)}</p>`
+        : `<p class="nps-carte-comment nps-carte-comment-vide">Pas de commentaire</p>`}
+    </div>`).join("");
+}
+
+// Liste des appareils revenus attribués au technicien
+function renderBilanRetours(entry) {
+  const cont = document.getElementById("bilan-retour-liste");
+  const titre = document.getElementById("bilan-retour-titre");
+  if (!cont) return;
+  const retNom = retourNomDe(entry);
+  const liste = retNom
+    ? retoursData.filter(r => r.techRetour === retNom && retourCompte(r))
+        .sort((a, b) => (b.dateActuelle ? b.dateActuelle.getTime() : 0) - (a.dateActuelle ? a.dateActuelle.getTime() : 0))
+    : [];
+
+  if (titre) titre.textContent = `Appareils revenus — ${liste.length}`;
+
+  if (!retNom) { cont.innerHTML = `<p class="hint">Ce technicien n'est pas présent dans le fichier Retours.</p>`; return; }
+  if (!liste.length) { cont.innerHTML = `<p class="hint">Aucun retour attribué à ce technicien${retoursExclureTAN ? " (hors réparations TAN)" : ""}.</p>`; return; }
+
+  cont.innerHTML = liste.map(r => `
+    <div class="retour-carte">
+      <div class="retour-carte-head">
+        <span class="retour-topage retour-topage-${(r.resultPrec || "na").toLowerCase()}">${r.resultPrec || "—"}</span>
+        <span class="retour-appareil">${escapeRet(r.marque)} · ${escapeRet(r.famille)}</span>
+        <span class="retour-dossier">Dossier&nbsp;: ${r.dossier || "—"}</span>
+      </div>
+      <p class="retour-carte-sub">
+        Réparé le ${dateFr(r.datePrec)} → revenu le ${dateFr(r.dateActuelle)}
+        ${r.resultActuel ? ` · re-traitement : <strong>${r.resultActuel}</strong>` : ""}
+      </p>
+    </div>`).join("");
+}
+
+// Rang NPS du technicien dans l'atelier (affiché si 1er à 5e ; ≥5 réponses)
+function afficherRangBilan(entry) {
+  const rangEl = document.getElementById("bilan-rang");
+  if (!rangEl) return;
+  const parCode = {};
+  npsData.forEach(d => { (parCode[d.tech] = parCode[d.tech] || []).push(d.note); });
+  const classement = Object.keys(parCode)
+    .map(code => ({ code, ...calculerNPS(parCode[code]) }))
+    .filter(l => l.total >= 5)
+    .sort((a, b) => (b.score - a.score) || (b.total - a.total));
+  const pos = classement.findIndex(l => l.code === entry.code) + 1;
+  if (pos >= 1 && pos <= 5) {
+    const medaille = ["🥇", "🥈", "🥉", "🏅", "🏅"][pos - 1];
+    rangEl.innerHTML = `${medaille} <strong>${pos}<sup>${pos === 1 ? "er" : "e"}</sup></strong> de l'atelier sur ${classement.length} techniciens classés (NPS)`;
+    rangEl.classList.remove("hidden");
+  } else {
+    rangEl.textContent = "";
+    rangEl.classList.add("hidden");
+  }
+}
+
+// ============================================================
 // SCORECARD MANAGER (tableau combiné, dans la vue admin)
-// ------------------------------------------------------------
+// ============================================================
 async function renderScorecard() {
   const tbody = document.getElementById("scorecard-body");
   if (!tbody) return;
@@ -134,7 +275,7 @@ async function renderScorecard() {
       npsN: nps ? nps.total : 0,
       taux: ret.taux, retours: ret.retours, interventions: ret.interventions
     };
-  }).filter(l => l.npsN > 0 || l.interventions > 0) // on masque les comptes sans aucune donnée
+  }).filter(l => l.npsN > 0 || l.interventions > 0)
     .sort((a, b) => (b.npsScore ?? -999) - (a.npsScore ?? -999));
 
   tbody.innerHTML = lignes.map(l => `

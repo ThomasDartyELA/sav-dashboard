@@ -69,8 +69,6 @@
       <button class="tab-btn active" data-view="saisie">Saisie du jour</button>
       <button class="tab-btn" data-view="dashboard">Synthèse mensuelle</button>
       <button class="tab-btn" data-view="equipe">Stats Équipe</button>
-      <button class="tab-btn" data-view="nps">NPS</button>
-      <button class="tab-btn" data-view="retours">Retours</button>
       <button class="tab-btn" data-view="bilan">Bilan technicien</button>
       <button class="tab-btn hidden" data-view="admin" id="tab-admin">Statistiques Globales</button>
     </nav>
@@ -384,112 +382,40 @@
       </div>
     </section>
 
-    <!-- ===== VUE NPS ===== -->
-    <section id="view-nps" class="view hidden">
-      <h2>NPS — Satisfaction client</h2>
-      <p class="hint">Net Promoter Score calculé sur les notes de l'enquête (0 à 10). Promoteur&nbsp;: 9-10 · Passif&nbsp;: 7-8 · Détracteur&nbsp;: 0-6. Score sur une échelle de −100 à +100.</p>
-      <p class="nps-date" id="nps-date"></p>
-
-      <p class="save-status hidden" id="nps-statut"></p>
-
-      <div class="form-row">
-        <label>Mon code technicien
-          <div class="searchable-select nps-search" id="ss-nps-tech">
-            <input type="text" id="nps-tech-input" placeholder="Tape ou choisis ton code (ex. L78)…" autocomplete="off">
-            <div class="ss-results hidden" id="nps-tech-results"></div>
-          </div>
-        </label>
-      </div>
-
-      <div class="jauge-grid nps-jauge-grid">
-        <div class="jauge-card nps-bloc-tech hidden" id="nps-bloc-tech">
-          <div class="jauge-circle jauge-neutre" id="nps-jauge-tech">
-            <span class="jauge-value" id="nps-jauge-tech-val">—</span>
-          </div>
-          <div class="jauge-label">Mon NPS</div>
-          <div class="jauge-sous" id="nps-jauge-tech-sous"></div>
-        </div>
-        <div class="jauge-card">
-          <div class="jauge-circle jauge-neutre" id="nps-jauge-global">
-            <span class="jauge-value" id="nps-jauge-global-val">—</span>
-          </div>
-          <div class="jauge-label">NPS global atelier</div>
-          <div class="jauge-sous" id="nps-jauge-global-sous"></div>
-        </div>
-      </div>
-
-      <p class="nps-rang hidden" id="nps-rang"></p>
-
-      <div class="card nps-bloc-tech hidden">
-        <h3 id="nps-cartes-titre">Mes cartes</h3>
-        <div class="nps-filtres" id="nps-filtres">
-          <button type="button" class="nps-filtre-chip active" data-filtre="tous">Toutes <span class="chip-count"></span></button>
-          <button type="button" class="nps-filtre-chip nps-filtre-detracteur" data-filtre="detracteur">😞 Détracteurs <span class="chip-count"></span></button>
-          <button type="button" class="nps-filtre-chip nps-filtre-passif" data-filtre="passif">😐 Passifs <span class="chip-count"></span></button>
-          <button type="button" class="nps-filtre-chip nps-filtre-promoteur" data-filtre="promoteur">😀 Promoteurs <span class="chip-count"></span></button>
-          <label class="nps-filtre-comment"><input type="checkbox" id="nps-filtre-comment"> Avec commentaire</label>
-        </div>
-        <div id="nps-cartes" class="nps-cartes"></div>
-      </div>
-    </section>
-
-    <!-- ===== VUE RETOURS ATELIER ===== -->
-    <section id="view-retours" class="view hidden">
-      <h2>Retours atelier</h2>
-      <p class="hint">Un « retour » = un appareil déjà réparé qui revient à l'atelier. Le retour est attribué au technicien de la réparation d'origine. Par défaut, les retours dont la réparation d'origine était un <strong>TAN</strong> (non réparé) ne sont pas comptés.</p>
-      <p class="nps-date" id="retours-date"></p>
-      <p class="save-status hidden" id="retours-statut"></p>
-
-      <div class="form-row" style="align-items:center; gap:24px;">
-        <label>Mon nom (technicien)
-          <div class="searchable-select nps-search" id="ss-retours-tech">
-            <input type="text" id="retours-tech-input" placeholder="Tape ou choisis ton nom (ex. BURON EDITH)…" autocomplete="off">
-            <div class="ss-results hidden" id="retours-tech-results"></div>
-          </div>
-        </label>
-        <label class="nps-filtre-comment" style="margin-top:18px;">
-          <input type="checkbox" id="retours-exclure-tan" checked> Exclure les retours sur réparation TAN
-        </label>
-      </div>
-
-      <div class="jauge-grid nps-jauge-grid">
-        <div class="jauge-card retours-bloc-tech hidden">
-          <div class="jauge-circle jauge-neutre" id="retours-jauge-tech">
-            <span class="jauge-value" id="retours-jauge-tech-val">—</span>
-          </div>
-          <div class="jauge-label">Mon taux de retour</div>
-          <div class="jauge-sous" id="retours-jauge-tech-sous"></div>
-        </div>
-        <div class="jauge-card">
-          <div class="jauge-circle jauge-neutre" id="retours-jauge-global">
-            <span class="jauge-value" id="retours-jauge-global-val">—</span>
-          </div>
-          <div class="jauge-label">Taux de retour global atelier</div>
-          <div class="jauge-sous" id="retours-jauge-global-sous"></div>
-        </div>
-      </div>
-
-      <div class="card retours-bloc-tech hidden">
-        <h3 id="retours-liste-titre">Appareils revenus</h3>
-        <div id="retours-liste" class="nps-cartes"></div>
-      </div>
-    </section>
-
-    <!-- ===== VUE BILAN TECHNICIEN (unifié NPS + Retours) ===== -->
+    <!-- ===== VUE BILAN TECHNICIEN — NPS + Retours réunis (page unique) ===== -->
     <section id="view-bilan" class="view hidden">
       <h2>Bilan technicien</h2>
-      <p class="hint">Vue unifiée par technicien : satisfaction client (NPS) et taux de retour réunis. Choisis un technicien par son nom.</p>
+      <p class="hint">Satisfaction client (NPS) et retours atelier réunis sur une seule page. Choisis un technicien par son nom.</p>
+      <p class="nps-date" id="bilan-dates"></p>
       <p class="save-status hidden" id="bilan-statut"></p>
 
-      <div class="form-row">
+      <div class="form-row" style="align-items:center; gap:24px;">
         <label>Technicien
           <div class="searchable-select nps-search" id="ss-bilan-tech">
             <input type="text" id="bilan-tech-input" placeholder="Tape ou choisis un nom (ex. EDITH BURON)…" autocomplete="off">
             <div class="ss-results hidden" id="bilan-tech-results"></div>
           </div>
         </label>
+        <label class="nps-filtre-comment" style="margin-top:18px;">
+          <input type="checkbox" id="bilan-exclure-tan" checked> Exclure les retours sur réparation TAN
+        </label>
       </div>
 
+      <!-- Repères atelier (toujours visibles) -->
+      <div class="jauge-grid nps-jauge-grid">
+        <div class="jauge-card">
+          <div class="jauge-circle jauge-neutre" id="bilan-glob-nps-jauge"><span class="jauge-value" id="bilan-glob-nps-val">—</span></div>
+          <div class="jauge-label">NPS global atelier</div>
+          <div class="jauge-sous" id="bilan-glob-nps-sous"></div>
+        </div>
+        <div class="jauge-card">
+          <div class="jauge-circle jauge-neutre" id="bilan-glob-retour-jauge"><span class="jauge-value" id="bilan-glob-retour-val">—</span></div>
+          <div class="jauge-label">Taux de retour global atelier</div>
+          <div class="jauge-sous" id="bilan-glob-retour-sous"></div>
+        </div>
+      </div>
+
+      <!-- Fiche du technicien sélectionné -->
       <div id="bilan-fiche" class="hidden">
         <div class="bilan-entete">
           <h3 id="bilan-nom">—</h3>
@@ -499,19 +425,33 @@
 
         <div class="jauge-grid nps-jauge-grid">
           <div class="jauge-card">
-            <div class="jauge-circle jauge-neutre" id="bilan-nps-jauge">
-              <span class="jauge-value" id="bilan-nps-val">—</span>
-            </div>
-            <div class="jauge-label">NPS — satisfaction client</div>
+            <div class="jauge-circle jauge-neutre" id="bilan-nps-jauge"><span class="jauge-value" id="bilan-nps-val">—</span></div>
+            <div class="jauge-label">Mon NPS</div>
             <div class="jauge-sous" id="bilan-nps-sous"></div>
           </div>
           <div class="jauge-card">
-            <div class="jauge-circle jauge-neutre" id="bilan-retour-jauge">
-              <span class="jauge-value" id="bilan-retour-val">—</span>
-            </div>
-            <div class="jauge-label">Taux de retour atelier</div>
+            <div class="jauge-circle jauge-neutre" id="bilan-retour-jauge"><span class="jauge-value" id="bilan-retour-val">—</span></div>
+            <div class="jauge-label">Mon taux de retour</div>
             <div class="jauge-sous" id="bilan-retour-sous"></div>
           </div>
+        </div>
+        <p class="nps-rang hidden" id="bilan-rang"></p>
+
+        <div class="card">
+          <h3 id="bilan-nps-titre">Satisfaction client — mes réponses</h3>
+          <div class="nps-filtres" id="bilan-nps-filtres">
+            <button type="button" class="nps-filtre-chip active" data-filtre="tous">Toutes <span class="chip-count"></span></button>
+            <button type="button" class="nps-filtre-chip nps-filtre-detracteur" data-filtre="detracteur">😞 Détracteurs <span class="chip-count"></span></button>
+            <button type="button" class="nps-filtre-chip nps-filtre-passif" data-filtre="passif">😐 Passifs <span class="chip-count"></span></button>
+            <button type="button" class="nps-filtre-chip nps-filtre-promoteur" data-filtre="promoteur">😀 Promoteurs <span class="chip-count"></span></button>
+            <label class="nps-filtre-comment"><input type="checkbox" id="bilan-nps-comment"> Avec commentaire</label>
+          </div>
+          <div id="bilan-nps-cartes" class="nps-cartes"></div>
+        </div>
+
+        <div class="card">
+          <h3 id="bilan-retour-titre">Appareils revenus</h3>
+          <div id="bilan-retour-liste" class="nps-cartes"></div>
         </div>
       </div>
     </section>
