@@ -471,7 +471,30 @@ input:focus, select:focus {
   margin-top: 4px;
 }
 
-.nps-search input { width: 100%; }
+/* Barre de recherche technicien (NPS + Retours) — version mise en avant */
+.nps-search { max-width: 420px; }
+.nps-search input {
+  width: 100%;
+  margin-top: 6px;
+  padding: 14px 16px 14px 46px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  background-color: #fff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23E2001A' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 14px center;
+  box-shadow: var(--shadow);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.nps-search input::placeholder { color: #9ca3af; font-weight: 500; }
+.nps-search input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(226,0,26,0.12);
+}
+.nps-search .ss-results { font-size: 0.95rem; border-width: 2px; }
+.nps-search .ss-results div { padding: 10px 14px; }
 
 /* Filtres des cartes NPS */
 .nps-filtres {
@@ -608,8 +631,21 @@ input:focus, select:focus {
 .pill-rouge  { background: var(--danger); }
 .pill-neutre { background: #9ca3af; }
 
-/* Date de dernière modif du fichier NPS */
-.nps-date { font-size: 0.8rem; color: var(--text-muted); margin: 4px 0 0; }
+/* Date de dernière modif du fichier (NPS / Retours) — bien visible */
+.nps-date {
+  display: inline-block;
+  margin: 8px 0 4px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: var(--warning-bg);
+  border: 1px solid var(--accent);
+  color: #92400e;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.nps-date:empty { display: none; }
+/* Dans l'en-tête de la carte admin, on garde une version discrète */
+.card-head-actions .nps-date { font-size: 0.82rem; padding: 4px 12px; }
 
 /* Synthèse Top / Flop / À surveiller (mode Manager) */
 .topflop-grid {
@@ -890,7 +926,15 @@ input:focus, select:focus {
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ---------- LOGO (index2) ---------- */
-.logo-img { height: 40px; width: auto; display: block; }
+.logo-img {
+  height: 46px;
+  width: auto;
+  display: block;
+  background: #fff;
+  padding: 5px 10px;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+}
 .auth-logo-img { max-width: 200px; height: auto; display: block; margin: 0 auto; }
 
 /* ---------- BOUTON MODIFIER UNE INTERVENTION (index2) ---------- */
