@@ -889,6 +889,39 @@ input:focus, select:focus {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ---------- LOGO (index2) ---------- */
+.logo-img { height: 40px; width: auto; display: block; }
+.auth-logo-img { max-width: 200px; height: auto; display: block; margin: 0 auto; }
+
+/* ---------- BOUTON MODIFIER UNE INTERVENTION (index2) ---------- */
+.actions-cell { white-space: nowrap; display: flex; gap: 6px; justify-content: flex-end; }
+.btn-edit-sm {
+  background: transparent;
+  color: var(--primary);
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+.btn-edit-sm:hover { transform: scale(1.25); color: var(--primary-dark); }
+.data-table tr.row-editing td { background: #fff7d6; }
+.btn-edit-mode { background: var(--success) !important; box-shadow: 0 2px 8px rgba(22,163,74,0.3) !important; }
+.btn-edit-mode:hover { background: #15803d !important; }
+.form-error.info-hint { color: var(--text-muted); }
+
+/* ---------- RANG TECHNICIEN (index2) ---------- */
+.nps-rang {
+  margin: 0 0 16px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #fff7d6, #fde7ad);
+  border: 1px solid var(--accent);
+  font-size: 1rem;
+  text-align: center;
+}
+.nps-rang strong { font-size: 1.15rem; }
+.nps-rang sup { font-size: 0.65em; }
+
 /* ---------- RESPONSIVE ---------- */
 @media (max-width: 700px) {
   .topbar { flex-direction: column; align-items: stretch; }

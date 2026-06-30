@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Efficience Atelier — Mode Manager</title>
+<link rel="icon" type="image/png" href="favicon.png">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -11,7 +12,7 @@
 <!-- ================= ECRAN AUTHENTIFICATION ================= -->
 <div id="auth-screen" class="auth-screen">
   <div class="auth-card">
-    <div class="auth-logo">🛠️ <span>Efficience Atelier</span></div>
+    <div class="auth-logo"><img src="logo-header.png" alt="Efficience Atelier" class="auth-logo-img"></div>
 
     <div id="login-form" class="auth-form">
       <h2>Connexion</h2>
@@ -62,11 +63,11 @@
 
   <header class="topbar">
     <div class="topbar-left">
-      <span class="logo">🛠️ Efficience Atelier</span>
+      <img src="logo-header.png" alt="Efficience Atelier" class="logo-img">
     </div>
     <nav class="tabs" id="main-tabs">
       <button class="tab-btn active" data-view="saisie">Saisie du jour</button>
-      <button class="tab-btn" data-view="dashboard">Mon Dashboard</button>
+      <button class="tab-btn" data-view="dashboard">Synthèse mensuelle</button>
       <button class="tab-btn" data-view="equipe">Stats Équipe</button>
       <button class="tab-btn" data-view="nps">NPS</button>
       <button class="tab-btn hidden" data-view="admin" id="tab-admin">Statistiques Globales</button>
@@ -256,7 +257,7 @@
 
     <!-- ===== VUE DASHBOARD TECHNICIEN ===== -->
     <section id="view-dashboard" class="view hidden">
-      <h2>Mon Dashboard</h2>
+      <h2>Synthèse mensuelle</h2>
       <div class="form-row">
         <label>Mois
           <input type="month" id="inp-dash-month">
@@ -415,6 +416,8 @@
         </div>
       </div>
 
+      <p class="nps-rang hidden" id="nps-rang"></p>
+
       <div class="card nps-bloc-tech hidden">
         <h3 id="nps-cartes-titre">Mes cartes</h3>
         <div class="nps-filtres" id="nps-filtres">
@@ -434,9 +437,9 @@
 
       <div class="form-row admin-controls-row">
         <div class="period-toggle" id="admin-period-toggle">
-          <button type="button" class="period-btn" data-periode="jour">Aujourd'hui</button>
+          <button type="button" class="period-btn active" data-periode="jour">Aujourd'hui</button>
           <button type="button" class="period-btn" data-periode="semaine">Cette semaine</button>
-          <button type="button" class="period-btn active" data-periode="mois">Ce mois</button>
+          <button type="button" class="period-btn" data-periode="mois">Ce mois</button>
           <button type="button" class="period-btn" data-periode="tout">Tout</button>
         </div>
         <span class="admin-periode-label" id="admin-periode-label"></span>
@@ -535,5 +538,6 @@
 <script src="js/app.js"></script>
 <!-- Extensions MODE ADMIN — propre à index2.html (ne touche pas index.html) -->
 <script src="js/admin2.js"></script>
+<script src="js/tech2.js"></script>
 </body>
 </html>

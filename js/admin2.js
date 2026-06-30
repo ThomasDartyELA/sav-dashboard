@@ -14,6 +14,9 @@
 
   const SEUIL_MIN_REPONSES = 5; // nb minimum de réponses pour figurer dans Top/Flop
 
+  // Période par défaut de la vue admin = « Aujourd'hui » (au lieu de « Ce mois »)
+  if (typeof adminPeriode !== "undefined") adminPeriode = "jour";
+
   // ----------------------------------------------------------
   // 1) Adapter l'interface selon le rôle (après que app.js ait géré le login)
   // ----------------------------------------------------------
