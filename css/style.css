@@ -1018,6 +1018,22 @@ input:focus, select:focus {
   flex-wrap: wrap;
 }
 .encart-jauges { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 0; }
+.encart-jauges-3 { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.encart .jauge-circle { width: 92px; height: 92px; }
+.encart .jauge-value { font-size: 0.95rem; }
+.jauge-rang {
+  margin-top: 8px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--warning-bg);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  padding: 4px 12px;
+  display: inline-block;
+}
+.jauge-rang strong { color: var(--primary); font-size: 1.5rem; }
+.jauge-rang sup { font-size: 0.55em; }
 .encart .jauge-card { background: transparent; border: none; box-shadow: none; padding: 8px 4px; }
 .encart .jauge-card:hover { transform: none; box-shadow: none; }
 
