@@ -51,6 +51,7 @@ async function renderBilan() {
   if (!bilanInitialise) {
     setupBilanSearch();
     setupBilanFiltres();
+    setupBilanScroll();
     bilanInitialise = true;
   }
 
@@ -125,10 +126,24 @@ function setupBilanFiltres() {
   });
 }
 
+// Jauges individuelles cliquables → défilement vers la section correspondante
+function setupBilanScroll() {
+  document.querySelectorAll("#view-bilan .jauge-clickable").forEach(el => {
+    el.addEventListener("click", () => {
+      const t = document.getElementById(el.dataset.scroll);
+      if (t) {
+        t.scrollIntoView({ behavior: "smooth", block: "start" });
+        t.classList.add("section-flash");
+        setTimeout(() => t.classList.remove("section-flash"), 1200);
+      }
+    });
+  });
+}
+
 function majFicheBilan(entry) {
-  const bloc = document.getElementById("bilan-fiche");
-  if (!entry) { if (bloc) bloc.classList.add("hidden"); return; }
-  if (bloc) bloc.classList.remove("hidden");
+  const blocs = document.querySelectorAll(".bilan-bloc-tech");
+  if (!entry) { blocs.forEach(b => b.classList.add("hidden")); return; }
+  blocs.forEach(b => b.classList.remove("hidden"));
 
   document.getElementById("bilan-nom").textContent = entry.nom;
   document.getElementById("bilan-code").textContent = "Code NPS : " + entry.code;

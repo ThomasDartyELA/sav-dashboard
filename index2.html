@@ -73,6 +73,7 @@
       <button class="tab-btn hidden" data-view="admin" id="tab-admin">Statistiques Globales</button>
     </nav>
     <div class="topbar-right">
+      <span id="identite-badge" class="identite-badge"></span>
       <span id="user-badge" class="user-badge"></span>
       <button class="btn btn-ghost" id="btn-logout">Déconnexion</button>
     </div>
@@ -401,43 +402,46 @@
         </label>
       </div>
 
-      <!-- Repères atelier (toujours visibles) -->
-      <div class="jauge-grid nps-jauge-grid">
-        <div class="jauge-card">
-          <div class="jauge-circle jauge-neutre" id="bilan-glob-nps-jauge"><span class="jauge-value" id="bilan-glob-nps-val">—</span></div>
-          <div class="jauge-label">NPS global atelier</div>
-          <div class="jauge-sous" id="bilan-glob-nps-sous"></div>
+      <!-- Encarts : Atelier (global) | Individuel (technicien) -->
+      <div class="bilan-encarts">
+        <div class="encart encart-global">
+          <div class="encart-titre">🏭 Atelier — global</div>
+          <div class="jauge-grid encart-jauges">
+            <div class="jauge-card">
+              <div class="jauge-circle jauge-neutre" id="bilan-glob-nps-jauge"><span class="jauge-value" id="bilan-glob-nps-val">—</span></div>
+              <div class="jauge-label">NPS global</div>
+              <div class="jauge-sous" id="bilan-glob-nps-sous"></div>
+            </div>
+            <div class="jauge-card">
+              <div class="jauge-circle jauge-neutre" id="bilan-glob-retour-jauge"><span class="jauge-value" id="bilan-glob-retour-val">—</span></div>
+              <div class="jauge-label">Taux de retour global</div>
+              <div class="jauge-sous" id="bilan-glob-retour-sous"></div>
+            </div>
+          </div>
         </div>
-        <div class="jauge-card">
-          <div class="jauge-circle jauge-neutre" id="bilan-glob-retour-jauge"><span class="jauge-value" id="bilan-glob-retour-val">—</span></div>
-          <div class="jauge-label">Taux de retour global atelier</div>
-          <div class="jauge-sous" id="bilan-glob-retour-sous"></div>
+
+        <div class="encart encart-indiv bilan-bloc-tech hidden">
+          <div class="encart-titre">👤 <span id="bilan-nom">—</span> <span class="bilan-code" id="bilan-code"></span></div>
+          <div class="jauge-grid encart-jauges">
+            <div class="jauge-card jauge-clickable" data-scroll="bilan-section-nps" title="Voir mes réponses NPS">
+              <div class="jauge-circle jauge-neutre" id="bilan-nps-jauge"><span class="jauge-value" id="bilan-nps-val">—</span></div>
+              <div class="jauge-label">Mon NPS <span class="jauge-fleche">↓</span></div>
+              <div class="jauge-sous" id="bilan-nps-sous"></div>
+            </div>
+            <div class="jauge-card jauge-clickable" data-scroll="bilan-section-retour" title="Voir mes retours">
+              <div class="jauge-circle jauge-neutre" id="bilan-retour-jauge"><span class="jauge-value" id="bilan-retour-val">—</span></div>
+              <div class="jauge-label">Mon taux de retour <span class="jauge-fleche">↓</span></div>
+              <div class="jauge-sous" id="bilan-retour-sous"></div>
+            </div>
+          </div>
+          <p class="nps-rang hidden" id="bilan-rang"></p>
         </div>
       </div>
 
-      <!-- Fiche du technicien sélectionné -->
-      <div id="bilan-fiche" class="hidden">
-        <div class="bilan-entete">
-          <h3 id="bilan-nom">—</h3>
-          <span class="bilan-code" id="bilan-code"></span>
-        </div>
+      <!-- Détail (visible quand un technicien est sélectionné) -->
+      <div class="bilan-bloc-tech hidden">
         <p class="hint hidden" id="bilan-note"></p>
-
-        <div class="jauge-grid nps-jauge-grid">
-          <div class="jauge-card">
-            <div class="jauge-circle jauge-neutre" id="bilan-nps-jauge"><span class="jauge-value" id="bilan-nps-val">—</span></div>
-            <div class="jauge-label">Mon NPS</div>
-            <div class="jauge-sous" id="bilan-nps-sous"></div>
-          </div>
-          <div class="jauge-card">
-            <div class="jauge-circle jauge-neutre" id="bilan-retour-jauge"><span class="jauge-value" id="bilan-retour-val">—</span></div>
-            <div class="jauge-label">Mon taux de retour</div>
-            <div class="jauge-sous" id="bilan-retour-sous"></div>
-          </div>
-        </div>
-        <p class="nps-rang hidden" id="bilan-rang"></p>
-
-        <div class="card">
+        <div class="card" id="bilan-section-nps">
           <h3 id="bilan-nps-titre">Satisfaction client — mes réponses</h3>
           <div class="nps-filtres" id="bilan-nps-filtres">
             <button type="button" class="nps-filtre-chip active" data-filtre="tous">Toutes <span class="chip-count"></span></button>
@@ -448,8 +452,7 @@
           </div>
           <div id="bilan-nps-cartes" class="nps-cartes"></div>
         </div>
-
-        <div class="card">
+        <div class="card" id="bilan-section-retour">
           <h3 id="bilan-retour-titre">Appareils revenus</h3>
           <div id="bilan-retour-liste" class="nps-cartes"></div>
         </div>
@@ -554,6 +557,21 @@
   </main>
 </div>
 
+<!-- ===== Modal « Qui es-tu ? » ===== -->
+<div id="modal-identite" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h3>Qui es-tu ?</h3>
+    <p class="hint">Choisis ton nom : ton bilan (NPS et retours) sera pré-rempli pour toi. Tu pourras le changer à tout moment en haut à droite.</p>
+    <div class="searchable-select nps-search" id="ss-identite">
+      <input type="text" id="identite-input" placeholder="Tape ton nom…" autocomplete="off">
+      <div class="ss-results hidden" id="identite-results"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="identite-manager">Je suis manager / passer</button>
+    </div>
+  </div>
+</div>
+
 <!-- Firebase SDK (compat, version Spark gratuite) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -577,5 +595,6 @@
 <script src="js/bilan.js"></script>
 <script src="js/admin2.js"></script>
 <script src="js/tech2.js"></script>
+<script src="js/identite.js"></script>
 </body>
 </html>

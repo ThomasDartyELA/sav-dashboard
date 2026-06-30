@@ -998,6 +998,69 @@ input:focus, select:focus {
 .retour-topage-tan { background: var(--warning-bg); color: #92400e; }
 .retour-topage-ecc { background: #e0e7ff; color: #3730a3; }
 
+/* ---------- BILAN : encarts Global / Individuel (index2) ---------- */
+.bilan-encarts { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 18px; }
+.encart {
+  flex: 1 1 320px;
+  border: 2px solid var(--border);
+  border-radius: 16px;
+  padding: 14px 16px;
+}
+.encart-global { border-color: #cbd5e1; background: #f8fafc; }
+.encart-indiv { border-color: var(--primary); background: #fff6f5; }
+.encart-titre {
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.encart-jauges { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 0; }
+.encart .jauge-card { background: transparent; border: none; box-shadow: none; padding: 8px 4px; }
+.encart .jauge-card:hover { transform: none; box-shadow: none; }
+
+/* Jauges individuelles cliquables */
+.jauge-clickable { cursor: pointer; border-radius: 12px; transition: background 0.15s ease; }
+.jauge-clickable:hover { background: rgba(226,0,26,0.06); }
+.jauge-fleche { color: var(--primary); font-weight: 700; }
+.section-flash { animation: flashSection 1.2s ease; }
+@keyframes flashSection {
+  0% { box-shadow: 0 0 0 3px rgba(226,0,26,0.5); }
+  100% { box-shadow: var(--shadow); }
+}
+
+/* ---------- Modal « Qui es-tu ? » ---------- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 100;
+}
+.modal-box {
+  background: var(--card-bg);
+  border-radius: 16px;
+  border-top: 6px solid var(--primary);
+  padding: 28px;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+  animation: popIn 0.3s ease both;
+}
+.modal-box h3 { margin-top: 0; }
+.modal-actions { margin-top: 18px; display: flex; justify-content: flex-end; }
+
+/* Badge identité dans la barre du haut */
+.identite-badge { font-size: 0.85rem; color: #d8d8d8; }
+.identite-badge strong { color: #fff; }
+.identite-badge a { color: var(--accent); text-decoration: none; }
+.identite-badge a:hover { text-decoration: underline; }
+
 /* ---------- BILAN TECHNICIEN UNIFIÉ (index2) ---------- */
 .bilan-entete {
   display: flex;
