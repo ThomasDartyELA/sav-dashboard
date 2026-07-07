@@ -3,7 +3,7 @@
 // ============================================================
 
 let currentUser = null; // { uid, email, displayName, role }
-let currentDay = { date: null, heuresReelles: null, interventions: [], totalRetours: 0 };
+let currentDay = { date: null, heuresReelles: null, interventions: [], totalRetours: 0, retoursDetails: [] };
 let monthAggregateCache = { temps: 0, heures: 0, pieces: 0, interventions: 0 };
 let ssFamille = null;
 let ssMarque = null;
@@ -407,7 +407,7 @@ async function ouvrirJournee(date) {
     // pour être certain à 100% que chaque journée lit ses propres données.
     const snap = await db.collection("days").doc(docId).get({ source: "server" });
 
-    const nouvelleJournee = { date, heuresReelles: null, interventions: [], totalRetours: 0 };
+    const nouvelleJournee = { date, heuresReelles: null, interventions: [], totalRetours: 0, retoursDetails: [] };
     if (snap.exists) {
       const data = snap.data();
       nouvelleJournee.heuresReelles = data.heuresReelles ?? null;
@@ -415,7 +415,16 @@ async function ouvrirJournee(date) {
       // jamais qu'un tableau chargé depuis Firestore puisse être la même
       // référence qu'un tableau utilisé pour une autre journée.
       nouvelleJournee.interventions = (data.interventions || []).map(it => ({ ...it }));
-      nouvelleJournee.totalRetours = data.totalRetours || 0;
+      // Détail des retours (dossier + commentaire). Compat descendante : pour
+      // les anciennes journées enregistrées avec un simple compteur, on
+      // reconstitue des entrées vides afin de conserver le total.
+      if (Array.isArray(data.retoursDetails)) {
+        nouvelleJournee.retoursDetails = data.retoursDetails.map(r => ({ ...r }));
+      } else {
+        const n = data.totalRetours || 0;
+        nouvelleJournee.retoursDetails = Array.from({ length: n }, () => ({ dossier: "", commentaire: "" }));
+      }
+      nouvelleJournee.totalRetours = nouvelleJournee.retoursDetails.length;
     }
 
     let aggregat;
@@ -519,7 +528,28 @@ function renderTopStats() {
 }
 
 function renderRetourCount() {
-  $("retour-count").textContent = currentDay.totalRetours || 0;
+  currentDay.totalRetours = (currentDay.retoursDetails || []).length;
+  $("retour-count").textContent = currentDay.totalRetours;
+
+  const liste = $("retour-liste");
+  if (!liste) return;
+  const details = currentDay.retoursDetails || [];
+  if (details.length === 0) {
+    liste.innerHTML = `<li class="retour-liste-vide">Aucun retour enregistré pour cette journée.</li>`;
+    return;
+  }
+  liste.innerHTML = details.map((r, idx) => `
+    <li class="retour-item">
+      <div class="retour-item-main">
+        <span class="retour-item-dossier">${r.dossier ? escapeHtmlRetour(r.dossier) : "Dossier non renseigné"}</span>
+        ${r.commentaire ? `<span class="retour-item-commentaire">${escapeHtmlRetour(r.commentaire)}</span>` : ""}
+      </div>
+      <button type="button" class="btn btn-ghost retour-item-suppr" data-idx="${idx}" title="Retirer ce retour">✕</button>
+    </li>`).join("");
+}
+
+function escapeHtmlRetour(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
 // ------------------------------------------------------------
@@ -579,7 +609,8 @@ async function persistJournee() {
       totalTempsAlloue: totalTemps,
       totalPieces,
       totalInterventions,
-      totalRetours: currentDay.totalRetours || 0,
+      totalRetours: (currentDay.retoursDetails || []).length,
+      retoursDetails: currentDay.retoursDetails || [],
       efficience,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
@@ -596,13 +627,39 @@ async function persistJournee() {
 // RETOURS ATELIER (compteur indépendant de la journée)
 // ------------------------------------------------------------
 $("btn-retour-plus").addEventListener("click", () => {
-  currentDay.totalRetours = (currentDay.totalRetours || 0) + 1;
+  const errEl = $("retour-error");
+  errEl.textContent = "";
+  const dossier = $("inp-retour-dossier").value.trim();
+  const commentaire = $("inp-retour-commentaire").value.trim();
+
+  if (!dossier) {
+    errEl.textContent = "Merci d'indiquer le n° de dossier concerné par le retour.";
+    return;
+  }
+
+  if (!Array.isArray(currentDay.retoursDetails)) currentDay.retoursDetails = [];
+  currentDay.retoursDetails.push({ dossier, commentaire });
+
+  $("inp-retour-dossier").value = "";
+  $("inp-retour-commentaire").value = "";
   renderRetourCount();
   persistJournee();
 });
 
-$("btn-retour-moins").addEventListener("click", () => {
-  currentDay.totalRetours = Math.max(0, (currentDay.totalRetours || 0) - 1);
+// Ajout via la touche Entrée dans les champs dossier / commentaire
+["inp-retour-dossier", "inp-retour-commentaire"].forEach(id => {
+  $(id).addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); $("btn-retour-plus").click(); }
+  });
+});
+
+// Suppression d'un retour dans la liste
+$("retour-liste").addEventListener("click", (e) => {
+  const btn = e.target.closest(".retour-item-suppr");
+  if (!btn) return;
+  const idx = parseInt(btn.dataset.idx, 10);
+  if (isNaN(idx)) return;
+  currentDay.retoursDetails.splice(idx, 1);
   renderRetourCount();
   persistJournee();
 });

@@ -151,13 +151,25 @@
         </div>
 
         <div class="card retour-card">
-          <h3>Retours atelier — journée</h3>
-          <div class="retour-controls">
-            <button class="btn btn-ghost" id="btn-retour-moins" title="Retirer un retour">−</button>
-            <span class="retour-count" id="retour-count">0</span>
-            <button class="btn btn-ghost" id="btn-retour-plus">+ Retour atelier</button>
+          <div class="form-row" style="justify-content:space-between; align-items:center;">
+            <h3 style="margin:0;">Retours atelier — journée</h3>
+            <span class="retour-count-badge">Total&nbsp;: <span class="retour-count" id="retour-count">0</span></span>
           </div>
-          <p class="hint">À incrémenter chaque fois qu'un appareil déjà réparé revient, indépendamment des interventions du jour.</p>
+          <p class="hint">À enregistrer chaque fois qu'un appareil déjà réparé revient, indépendamment des interventions du jour. Indique le n° de dossier concerné et un commentaire si besoin.</p>
+
+          <div class="form-grid form-grid-secondary">
+            <label>N° de dossier <span class="optional">(concerné par le retour)</span>
+              <input type="text" id="inp-retour-dossier" placeholder="ex: 2026-00451" autocomplete="off">
+            </label>
+            <label>Commentaire <span class="optional">(optionnel)</span>
+              <input type="text" id="inp-retour-commentaire" placeholder="ex: panne identique, pièce défectueuse…" autocomplete="off">
+            </label>
+          </div>
+
+          <button class="btn btn-primary" id="btn-retour-plus">+ Ajouter le retour</button>
+          <p class="form-error" id="retour-error"></p>
+
+          <ul class="retour-liste" id="retour-liste"></ul>
         </div>
 
         <div class="card card-add-inter">
