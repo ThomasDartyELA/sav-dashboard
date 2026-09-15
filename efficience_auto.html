@@ -1,0 +1,2019 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Efficience Atelier — Mois en cours · par Thomas Crastres</title>
+<link rel="icon" href="favicon.png">
+<style>
+  :root{
+    --bg:#f5f5f3; --card-bg:#ffffff;
+    --primary:#E2001A; --primary-dark:#a8000f;
+    --accent:#FFCC00; --accent-dark:#cc9f00;
+    --success:#16a34a; --success-bg:#dcfce7;
+    --warning:#f59e0b; --warning-bg:#fef3c7;
+    --danger:#b91c1c; --danger-bg:#fee2e2;
+    --neutral-bg:#e5e7eb;
+    --text:#1c1c1c; --text-muted:#6b6b6b; --border:#e3e1dc;
+    --radius:12px; --shadow:0 1px 3px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.04);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Segoe UI',Roboto,-apple-system,Arial,sans-serif;background:var(--bg);color:var(--text)}
+  .hidden{display:none !important}
+  a{color:var(--primary)}
+
+  /* TOPBAR */
+  .topbar{display:flex;align-items:center;justify-content:space-between;background:#1c1c1c;
+    border-bottom:4px solid var(--accent);box-shadow:0 0 0 1px rgba(0,0,0,.4) inset,0 2px 0 var(--primary);
+    padding:10px 20px;flex-wrap:wrap;gap:12px;position:sticky;top:0;z-index:10}
+  .topbar-left{display:flex;align-items:center;gap:12px}
+  .topbar-left img{height:30px}
+  .logo{font-weight:700;color:#fff;letter-spacing:.3px}
+  .logo small{display:block;font-weight:400;font-size:.68rem;color:#b9b9b9;letter-spacing:.5px}
+  .topbar-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .user-badge{font-size:.85rem;color:#e6e6e6}
+  .user-badge strong{color:var(--accent)}
+  .mode-pill{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;
+    padding:3px 9px;border-radius:999px;background:var(--primary);color:#fff}
+  .mode-pill.admin{background:var(--accent);color:#1c1c1c}
+  .tbtn{background:transparent;border:1px solid #444;color:#e0e0e0;padding:6px 12px;border-radius:8px;
+    font-size:.8rem;font-weight:600;cursor:pointer;transition:.15s}
+  .tbtn:hover{background:rgba(255,255,255,.12);border-color:#666}
+  .tbtn.accent{background:var(--primary);border-color:var(--primary);color:#fff}
+  .tbtn.accent:hover{background:var(--primary-dark)}
+
+  .main{max-width:1100px;margin:0 auto;padding:22px 20px 60px}
+
+  /* CARDS / FORMS */
+  .card{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:18px 22px;margin-bottom:18px}
+  .card h2{margin:0 0 14px;font-size:1.05rem}
+  .card h3{margin:0 0 10px;font-size:.95rem}
+  .form-row{display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap}
+  label{font-size:.82rem;color:var(--text-muted);display:block}
+  input[type=text],input[type=number],input[type=date],input[type=month],input[type=password]{
+    width:100%;margin-top:6px;padding:9px 11px;border:1px solid var(--border);border-radius:8px;
+    font-size:.92rem;background:#fff;color:var(--text)}
+  input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(226,0,26,.12)}
+  .btn{border:none;border-radius:8px;padding:10px 18px;font-size:.9rem;font-weight:600;cursor:pointer;
+    transition:background .15s ease,transform .05s ease}
+  .btn:active{transform:scale(.97)}
+  .btn-primary{background:var(--primary);color:#fff;box-shadow:0 2px 8px rgba(226,0,26,.25)}
+  .btn-primary:hover{background:var(--primary-dark)}
+  .btn-ghost{background:transparent;color:var(--text-muted);border:1px solid var(--border)}
+  .btn-ghost:hover{background:#eee}
+  .btn-accent{background:var(--accent);color:#1c1c1c}
+  .btn-accent:hover{background:var(--accent-dark)}
+
+  .status{font-size:.85rem;padding:9px 12px;border-radius:8px;margin-top:12px;background:#eef2f7;color:#334155}
+  .status.ok{background:var(--success-bg);color:#166534}
+  .status.warn{background:var(--warning-bg);color:#92400e}
+  .status.err{background:var(--danger-bg);color:#991b1b}
+  .status.load{background:#e0f2fe;color:#075985;animation:statusPulse 1.4s ease-in-out infinite}
+  @keyframes statusPulse{0%,100%{opacity:1}50%{opacity:.62}}
+  /* Spinner inline (dans le statut) */
+  .spin{display:inline-block;width:13px;height:13px;margin-right:7px;vertical-align:-2px;
+    border:2px solid rgba(7,89,133,.25);border-top-color:#0369a1;border-radius:50%;
+    animation:spin .7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  /* Barre de progression indéterminée, fixée en haut de la fenêtre */
+  #load-bar{position:fixed;top:0;left:0;right:0;height:3px;z-index:9999;
+    background:transparent;overflow:hidden;opacity:0;transition:opacity .25s ease;pointer-events:none}
+  #load-bar.on{opacity:1}
+  #load-bar::before{content:"";position:absolute;top:0;height:100%;width:40%;border-radius:3px;
+    background:linear-gradient(90deg,transparent,var(--primary),var(--accent),var(--primary),transparent);
+    animation:loadSlide 1.15s cubic-bezier(.4,0,.2,1) infinite}
+  @keyframes loadSlide{0%{left:-45%}100%{left:105%}}
+  /* Badge des jetons d'actualisation */
+  .jetons-badge{display:inline-block;font-size:.82rem;font-weight:600;padding:6px 12px;border-radius:999px;
+    background:var(--accent);color:#1c1c1c;white-space:nowrap;border:1px solid var(--accent-dark)}
+  .jetons-badge.vide{background:var(--danger-bg);color:var(--danger);border-color:#f3c9c9}
+  .jetons-badge.illim{background:var(--success-bg);color:#166534;border-color:#bbe7c6}
+  .dropzone{border:2px dashed var(--border);border-radius:10px;padding:14px;text-align:center;
+    color:var(--text-muted);font-size:.85rem;cursor:pointer;transition:.15s;margin-top:12px}
+  .dropzone:hover,.dropzone.drag{border-color:var(--primary);background:#fff5f5;color:var(--primary)}
+  .hint{font-size:.8rem;color:var(--text-muted);margin-top:10px;line-height:1.5}
+
+  /* STATS + JAUGE */
+  .jauge-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:18px;margin-bottom:18px}
+  .jauge-card{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:18px 12px;text-align:center}
+  .jauge-circle{--pct:0;width:120px;height:120px;border-radius:50%;margin:0 auto 10px;position:relative;
+    display:flex;align-items:center;justify-content:center;transition:background .4s ease}
+  .jauge-circle::before{content:"";position:absolute;inset:11px;background:var(--card-bg);border-radius:50%}
+  .jauge-vert{background:conic-gradient(var(--success) calc(var(--pct)*1%),var(--neutral-bg) 0)}
+  .jauge-orange{background:conic-gradient(var(--warning) calc(var(--pct)*1%),var(--neutral-bg) 0)}
+  .jauge-rouge{background:conic-gradient(var(--danger) calc(var(--pct)*1%),var(--neutral-bg) 0)}
+  .jauge-neutre{background:conic-gradient(#9ca3af calc(var(--pct)*1%),var(--neutral-bg) 0)}
+  .jauge-value{position:relative;z-index:1;font-size:1.3rem;font-weight:700;color:var(--text)}
+  .jauge-label{font-size:.82rem;color:var(--text-muted);margin-top:2px}
+  .rank{font-size:.8rem;font-weight:700;color:var(--text);margin-top:6px}
+  .rank.top{color:var(--primary)}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;margin-bottom:18px}
+  .stat-card{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:16px 18px;border-left:4px solid var(--border)}
+  .stat-card.b-vert{border-left-color:var(--success)} .stat-card.b-orange{border-left-color:var(--warning)}
+  .stat-card.b-rouge{border-left-color:var(--danger)} .stat-card.b-neutre{border-left-color:var(--border)}
+  .stat-label{font-size:.78rem;color:var(--text-muted);margin-bottom:6px}
+  .stat-value{font-size:1.55rem;font-weight:700;color:var(--primary)}
+  .stat-sub{font-size:.72rem;color:var(--text-muted);margin-top:4px}
+
+  /* ONGLETS internes (Efficience / Retours) */
+  .tabs2{display:flex;gap:6px;margin:2px 0 16px;border-bottom:2px solid var(--border);flex-wrap:wrap}
+  .tab2{background:transparent;border:none;border-bottom:3px solid transparent;margin-bottom:-2px;
+    padding:9px 16px;font-size:.9rem;font-weight:600;color:var(--text-muted);cursor:pointer}
+  .tab2:hover{color:var(--text)}
+  .tab2.active{color:var(--primary);border-bottom-color:var(--primary)}
+
+  /* TABLE */
+  .tbl-wrap{overflow-x:auto}
+  .data-table{width:100%;border-collapse:collapse;font-size:.87rem;min-width:560px}
+  .data-table th,.data-table td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap}
+  .data-table th{color:var(--text-muted);font-weight:600;background:#faf9f7;position:sticky;top:0}
+  .data-table td.num,.data-table th.num{text-align:right;font-variant-numeric:tabular-nums}
+  .data-table tfoot td{background:#f8f7f4;font-weight:700}
+  .data-table tbody tr:hover td{background:#f6f4ef}
+  .data-table tr.row-vert td{background:var(--success-bg)} .data-table tr.row-vert:hover td{background:#c9f2d6}
+  .data-table tr.row-orange td{background:var(--warning-bg)} .data-table tr.row-orange:hover td{background:#fde7ad}
+  .data-table tr.row-rouge td{background:var(--danger-bg)} .data-table tr.row-rouge:hover td{background:#fbd0d0}
+  .data-table input.h-input{width:78px;margin:0;padding:5px 7px;text-align:right}
+  .tag{font-size:.72rem;font-weight:700;padding:2px 7px;border-radius:6px}
+  .tag.tar{background:#dbeafe;color:#1e40af} .tag.tan{background:#fde2e1;color:#9f1239}
+  .tag.ecc{background:var(--success-bg);color:#166534} .tag.zero{background:#eef0f2;color:#64748b}
+  .niveau{display:inline-block;padding:2px 10px;border-radius:12px;font-size:.74rem;font-weight:600}
+  .niveau.vert{background:var(--success-bg);color:#166534} .niveau.orange{background:var(--warning-bg);color:#92400e}
+  .niveau.rouge{background:var(--danger-bg);color:#991b1b} .niveau.neutre{background:var(--neutral-bg);color:#4b5563}
+  .muted{color:var(--text-muted)}
+  .sect-title{font-size:.95rem;font-weight:700;margin:18px 0 8px}
+  .empty{padding:30px;text-align:center;color:var(--text-muted);line-height:1.7}
+  .lnk{color:var(--primary);font-weight:600;text-decoration:none;cursor:pointer}
+  .lnk:hover{text-decoration:underline}
+  details.adv{margin-top:12px;font-size:.85rem}
+  details.adv summary{cursor:pointer;color:var(--primary);font-weight:600}
+  .foot{font-size:.75rem;color:var(--text-muted);text-align:center;margin-top:22px}
+
+  /* MODALS */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;
+    justify-content:center;padding:20px;z-index:100}
+  .modal-box{background:var(--card-bg);border-radius:16px;border-top:6px solid var(--primary);padding:26px;
+    width:100%;max-width:440px;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+  .modal-box h3{margin-top:0}
+  .modal-box.wide-temps{max-width:940px}
+  #tbl-temps input.h-input{width:70px}
+  #tbl-temps th.col-tar,#tbl-temps td.col-tar{background:#eff6ff}
+  #tbl-temps th.col-tan,#tbl-temps td.col-tan{background:#fdf0f1}
+  #tbl-temps th.col-ecc,#tbl-temps td.col-ecc{background:#effdf4}
+  #tbl-temps th.col-tar{color:#1e40af}
+  #tbl-temps th.col-tan{color:#9f1239}
+  #tbl-temps th.col-ecc{color:#166534}
+  #tbl-temps tbody tr:hover td.col-tar{background:#e0edff}
+  #tbl-temps tbody tr:hover td.col-tan{background:#fbe3e6}
+  #tbl-temps tbody tr:hover td.col-ecc{background:#dcfce7}
+  .modal-actions{margin-top:18px;display:flex;justify-content:flex-end;gap:10px}
+  .ss{position:relative}
+  .ss-results{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--card-bg);
+    border:1px solid var(--border);border-radius:8px;max-height:260px;overflow-y:auto;z-index:30;
+    box-shadow:0 8px 20px rgba(0,0,0,.12)}
+  .ss-results div{padding:9px 12px;font-size:.9rem;cursor:pointer}
+  .ss-results div:hover{background:#f3f0e8}
+  .code-msg{color:var(--danger);font-size:.82rem;min-height:1.1em;margin-top:6px}
+  @media(max-width:640px){.stat-value{font-size:1.3rem}}
+</style>
+</head>
+<body>
+
+<!-- ============ MODAL IDENTITÉ ============ -->
+<div id="modal-identite" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h3>Qui êtes-vous ?</h3>
+    <p class="muted" style="margin-top:4px;font-size:.9rem">Sélectionnez votre nom ou votre code technicien.</p>
+    <div class="ss">
+      <input type="text" id="identite-input" placeholder="Nom ou code (ex : DUMONT, L09)" autocomplete="off">
+      <div id="identite-results" class="ss-results hidden"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL CODE 1107 ============ -->
+<div id="modal-code" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h3 id="code-title">Code d'accès</h3>
+    <p class="muted" style="margin-top:4px;font-size:.9rem" id="code-desc"></p>
+    <input type="password" id="code-input" inputmode="numeric" placeholder="Code" autocomplete="off">
+    <div class="code-msg" id="code-msg"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="code-cancel">Annuler</button>
+      <button class="btn btn-primary" id="code-ok">Valider</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL IMPORT HEURES (app SAV) ============ -->
+<div id="modal-import" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h3>Importer les heures de l'app SAV</h3>
+    <p class="muted" style="margin-top:4px;font-size:.88rem">Récupère les heures déjà saisies dans l'ancienne application (Firebase, collection « days ») pour le <strong id="imp-mois"></strong>. Les jours déjà renseignés ici ne sont pas écrasés. Connectez-vous avec un compte de l'app SAV (idéalement le compte admin).</p>
+    <label for="imp-email">Email</label>
+    <input type="text" id="imp-email" autocomplete="off" placeholder="ex : admin@admin.com">
+    <label for="imp-pass" style="margin-top:8px">Mot de passe</label>
+    <input type="password" id="imp-pass" autocomplete="off">
+    <div class="code-msg" id="imp-msg" style="color:var(--text-muted)"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="imp-cancel">Annuler</button>
+      <button class="btn btn-primary" id="imp-run">Importer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL DÉDUCTION DE TEMPS ============ -->
+<div id="modal-deduction" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h3>Ajouter une déduction de temps</h3>
+    <p class="muted" style="margin-top:4px;font-size:.88rem">Déclarez un temps non productif (réunion, formation, panne informatique…). Il sera retiré de vos heures travaillées du jour, ce qui n'ampute pas votre efficience.</p>
+    <label for="ded-date">Date</label>
+    <input type="date" id="ded-date" autocomplete="off">
+    <label for="ded-heures" style="margin-top:8px">Temps déduit (heures)</label>
+    <input type="number" id="ded-heures" min="0" step="0.25" placeholder="ex : 1 ou 0.5" autocomplete="off">
+    <label for="ded-motif" style="margin-top:8px">Motif</label>
+    <input type="text" id="ded-motif" placeholder="ex : Réunion d'équipe" autocomplete="off">
+    <div class="code-msg" id="ded-msg" style="color:var(--text-muted)"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="ded-cancel">Annuler</button>
+      <button class="btn btn-primary" id="ded-ok">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL TEMPS D'EFFICIENCE ============ -->
+<div id="modal-temps" class="modal-overlay hidden">
+  <div class="modal-box wide-temps">
+    <h3>Temps d'efficience — TAR &middot; TAN &middot; ECC</h3>
+    <p class="muted" id="temps-sub" style="margin-top:4px;font-size:.88rem"></p>
+    <input type="text" id="temps-search" placeholder="Rechercher une famille, une marque, une ligne&hellip;" autocomplete="off" style="margin-bottom:10px">
+    <div class="tbl-wrap" style="max-height:58vh;overflow:auto">
+      <table class="data-table" id="tbl-temps">
+        <thead><tr>
+          <th>Ligne</th><th>Famille</th><th>Marque</th>
+          <th class="num col-tar">TAR</th><th class="num col-tan">TAN</th><th class="num col-ecc">ECC</th>
+        </tr></thead>
+        <tbody id="tbl-temps-body"></tbody>
+      </table>
+    </div>
+    <div class="code-msg" id="temps-msg" style="color:var(--text-muted)"></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="temps-close">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL MISE À JOUR DU BARÈME ============ -->
+<div id="modal-maj-temps" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h3>Barème d'efficience mis à jour</h3>
+    <p class="muted" style="margin-top:4px;font-size:.88rem">Des temps ont été modifiés depuis votre dernière ouverture (<span id="maj-temps-count"></span>).</p>
+    <div id="maj-temps-body" style="max-height:50vh;overflow:auto;margin-top:10px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="maj-temps-ok">J'ai compris</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL ENVOI D'INFO (admin) ============ -->
+<div id="modal-envoi-info" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h3>Envoyer une info aux techniciens</h3>
+    <p class="muted" style="margin-top:4px;font-size:.88rem">Ce message s'affichera à l'ouverture de l'application pour tous les techniciens, qui devront le fermer.</p>
+    <label for="info-titre" style="margin-top:8px">Titre (facultatif)</label>
+    <input type="text" id="info-titre" autocomplete="off" placeholder="ex : Nouveau barème de temps">
+    <label for="info-texte" style="margin-top:8px">Message</label>
+    <textarea id="info-texte" rows="5" placeholder="Votre message…" style="width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:8px;font-size:.95rem;font-family:inherit;resize:vertical"></textarea>
+    <div class="code-msg" id="info-msg" style="color:var(--text-muted)"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="info-cancel">Annuler</button>
+      <button class="btn btn-primary" id="info-envoi">Envoyer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL LECTURE D'INFO (au lancement) ============ -->
+<div id="modal-info-lecture" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h3>Information</h3>
+    <div id="info-lec-body" style="max-height:55vh;overflow:auto;margin-top:8px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="info-lec-ok">J'ai compris</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ TOPBAR ============ -->
+<div class="topbar">
+  <div class="topbar-left">
+    <img src="logo-header.png" alt="" onerror="this.style.display='none'">
+    <div class="logo">EFFICIENCE ATELIER<small>ELA LIMONEST · 945056 · Créé par Thomas Crastres<span id="app-version"></span></small></div>
+  </div>
+  <div class="topbar-right">
+    <span class="mode-pill" id="mode-pill">TECHNICIEN</span>
+    <span class="user-badge" id="user-badge">—</span>
+    <button class="tbtn" id="btn-changer">Changer de technicien</button>
+    <button class="tbtn" id="btn-temps">Temps d'efficience</button>
+    <button class="tbtn accent" id="btn-admin">Mode admin</button>
+    <button class="tbtn hidden" id="btn-quit-admin">Quitter l'admin</button>
+    <button class="tbtn accent hidden" id="btn-info-admin">Envoyer une info</button>
+    <button class="tbtn accent hidden" id="btn-jetons-admin">Gérer les jetons</button>
+    <button class="tbtn hidden" id="btn-cache-admin">Vider le cache</button>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- CHARGEMENT -->
+  <section class="card">
+    <div class="form-row">
+      <div style="max-width:190px">
+        <label for="sel-month">Mois</label>
+        <input type="month" id="sel-month">
+      </div>
+      <button class="btn btn-primary" id="btn-refresh">Actualiser le mois</button>
+      <input type="file" id="file-input" accept=".xlsx,.xls" hidden>
+      <div style="align-self:center">
+        <span id="jetons-badge" class="jetons-badge">—</span>
+      </div>
+    </div>
+    <div id="src-status" class="status load">Choisissez le mois puis « Actualiser ».</div>
+    <div id="autorefresh-info" class="hint" style="margin-top:8px"></div>
+    <details class="adv" style="margin-top:14px">
+      <summary>Options avancées (import manuel &amp; source des données)</summary>
+      <div style="margin-top:12px">
+        <div class="hint" style="margin-top:0">Réservé aux cas où le flux automatique est indisponible. En temps normal, laissez l'actualisation automatique faire le travail.</div>
+        <button class="btn btn-ghost" id="btn-import" style="margin-top:10px;font-size:.82rem;padding:8px 12px">Importer un Excel manuellement</button>
+        <div class="dropzone" id="dropzone" style="margin-top:10px;padding:10px;font-size:.8rem">Glissez ici un export Excel — ou cliquez pour parcourir.</div>
+        <div style="margin-top:12px"><label for="flux-url">URL du flux ATOM (SSRS)</label>
+        <input type="text" id="flux-url" spellcheck="false"></div>
+      </div>
+    </details>
+  </section>
+
+  <!-- VUE TECHNICIEN -->
+  <div id="view-tech">
+    <section class="card" id="tech-empty-card">
+      <div class="empty" id="tech-empty">Chargez le mois pour afficher votre bilan.</div>
+    </section>
+
+    <section class="card hidden" id="tech-results">
+      <button class="btn btn-ghost hidden" id="btn-back-admin" style="margin-bottom:12px">← Retour à la vue admin</button>
+      <h2 id="tech-title">Bilan du mois</h2>
+      <div class="tabs2">
+        <button class="tab2 active" data-tab="eff">Efficience &amp; pièces</button>
+        <button class="tab2" data-tab="ret">Retours atelier</button>
+        <button class="tab2" data-tab="nps">Satisfaction (NPS)</button>
+      </div>
+
+      <div id="tab-eff">
+      <div class="jauge-grid" id="tech-jauges"></div>
+      <div class="stat-grid" id="tech-stats"></div>
+
+      <div class="sect-title">Saisie des heures — un jour par ligne</div>
+      <div class="hint" style="margin-top:0">Indiquez votre temps de travail réel pour chaque jour. Seuls les jours renseignés comptent dans l'efficience du mois. La saisie est enregistrée automatiquement.</div>
+      <div class="tbl-wrap">
+        <table class="data-table" id="tbl-jours">
+          <thead><tr>
+            <th>Date</th><th class="num">Interv.</th><th class="num">Pièces</th>
+            <th class="num">Temps alloué</th><th class="num">Heures travaillées</th>
+            <th class="num">Efficience jour</th><th class="num">Conso jour</th>
+          </tr></thead>
+          <tbody id="tbl-jours-body"></tbody>
+          <tfoot id="tbl-jours-foot"></tfoot>
+        </table>
+      </div>
+
+      <div class="sect-title" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <span>Déductions de temps</span>
+        <button class="btn btn-accent" id="btn-add-deduction" style="font-size:.82rem;padding:8px 14px">＋ Ajouter une déduction</button>
+      </div>
+      <div class="hint" style="margin-top:0">Temps non productif (réunion, formation…) retiré de vos heures travaillées. Chaque déduction est visible par le service qui suit la production.</div>
+      <div class="tbl-wrap">
+        <table class="data-table" id="tbl-deductions">
+          <thead><tr>
+            <th>Date</th><th class="num">Heures déduites</th><th>Motif</th><th></th>
+          </tr></thead>
+          <tbody id="tbl-deductions-body"></tbody>
+        </table>
+      </div>
+
+      <div class="sect-title">Détail des interventions <span id="detail-filtre" class="muted" style="font-weight:400;font-size:.85rem"></span></div>
+      <div class="tbl-wrap">
+        <table class="data-table" id="tbl-detail">
+          <thead><tr>
+            <th>Date</th><th>N° dossier</th><th>Famille</th><th>Marque</th><th>Codic</th>
+            <th class="num">Pièces</th><th>Topage</th><th class="num">Temps alloué</th>
+          </tr></thead>
+          <tbody id="tbl-detail-body"></tbody>
+        </table>
+      </div>
+      </div><!-- /tab-eff -->
+
+      <div id="tab-ret" class="hidden">
+        <div class="jauge-grid" id="ret-jauges"></div>
+        <div class="stat-grid" id="ret-stats"></div>
+        <div class="sect-title">Détail des retours du mois</div>
+        <div class="hint" style="margin-top:0">Un retour = un appareil que vous aviez réparé, revenu en panne sous 30 jours — peu importe qui a clôturé la 2ᵉ intervention.</div>
+        <div class="tbl-wrap">
+          <table class="data-table" id="tbl-retours">
+            <thead><tr>
+              <th>Date retour</th><th>N° dossier</th><th>Marque</th><th>Famille</th><th>Code clôture</th>
+            </tr></thead>
+            <tbody id="tbl-retours-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="tab-nps" class="hidden">
+        <div class="jauge-grid" id="nps-jauges"></div>
+        <div class="stat-grid" id="nps-stats"></div>
+        <div class="sect-title">Commentaires clients</div>
+        <div class="hint" style="margin-top:0">Avis laissés par les clients sur vos interventions (enquête NPS, export en cours). Note sur 10.</div>
+        <div class="tbl-wrap">
+          <table class="data-table" id="tbl-nps">
+            <thead><tr>
+              <th>Note</th><th>N° dossier</th><th>Commentaire</th>
+            </tr></thead>
+            <tbody id="tbl-nps-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- VUE ADMIN -->
+  <div id="view-admin" class="hidden">
+    <section class="card">
+      <h2 style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <span>Vue admin — tous les collaborateurs</span>
+        <button class="btn btn-ghost" id="btn-import-sav" style="font-size:.78rem;padding:8px 12px">⇩ Importer les heures de l'app SAV</button>
+      </h2>
+      <div class="hint" style="margin-top:0">Interventions, pièces et temps alloué s'affichent pour tous. L'efficience nécessite les heures saisies (n/c sinon). Cliquez un nom pour voir le détail d'un technicien.</div>
+      <div class="stat-grid" id="admin-stats"></div>
+      <div class="tbl-wrap">
+        <table class="data-table" id="tbl-admin">
+          <thead><tr>
+            <th>Code</th><th>Technicien</th><th class="num">Jours saisis</th><th class="num">Interv.</th>
+            <th class="num">Pièces</th><th class="num">Temps alloué</th><th class="num">Heures</th>
+            <th class="num">Efficience</th><th class="num">Conso pièces</th>
+            <th class="num">Retours</th><th class="num">Taux retour</th>
+          </tr></thead>
+          <tbody id="tbl-admin-body"></tbody>
+          <tfoot id="tbl-admin-foot"></tfoot>
+        </table>
+      </div>
+    </section>
+
+    <!-- RUBRIQUE DÉDUCTIONS (suivi superviseur) -->
+    <section class="card">
+      <h2 style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <span>Déductions de temps déclarées</span>
+        <span class="muted" id="deduc-resume" style="font-size:.82rem;font-weight:400"></span>
+      </h2>
+      <div class="hint" style="margin-top:0">Chaque temps non productif déclaré par un technicien (réunion, formation…), retiré de ses heures travaillées. Filtrez par technicien et supprimez une ligne si besoin.</div>
+      <div class="form-row" style="margin:4px 0 12px">
+        <div style="max-width:280px">
+          <label for="deduc-filtre-tech">Filtrer par technicien</label>
+          <select id="deduc-filtre-tech" style="width:100%;margin-top:6px;padding:9px 11px;border:1px solid var(--border);border-radius:8px;font-size:.92rem;background:#fff;color:var(--text)"></select>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table class="data-table" id="tbl-admin-deduc">
+          <thead><tr>
+            <th>Technicien</th><th>Date</th><th class="num">Heures</th><th>Motif</th><th></th>
+          </tr></thead>
+          <tbody id="tbl-admin-deduc-body"></tbody>
+          <tfoot id="tbl-admin-deduc-foot"></tfoot>
+        </table>
+      </div>
+    </section>
+  </div>
+
+</div>
+
+<div class="foot">Version test — calcul automatique mensuel. Sources : flux NOMAD ATELIER + BDD Efficience (détail 2 / détail 3).<br><strong style="color:#111;font-size:.95rem">Logiciel créé par Thomas Crastres</strong></div>
+
+<!-- Firebase (même projet que l'app — stockage des heures, optionnel) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<!-- Librairies du projet (dossier js/) -->
+<script src="js/xlsx.full.min.js"></script>
+<script src="js/data-temps.js"></script>
+<script>
+/* ============================================================
+   RÉFÉRENTIEL TECHNICIENS (code ↔ nom)
+   ============================================================ */
+const TECHNICIENS = [
+ {code:"L71",nom:"LOUKAS NICOSIA"},{code:"L78",nom:"MAUDE NADE"},{code:"L07",nom:"REMI PRINTEMPS"},
+ {code:"L22",nom:"LUCAS SUAREZ"},{code:"L03",nom:"PIERRE AL GAIFFIER"},{code:"L23",nom:"MYKERI DARIUS"},
+ {code:"L38",nom:"THOMAS CRASTRES"},{code:"L47",nom:"CEDRIC RAYDELET"},{code:"L24",nom:"STEPHANE VENET"},
+ {code:"L25",nom:"SEBASTIEN DUCHASSIN"},{code:"L50",nom:"EMERIK CHEVALLIER"},{code:"L91",nom:"YASSINE BACHIRI"},
+ {code:"L27",nom:"FABRICE THOMASSON"},{code:"L81",nom:"CATHY GERLAND"},{code:"L04",nom:"PHLIPPE TRONEL"},
+ {code:"L35",nom:"EDITH BURON"},{code:"L32",nom:"CHRISTOPH LAROCHE"},{code:"L84",nom:"FREDERIC JOZEAU"},
+ {code:"L82",nom:"LUDOVIC GOIN"},{code:"OBE",nom:"BE OPERATION"},{code:"L19",nom:"LOIC JACOMINO"},
+ {code:"L72",nom:"XAVIER KIRMSER"},{code:"L74",nom:"LUCAS FENEON"},{code:"VD1",nom:"VERO-TEST DELHOME"},
+ {code:"L76",nom:"PIERRE LANFRAY"},{code:"L05",nom:"PHILIPPE FLORIT"},{code:"L15",nom:"BENOIT CHEVROT"},
+ {code:"L17",nom:"ALAIN MONNET"},{code:"L51",nom:"GERARD GIRE"},{code:"L87",nom:"LOYD FARLEY"},
+ {code:"331",nom:"GILLES DENOYEL"},{code:"L44",nom:"DAMIEN CHAGNON"},{code:"L28",nom:"LUCAS ANTON"},
+ {code:"L46",nom:"CHLOE CASTILLO"},{code:"L75",nom:"LYDIE COURLE"},{code:"L79",nom:"PHILIPPE MOLARD"},
+ {code:"L06",nom:"HUGO FESTAZ"},{code:"L09",nom:"PIERRE DUMONT"},{code:"L16",nom:"JONATHAN LYONNET"},
+ {code:"L65",nom:"HAIDAR ABDALLAHUSSEIN"},{code:"L26",nom:"GEORGES CALDERON"},{code:"L31",nom:"PIERRE STURM"},
+ {code:"L69",nom:"MATHIS BIANCHI"},{code:"L88",nom:"NATHAN PRINTZ"},{code:"L08",nom:"CHRISTIAN REYNIER"},
+ {code:"L14",nom:"SYLVAIN GOUJON"},{code:"L43",nom:"HOUSSAM BOUTERRA"},{code:"L41",nom:"ALEXANDRE SILES"},
+ {code:"L77",nom:"GUILLAUME MOINET"},{code:"L70",nom:"RAPHAEL CEGERRA"},{code:"L80",nom:"RICARDO SOUSA"},
+ {code:"L48",nom:"EMMANUEL DUCHESNE"},{code:"L10",nom:"JJ RIVAL"},{code:"L11",nom:"JOSE GARCIA"}
+];
+const TECH_BY_CODE={}; TECHNICIENS.forEach(t=>TECH_BY_CODE[t.code]=t);
+/* Superviseurs : accès admin, suivent les déductions. Non listés dans les tableaux techniciens. */
+const SUPERVISEURS=[{code:"VFE",nom:"VERONIQUE FESTAZ"}];
+SUPERVISEURS.forEach(s=>TECH_BY_CODE[s.code]=s);
+function estSuperviseur(code){ return SUPERVISEURS.some(s=>s.code===code); }
+function nomDe(code){ const t=TECH_BY_CODE[code]; return t?t.nom:code; }
+function techsTries(){ return TECHNICIENS.slice().sort((a,b)=>a.nom.localeCompare(b.nom,"fr")); }
+/* Liste du sélecteur d'identité : superviseurs en tête, puis techniciens triés. */
+function identiteTries(){ return SUPERVISEURS.concat(techsTries()); }
+/* Normalise un nom en ensemble de mots trié (sans accents/casse/ordre) pour le rapprochement */
+function techNormMots(s){return (s||"").toString().normalize("NFD").replace(/[̀-ͯ]/g,"")
+  .toUpperCase().replace(/[-']/g," ").split(/\s+/).filter(Boolean).sort().join(" ");}
+const _NOM2CODE={}; TECHNICIENS.forEach(t=>_NOM2CODE[techNormMots(t.nom)]=t.code);
+function codeParNom(nom){ return nom?(_NOM2CODE[techNormMots(nom)]||null):null; }
+
+/* ============================================================
+   CONFIG FLUX + CHAMPS
+   ============================================================ */
+const FLUX_URL="http://195.51.51.24/ReportServer_PILOTAGE?%2FNOMAD%20Reporting%20RE7%2FATELIER%2FFLUX%20SORTIE%20NOMAD%20ATELIER&DATE_TERM_ATL_deb=07%2F01%2F2026%2000%3A00%3A00&DATE_TERM_ATL_fin=12%2F31%2F2026%2000%3A00%3A00&LIEU_TRAIT=945056&CODE_SOC_LIEU=945056&CODE_LIEU=56&CODE_LIEU_2=56&CODE_SOCIETE=945&rs%3AParameterLanguage=&rs%3ACommand=Render&rs%3AFormat=ATOM&rc%3AItemPath=Tablix1";
+const F={dossier:"NUM_DOS_NOMAD",famille:"FAMILLE",marque:"MARQUE",codic:"APPAREIL_CODIC",
+  nbPieces:"NB_PIECES_UTILISEES",topage:"COPER_TERM_ATL",tech:"CODE_TECH_TOPAGE_TAR_TAN",
+  dateCode:"DATE_CODE_TERM_ATL",dateTermine:"DATE_TERMINE_ATELIER1"};
+/* Flux RETOURS ATELIER (2e rapport SSRS) — champs par nom de colonne */
+// Flux RETOURS mis à jour le 2026-09-15 : le rapport source est passé de
+// RETOURS_ATELIER à RETOURS_ATELIER_2 (les dates sont réécrites par buildFluxUrlRetour).
+const FLUX_URL_RETOUR="http://195.51.51.24/ReportServer_PILOTAGE?%2FNOMAD%20Reporting%20RE7%2FADMIN%2FRETOURS_ATELIER_2&DATE_TERM_ATL_DEBUT=09%2F01%2F2026%2000%3A00%3A00&DATE_TERM_ATL_FIN=12%2F31%2F2027%2000%3A00%3A00&ADD_PERIOD=30&LIEU_TRAIT=945056&CODE_LIEU=56&CODE_SOCIETE=945&rs%3AParameterLanguage=&rs%3ACommand=Render&rs%3AFormat=ATOM&rc%3AItemPath=table1";
+const RETOUR_FILE="retour-atelier.xlsx";
+const FR={dossier:"NUM_DOS_NOMAD",marque:"MARQUE",famille:"FAMILLE",code:"COPER_TERM_ATL",
+  date:"DATE_TERMINE_ATELIER",techPrec:"NOM_TECH_AFN_PREC"};
+/* NPS — fichier lu directement depuis GitHub (raw, branche main : suit tes mises à jour) */
+const NPS_URL="https://raw.githubusercontent.com/ThomasDartyELA/sav-dashboard/main/nps-export.xlsx";
+const NPS_COL={date:0,tech:8,dossier:9,note:16,commentaire:17};
+const SEUILS={efficience:{sens:"haut",bon:93,moyen:78},conso:{sens:"bas",bon:1.10,moyen:1.40},
+  tauxRetour:{sens:"bas",bon:5,moyen:7},nps:{sens:"haut",bon:50,moyen:0}};
+const CODE_ACCES="1107";
+
+/* ============ INDEX DES TEMPS (BDD) ============ */
+const IDX1={},IDX2={},IDX3={};
+(window.TEMPS_DETAIL1||[]).forEach(d=>IDX1[normCodic(d.codic)]=d);
+(window.TEMPS_DETAIL2||[]).forEach(d=>IDX2[`${d.fam}|${d.marque}`]=d);
+(window.TEMPS_DETAIL3||[]).forEach(d=>IDX3[d.fam]=d);
+function norm(s){return (s==null?"":String(s)).trim().toUpperCase();}
+/* ============ RÈGLES MÉTIER TOPAGE (ELA) ============
+   Catégorie effective d'un code de topage, source unique de vérité :
+   - SCC compté comme ECC
+   - ECC et ETC = ECC
+   - topage VIDE = carte cadeau Darty Max => compté comme TAN
+   - RRR : affiché mais compte 0 (ce n'est pas une réparation)
+   - autre code inconnu : affiché, compte 0
+   Renvoie : "TAR" | "TAN" | "ECC" | "RRR" | "" (autre) */
+function categorieTopage(topage){
+  const t=norm(topage);
+  if(t==="")return "TAN";                              // carte cadeau Darty Max
+  if(t==="TAR")return "TAR";
+  if(t==="TAN")return "TAN";
+  if(t==="ECC"||t==="ETC"||t==="SCC")return "ECC";     // SCC assimilé à ECC
+  if(t==="RRR")return "RRR";                           // affiché, compte 0
+  return "";                                           // autre : compte 0
+}
+/* Est-ce une réparation qui compte (temps alloué + volume) ? RRR/inconnu = non. */
+function estReparation(topage){const c=categorieTopage(topage);return c==="TAR"||c==="TAN"||c==="ECC";}
+/* Libellé affiché dans le tableau détail (le vide = carte cadeau Darty Max). */
+function labelTopage(topage){const t=norm(topage);return t===""?"Carte cadeau":t;}
+/* Classe CSS de la pastille selon la catégorie effective. */
+function classeTopage(topage){const c=categorieTopage(topage);return c==="TAR"?"tar":c==="TAN"?"tan":c==="ECC"?"ecc":"zero";}
+function normCodic(x){return String(x==null?"":x).replace(/\D/g,"");}
+function tempsAlloue(fam,marque,topage,codic){
+  const cat=categorieTopage(topage);let key=null;
+  if(cat==="TAR")key="tar";else if(cat==="TAN")key="tan";else if(cat==="ECC")key="etc";
+  if(!key)return{temps:0,source: cat==="RRR" ? "RRR (compte 0)" : "— (topage "+(norm(topage)||"vide")+")"};
+  fam=norm(fam);marque=norm(marque);
+  const c=normCodic(codic);
+  if(c){const d1=IDX1[c];if(d1&&typeof d1[key]==="number")return{temps:d1[key],source:"CODIC"};}
+  if(marque){const d=IDX2[`${fam}|${marque}`];if(d&&typeof d[key]==="number")return{temps:d[key],source:"Famille + Marque"};}
+  const d3=IDX3[fam];if(d3&&typeof d3[key]==="number")return{temps:d3[key],source:"Famille (générique)"};
+  return{temps:0,source:"⚠ temps introuvable"};
+}
+function niveau(metric,val){
+  if(val==null||isNaN(val))return"neutre";const s=SEUILS[metric];if(!s)return"neutre";
+  if(s.sens==="haut")return val>=s.bon?"vert":val>=s.moyen?"orange":"rouge";
+  return val<=s.bon?"vert":val<=s.moyen?"orange":"rouge";
+}
+
+/* ============ ÉTAT ============ */
+const $=s=>document.querySelector(s);
+/* Version applicative — à incrémenter à chaque publication sur GitHub.
+   Affichée discrètement dans la barre du haut pour vérifier que les postes
+   ont bien reçu la dernière version (mise à jour auto au lancement). */
+const APP_VERSION="2026.09.16-TEST ✅ (mise à jour auto OK)";
+(function(){const v=document.getElementById("app-version");if(v)v.textContent=" · v"+APP_VERSION;})();
+let ROWS=[];                 // interventions du mois chargé
+let ROWS_RETOUR=[];          // retours du mois chargé (appareils revenus < 30 j)
+let RETOUR_LOADED=false;     // le flux retours a-t-il été chargé ?
+let ROWS_NPS=[];             // réponses NPS du mois chargé
+let NPS_LOADED=false;        // le fichier NPS a-t-il été chargé ?
+let TAB="eff";               // onglet actif vue technicien : "eff" | "ret" | "nps"
+let IDENTITY=null;           // code technicien courant
+let MODE="tech";             // "tech" | "admin"
+let DETAIL_JOUR=null;        // filtre jour du tableau détail (null = tout le mois)
+let ADMIN_FOCUS=null;        // en admin : code d'un tech affiché en détail (drill-down)
+let ADMIN_DEDUC_FILTER="";   // rubrique déductions admin : code tech filtré ("" = tous)
+let VIEW_CODE=null;          // code actuellement affiché dans la vue technicien
+
+/* ============ STOCKAGE (identité) ============ */
+const LS_ID="eff_identity";
+function memGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function memSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+
+/* ============ STOCKAGE DES HEURES ============
+   Priorité : Firebase (partagé entre postes + admin) ; repli : localStorage.
+   Un cache mémoire (HCACHE) permet un rendu synchrone. */
+const FIREBASE_CONFIG={
+  apiKey:"AIzaSyBIYalHJmKuYPCuMp4gNG3C-H7phpC-rvk",
+  authDomain:"efficience-atelier.firebaseapp.com",
+  projectId:"efficience-atelier",
+  storageBucket:"efficience-atelier.firebasestorage.app",
+  messagingSenderId:"928801038925",
+  appId:"1:928801038925:web:c46971ece9cc804b4c3204"
+};
+const COLL_HEURES="heures_efficience";
+let FB=null;                 // instance Firestore si disponible
+const HCACHE={};             // {clé -> heures} hydraté depuis Firebase/localStorage
+function hKey(code,date){return `eff_h_${code}_${date}`;}
+
+function initFirebase(){
+  if(typeof firebase==="undefined")return false;
+  try{
+    if(!firebase.apps||!firebase.apps.length)firebase.initializeApp(FIREBASE_CONFIG);
+    FB=firebase.firestore();
+    return true;
+  }catch(e){console.warn("Firebase indisponible — mode local :",e);FB=null;return false;}
+}
+/* Charge toutes les heures d'un mois (tous techs) depuis Firebase dans le cache */
+async function hydrateHours(ym){
+  if(!FB)return;
+  try{
+    const snap=await FB.collection(COLL_HEURES).where("mois","==",ym).get();
+    snap.forEach(doc=>{const d=doc.data();if(d&&d.code&&d.date&&d.heures!=null)HCACHE[hKey(d.code,d.date)]=d.heures;});
+  }catch(e){console.warn("Lecture Firestore échouée — mode local :",e);}
+}
+function hoursGet(code,date){
+  const k=hKey(code,date);
+  let v=(k in HCACHE)?HCACHE[k]:memGet(k);
+  return v==null||v===""?null:parseFloat(v);
+}
+function hoursSet(code,date,val){
+  const k=hKey(code,date);
+  if(val==null||val===""){
+    delete HCACHE[k];try{localStorage.removeItem(k);}catch(e){}
+    if(FB)FB.collection(COLL_HEURES).doc(`${code}_${date}`).delete().catch(e=>console.warn("Suppr Firestore:",e));
+  }else{
+    const num=parseFloat(val);HCACHE[k]=num;memSet(k,String(num));
+    if(FB)FB.collection(COLL_HEURES).doc(`${code}_${date}`)
+      .set({code,date,mois:date.slice(0,7),heures:num,updatedAt:Date.now()})
+      .catch(e=>console.warn("Écriture Firestore:",e));
+  }
+}
+
+/* ============ STOCKAGE DES DÉDUCTIONS DE TEMPS ============
+   Une déduction = temps non productif (réunion, formation…) que le tech déclare.
+   Elle est retirée des heures travaillées du jour concerné (donc remonte l'efficience).
+   Priorité Firebase (partagé -> visible par Véronique) ; repli localStorage.
+   Chaque déduction : {id, code, date, mois, heures, motif, createdAt}. */
+const COLL_DEDUC="deductions_efficience";
+let DEDUCTIONS=[];                 // déductions du mois chargé (tous techs)
+function lsDeducKey(ym){return "eff_deduc_"+ym;}
+function lsDeducSave(ym){try{localStorage.setItem(lsDeducKey(ym),JSON.stringify(DEDUCTIONS));}catch(e){}}
+function lsDeducLoad(ym){try{const v=localStorage.getItem(lsDeducKey(ym));return v?JSON.parse(v):[];}catch(e){return [];}}
+/* Charge les déductions d'un mois (tous techs) depuis Firebase, repli localStorage. */
+async function hydrateDeductions(ym){
+  if(FB){
+    try{
+      const snap=await FB.collection(COLL_DEDUC).where("mois","==",ym).get();
+      const arr=[];snap.forEach(doc=>{const d=doc.data();if(d&&d.code&&d.date)arr.push({id:doc.id,...d});});
+      DEDUCTIONS=arr;lsDeducSave(ym);return;
+    }catch(e){console.warn("Lecture déductions Firestore échouée — mode local :",e);}
+  }
+  DEDUCTIONS=lsDeducLoad(ym);
+}
+function deductionsDe(code){return DEDUCTIONS.filter(d=>d.code===code);}
+function deductionJourSum(code,date){
+  return DEDUCTIONS.filter(d=>d.code===code&&d.date===date)
+    .reduce((s,d)=>s+(parseFloat(d.heures)||0),0);
+}
+function deductionsTotal(code){
+  return deductionsDe(code).reduce((s,d)=>s+(parseFloat(d.heures)||0),0);
+}
+/* Ajoute une déduction (écrit Firebase + local). Renvoie une promesse. */
+async function addDeduction(code,date,heures,motif){
+  const mois=date.slice(0,7);const h=parseFloat(heures)||0;
+  const rec={code,date,mois,heures:h,motif:(motif||"").trim(),createdAt:Date.now()};
+  let id="d_"+code+"_"+date+"_"+rec.createdAt;
+  if(FB){
+    try{const ref=await FB.collection(COLL_DEDUC).add(rec);id=ref.id;}
+    catch(e){console.warn("Écriture déduction Firestore:",e);}
+  }
+  DEDUCTIONS.push({id,...rec});lsDeducSave(mois);
+}
+/* Supprime une déduction par id. */
+async function deleteDeduction(id){
+  const d=DEDUCTIONS.find(x=>x.id===id);
+  if(FB&&id&&!id.startsWith("d_")){try{await FB.collection(COLL_DEDUC).doc(id).delete();}catch(e){console.warn("Suppr déduction Firestore:",e);}}
+  DEDUCTIONS=DEDUCTIONS.filter(x=>x.id!==id);
+  if(d)lsDeducSave(d.mois);
+}
+
+/* ============ JETONS D'ACTUALISATION ============
+   Chaque « Actualiser » coûte 1 jeton. 3 jetons/tech/jour, remis à 3 chaque nuit.
+   Admin (mode admin ou superviseur) : illimité, et peut créditer des jetons.
+   Stockage Firestore (partagé + résistant à la triche) :
+   - doc `<code>_<date>`  : {code, date, utilises, bonus}   (par technicien)
+   - doc `_ALL_<date>`    : {bonus}                          (bonus équipe entière)
+   restants = 3 + bonusPerso + bonusEquipe - utilises. */
+const COLL_JETONS="jetons_efficience";
+const JETONS_BASE=3;
+let JETONS_RESTANTS=JETONS_BASE, JETONS_UTILISES=0;
+function estAdminJetons(){ return MODE==="admin" || estSuperviseur(IDENTITY); }
+function jetonDocId(code,date){ return `${code}_${date}`; }
+function jetonAllId(date){ return `_ALL_${date}`; }
+
+/* Lit le solde du tech courant pour aujourd'hui. */
+async function chargerJetons(){
+  JETONS_RESTANTS=JETONS_BASE; JETONS_UTILISES=0;
+  if(FB && IDENTITY && !estAdminJetons()){
+    const date=isoLocal(new Date());
+    try{
+      const [p,a]=await Promise.all([
+        FB.collection(COLL_JETONS).doc(jetonDocId(IDENTITY,date)).get(),
+        FB.collection(COLL_JETONS).doc(jetonAllId(date)).get()
+      ]);
+      const perso=p.exists?p.data():{}, all=a.exists?a.data():{};
+      JETONS_UTILISES=perso.utilises||0;
+      JETONS_RESTANTS=Math.max(0, JETONS_BASE+(perso.bonus||0)+(all.bonus||0)-JETONS_UTILISES);
+    }catch(e){ console.warn("Lecture jetons échouée :",e); }
+  }
+  majJetonsUI();
+}
+
+/* Écoute en temps réel le solde du tech courant : si un admin crédite des jetons,
+   le badge se met à jour tout seul sans rouvrir l'appli. */
+let JETON_UNSUB=[];
+function ecouterJetons(){
+  JETON_UNSUB.forEach(u=>{try{u&&u();}catch(e){}}); JETON_UNSUB=[];
+  if(!FB || !IDENTITY || estAdminJetons()) return;
+  const date=isoLocal(new Date());
+  try{
+    JETON_UNSUB.push(FB.collection(COLL_JETONS).doc(jetonDocId(IDENTITY,date)).onSnapshot(()=>chargerJetons(),()=>{}));
+    JETON_UNSUB.push(FB.collection(COLL_JETONS).doc(jetonAllId(date)).onSnapshot(()=>chargerJetons(),()=>{}));
+  }catch(e){ console.warn("Écoute jetons impossible :",e); }
+}
+
+/* Consomme 1 jeton via une écriture atomique (increment), comme la distribution
+   admin qui fonctionne. Le solde a déjà été vérifié > 0 par l'appelant. */
+async function consommerJeton(){
+  if(estAdminJetons()) return true;         // admin illimité
+  if(!FB) return true;                       // sans Firestore : on ne bloque pas
+  const date=isoLocal(new Date());
+  try{
+    await FB.collection(COLL_JETONS).doc(jetonDocId(IDENTITY,date))
+      .set({code:IDENTITY,date,utilises:firebase.firestore.FieldValue.increment(1)},{merge:true});
+  }catch(e){ console.warn("Consommation jeton échouée :",e); }
+  return true;
+}
+
+/* Met à jour le badge + l'état du bouton Actualiser selon le solde. */
+function majJetonsUI(){
+  const badge=$("#jetons-badge"), btn=$("#btn-refresh"), hint=$("#autorefresh-info");
+  const admin=estAdminJetons();
+  if(badge){
+    if(admin){ badge.textContent="Actualisations illimitées (admin)"; badge.className="jetons-badge illim"; }
+    else{
+      const n=JETONS_RESTANTS;
+      badge.textContent=`🎫 ${n} actualisation${n>1?"s":""} restante${n>1?"s":""} aujourd'hui`;
+      badge.className="jetons-badge"+(n<=0?" vide":"");
+    }
+  }
+  if(hint) hint.textContent=admin
+    ? "Mode admin : actualisations illimitées. Bouton « Gérer les jetons » pour en distribuer."
+    : "Chaque « Actualiser » consomme 1 jeton. 3 jetons par jour, remis à zéro chaque nuit.";
+  if(btn){
+    const bloque=!admin && JETONS_RESTANTS<=0;
+    btn.disabled=bloque;
+    btn.title=bloque?"Plus de jetons aujourd'hui — demandez à un responsable ou revenez demain.":"";
+  }
+}
+
+/* Bouton Actualiser : consomme un jeton puis lance un rafraîchissement INTELLIGENT. */
+async function actualiserAvecJeton(){
+  if(!estAdminJetons()){
+    if(JETONS_RESTANTS<=0){ majJetonsUI(); return; }
+    const ok=await consommerJeton();
+    if(!ok){ await chargerJetons(); alert("Plus de jetons pour aujourd'hui.\nDemandez à un responsable d'en ajouter, ou revenez demain."); return; }
+    await chargerJetons();                    // rafraîchit le solde affiché
+  }
+  chargerAuto(false);                          // refresh intelligent : ne charge que le nécessaire
+}
+
+/* ---- Distribution des jetons (admin) ---- */
+async function crediterJetons(code,nb){
+  if(!FB) throw new Error("Firestore indisponible");
+  const date=isoLocal(new Date());
+  const inc=firebase.firestore.FieldValue.increment(nb);
+  if(code==="__ALL__") await FB.collection(COLL_JETONS).doc(jetonAllId(date)).set({date,bonus:inc},{merge:true});
+  else await FB.collection(COLL_JETONS).doc(jetonDocId(code,date)).set({code,date,bonus:inc},{merge:true});
+}
+function ouvrirModalJetons(){
+  let m=document.getElementById("modal-jetons");
+  if(!m){
+    m=document.createElement("div"); m.id="modal-jetons"; m.className="modal-overlay hidden";
+    m.innerHTML=`<div class="modal-box">
+      <h3>Distribuer des jetons</h3>
+      <p class="muted" style="margin-top:4px;font-size:.88rem">Ajoute des jetons d'actualisation pour aujourd'hui. Tout repart à ${JETONS_BASE} demain.</p>
+      <label for="jet-cible">Bénéficiaire</label>
+      <select id="jet-cible" style="width:100%;margin-top:6px;padding:9px 11px;border:1px solid var(--border);border-radius:8px;font-size:.92rem;background:#fff;color:var(--text)"></select>
+      <label for="jet-nb" style="margin-top:8px">Nombre de jetons à ajouter</label>
+      <input type="number" id="jet-nb" min="1" step="1" value="3" autocomplete="off">
+      <div class="code-msg" id="jet-msg" style="margin-top:8px;color:var(--text-muted)"></div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="jet-cancel">Fermer</button>
+        <button class="btn btn-primary" id="jet-ok">Créditer</button>
+      </div></div>`;
+    document.body.appendChild(m);
+    m.addEventListener("click",e=>{ if(e.target===m) m.classList.add("hidden"); });
+    m.querySelector("#jet-cancel").addEventListener("click",()=>m.classList.add("hidden"));
+    m.querySelector("#jet-ok").addEventListener("click",validerCreditJetons);
+  }
+  m.querySelector("#jet-cible").innerHTML=`<option value="__ALL__">⭐ Toute l'équipe</option>`+
+    techsTries().map(t=>`<option value="${t.code}">${t.nom} (${t.code})</option>`).join("");
+  m.querySelector("#jet-msg").textContent="";
+  m.classList.remove("hidden");
+}
+async function validerCreditJetons(){
+  const m=document.getElementById("modal-jetons");
+  const code=m.querySelector("#jet-cible").value;
+  const nb=parseInt(m.querySelector("#jet-nb").value,10)||0;
+  const msg=m.querySelector("#jet-msg");
+  if(nb<=0){ msg.style.color="var(--danger)"; msg.textContent="Indiquez un nombre positif."; return; }
+  msg.style.color="var(--text-muted)"; msg.textContent="Enregistrement…";
+  try{
+    await crediterJetons(code,nb);
+    msg.style.color="var(--success)";
+    msg.textContent=code==="__ALL__"?`✅ ${nb} jeton(s) ajoutés à toute l'équipe.`:`✅ ${nb} jeton(s) ajoutés à ${nomDe(code)}.`;
+    if(code===IDENTITY||code==="__ALL__") await chargerJetons();
+  }catch(e){ msg.style.color="var(--danger)"; msg.textContent="Erreur : "+e.message; }
+}
+(function wireJetonsAdmin(){ const b=$("#btn-jetons-admin"); if(b) b.addEventListener("click",ouvrirModalJetons); })();
+
+/* Admin : vide tout le cache local puis retélécharge le mois COMPLET.
+   À utiliser en cas de cache corrompu / erreurs de données. */
+async function viderCacheEtRecharger(){
+  if(!confirm("Vider tout le cache local et recharger les données complètes du mois ?\n\nÀ utiliser en cas d'erreur de cache. Le mois en cours sera entièrement retéléchargé depuis le serveur.")) return;
+  await idbClear();
+  ROWS=[];ROWS_RETOUR=[];RETOUR_LOADED=false;ROWS_NPS=[];NPS_LOADED=false;
+  setStatus("load","🧹 Cache vidé — rechargement complet du mois en cours…");
+  chargerAuto(true);                           // force = mois entier (admin illimité)
+}
+(function wireCacheAdmin(){ const b=$("#btn-cache-admin"); if(b) b.addEventListener("click",viderCacheEtRecharger); })();
+
+/* Message d'accueil affiché UNE SEULE FOIS (mémorisé par poste) pour expliquer
+   le passage au système de jetons. */
+const LS_VU_JETONS="eff_vu_info_jetons_v1";
+function montrerInfoJetons(){
+  if(memGet(LS_VU_JETONS)) return;             // déjà vu sur ce poste
+  let m=document.getElementById("modal-info-jetons");
+  if(!m){
+    m=document.createElement("div"); m.id="modal-info-jetons"; m.className="modal-overlay hidden";
+    m.innerHTML=`<div class="modal-box">
+      <h3>🎫 Nouveauté : système de jetons d'actualisation</h3>
+      <p style="margin-top:10px;line-height:1.55">L'application a été mise à jour. Avant, les données se rafraîchissaient automatiquement très souvent, ce qui <strong>surchargeait les serveurs</strong>.</p>
+      <p style="line-height:1.55">Désormais, il n'y a plus de rafraîchissement automatique : à l'ouverture, l'appli affiche les dernières données enregistrées. Pour les mettre à jour, cliquez sur <strong>« Actualiser le mois »</strong>.</p>
+      <p style="line-height:1.55">Chaque actualisation coûte <strong>1 jeton</strong>. Vous disposez de <strong>3 jetons par jour</strong>, remis à zéro chaque matin. Si vous en avez besoin de plus, demandez à un responsable d'en ajouter.</p>
+      <p style="line-height:1.55">Merci de votre compréhension ! 🙏</p>
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="info-jetons-ok">J'ai compris</button>
+      </div></div>`;
+    document.body.appendChild(m);
+    m.querySelector("#info-jetons-ok").addEventListener("click",()=>{ memSet(LS_VU_JETONS,"1"); m.classList.add("hidden"); });
+  }
+  m.classList.remove("hidden");
+}
+
+/* ============ DATES / MOIS ============ */
+function ymNow(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");}
+function currentYM(){return $("#sel-month").value||ymNow();}
+function frDate(iso){const[y,m,d]=iso.split("-");return `${d}/${m}/${y}`;}
+/* Date locale -> "YYYY-MM-DD" (même repère que toDateStr, pas d'UTC). */
+function isoLocal(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+/* Bornes d'un mois : [1er du mois, 1er du mois suivant[. */
+function moisBornes(ym){const[y,m]=ym.split("-").map(Number);return{deb:new Date(y,m-1,1),fin:new Date(y,m,1)};}
+/* Dernier jour à couvrir : aujourd'hui pour le mois courant, sinon dernier jour du mois. */
+function dernierJourACouvrir(ym){const b=moisBornes(ym);if(ym===ymNow())return isoLocal(new Date());const d=new Date(b.fin);d.setDate(d.getDate()-1);return isoLocal(d);}
+/* Liste des jours ISO du 1er du mois jusqu'à 'jusqua' inclus. */
+function joursMois(ym,jusqua){const b=moisBornes(ym);const out=[];const d=new Date(b.deb);const fin=new Date(jusqua+"T00:00:00");while(d<=fin){out.push(isoLocal(d));d.setDate(d.getDate()+1);}return out;}
+/* Format de date attendu par SSRS (MM/DD/YYYY 00:00:00), encodé URL. */
+function fmtSSRS(dt){return encodeURIComponent(`${String(dt.getMonth()+1).padStart(2,"0")}/${String(dt.getDate()).padStart(2,"0")}/${dt.getFullYear()} 00:00:00`);}
+/* Bascule un flux SSRS d'ATOM (XML lourd) vers CSV (transfert + parsing bien plus rapides). */
+function enCsv(url){return url.replace(/rs%3AFormat=ATOM/i,"rs%3AFormat=CSV").replace(/rs:Format=ATOM/i,"rs:Format=CSV");}
+
+/* ============ CACHE FLUX (IndexedDB) ============
+   Objectif : ne pas retélécharger tout le mois à chaque actualisation.
+   On garde les lignes déjà chargées et on ne rafraîchit que les derniers
+   jours (fenêtre glissante OVERLAP_JOURS) — le reste vient du cache. */
+const IDB_NAME="efficience_cache",IDB_STORE="flux",OVERLAP_JOURS=7;
+let _idbP=null;
+function idbOpen(){
+  if(_idbP)return _idbP;
+  _idbP=new Promise((res,rej)=>{try{
+    const rq=indexedDB.open(IDB_NAME,1);
+    rq.onupgradeneeded=()=>{const d=rq.result;if(!d.objectStoreNames.contains(IDB_STORE))d.createObjectStore(IDB_STORE);};
+    rq.onsuccess=()=>res(rq.result);rq.onerror=()=>rej(rq.error);
+  }catch(e){rej(e);}});
+  return _idbP;
+}
+async function idbGet(key){try{const db=await idbOpen();return await new Promise((res,rej)=>{const t=db.transaction(IDB_STORE,"readonly").objectStore(IDB_STORE).get(key);t.onsuccess=()=>res(t.result||null);t.onerror=()=>rej(t.error);});}catch(e){return null;}}
+async function idbSet(key,val){try{const db=await idbOpen();await new Promise((res,rej)=>{const t=db.transaction(IDB_STORE,"readwrite").objectStore(IDB_STORE).put(val,key);t.onsuccess=()=>res();t.onerror=()=>rej(t.error);});}catch(e){}}
+/* Vide TOUT le cache local des flux (efficience + retours, tous les mois). */
+async function idbClear(){try{const db=await idbOpen();await new Promise((res,rej)=>{const t=db.transaction(IDB_STORE,"readwrite").objectStore(IDB_STORE).clear();t.onsuccess=()=>res();t.onerror=()=>rej(t.error);});return true;}catch(e){console.warn("Vidage cache échoué :",e);return false;}}
+// v2 : la v1 (essai CSV paginé) pouvait stocker un mois marqué "complet" avec seulement
+// ~5 jours de données. On change la version des clés pour ignorer ce cache pollué.
+const cleFlux=ym=>"eff2_"+ym, cleRetour=ym=>"ret2_"+ym;
+
+/* ============ PARSING ============ */
+function toDateStr(v){
+  if(!v)return"";
+  if(v instanceof Date&&!isNaN(v))return v.getFullYear()+"-"+String(v.getMonth()+1).padStart(2,"0")+"-"+String(v.getDate()).padStart(2,"0");
+  const s=String(v).trim();
+  let m=/^(\d{4})-(\d{2})-(\d{2})/.exec(s);if(m)return `${m[1]}-${m[2]}-${m[3]}`;
+  m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(s);if(m)return `${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;
+  const d=new Date(s);return isNaN(d)?"":d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function buildRow(get){
+  const dc=toDateStr(get(F.dateCode)),dt=toDateStr(get(F.dateTermine));
+  return{dossier:get(F.dossier)||"",famille:norm(get(F.famille)),marque:norm(get(F.marque)),
+    codic:get(F.codic)||"",nbPieces:parseFloat(String(get(F.nbPieces)||"0").replace(",","."))||0,
+    topage:norm(get(F.topage)),tech:norm(get(F.tech)),jour:dc||dt,
+    jourT:dt||dc};   // date "terminé atelier" = champ filtré par SSRS (repère du cache incrémental)
+}
+/* Colonnes réellement utilisées : on ignore tout le reste du rapport (30+ colonnes). */
+const F_NEEDED=new Set(Object.values(F));
+/* Constructeur "flux efficience" avec saut des lignes totalement vides. */
+function fluxBuilder(get){return (get(F.dossier)===""&&get(F.tech)==="")?null:buildRow(get);}
+/* Mappe une feuille XLSX (Excel OU CSV) en lignes, via en-tête -> index de colonne.
+   requireCols : si une colonne attendue manque, on lève (=> repli ATOM). */
+function rowsFromWb(wb,builder,requireCols){
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:""});
+  if(!data.length)return[];
+  const hdr=data[0].map(h=>String(h).trim());const col={};hdr.forEach((h,i)=>col[h]=i);
+  if(requireCols)for(const c of requireCols)if(col[c]==null)throw new Error("Colonnes attendues introuvables : "+c);
+  const out=[];
+  for(let r=1;r<data.length;r++){const row=data[r];const get=n=>col[n]==null?"":row[col[n]];
+    const o=builder(get);if(o!=null)out.push(o);}
+  return out;
+}
+/* ATOM optimisé : un seul parcours par entrée, on ne retient que F_NEEDED. */
+function parseAtom(xmlText){
+  const doc=new DOMParser().parseFromString(xmlText,"application/xml");
+  if(doc.querySelector("parsererror"))throw new Error("XML invalide");
+  const entries=doc.getElementsByTagNameNS("*","entry");const out=[];
+  for(let i=0;i<entries.length;i++){
+    const props={};const nodes=entries[i].getElementsByTagName("*");
+    for(let j=0;j<nodes.length;j++){const el=nodes[j];
+      if(el.childElementCount===0){const ln=el.localName;if(ln&&F_NEEDED.has(ln))props[ln]=el.textContent;}}
+    if(props[F.dossier]!=null||props[F.tech]!=null)out.push(buildRow(n=>props[n]));
+  }
+  return out;
+}
+function parseExcel(buf){return rowsFromWb(XLSX.read(buf,{type:"array",cellDates:true}),fluxBuilder,[F.dossier,F.tech]);}
+/* CSV du flux SSRS : même mapping que l'import Excel (contrat de données identique). */
+function parseCsvFlux(text){const rows=rowsFromWb(XLSX.read(text,{type:"string"}),fluxBuilder,[F.dossier,F.tech]);
+  if(rows.length&&rows.every(r=>!r.jour))throw new Error("CSV : dates illisibles");  // garde-fou -> repli ATOM
+  return rows;}
+
+/* ============ PARSING RETOURS ============
+   Un retour = ligne où NOM_TECH_AFN_PREC (tech de l'intervention précédente) est renseigné.
+   Le tech impacté = ce tech précédent (peu importe qui a clôturé la 2e inter). */
+function buildRowRetour(get){
+  const techNom=(get(FR.techPrec)||"").trim();
+  if(!techNom)return null;                       // pas un retour
+  return{dossier:get(FR.dossier)||"",marque:norm(get(FR.marque)),famille:norm(get(FR.famille)),
+    code:norm(get(FR.code)),jour:toDateStr(get(FR.date)),techNom,techCode:codeParNom(techNom)};
+}
+const FR_NEEDED=new Set(Object.values(FR));
+function parseAtomRetour(xmlText){
+  const doc=new DOMParser().parseFromString(xmlText,"application/xml");
+  if(doc.querySelector("parsererror"))throw new Error("XML invalide");
+  const entries=doc.getElementsByTagNameNS("*","entry");const out=[];
+  for(let i=0;i<entries.length;i++){
+    const props={};const nodes=entries[i].getElementsByTagName("*");
+    for(let j=0;j<nodes.length;j++){const el=nodes[j];
+      if(el.childElementCount===0){const ln=el.localName;if(ln&&FR_NEEDED.has(ln))props[ln]=el.textContent;}}
+    const row=buildRowRetour(n=>props[n]); if(row)out.push(row);
+  }
+  return out;
+}
+function parseExcelRetour(buf){return rowsFromWb(XLSX.read(buf,{type:"array",cellDates:true}),buildRowRetour,[FR.dossier,FR.techPrec]);}
+function parseCsvRetour(text){return rowsFromWb(XLSX.read(text,{type:"string"}),buildRowRetour,[FR.dossier,FR.techPrec]);}
+/* ============ PARSING NPS ============
+   Colonnes par position (export Qualtrics) : A=date, I=code tech, J=dossier, Q=note 0-10, R=commentaire. */
+function parseNps(buf){
+  const wb=XLSX.read(buf,{type:"array",cellDates:true});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:""});
+  const out=[];
+  for(let r=1;r<data.length;r++){const row=data[r];
+    const tech=norm(row[NPS_COL.tech]);
+    const nv=row[NPS_COL.note];
+    const note=(nv===""||nv==null)?null:parseInt(nv,10);
+    if(!tech&&note==null)continue;
+    out.push({tech,dossier:row[NPS_COL.dossier]||"",note:isNaN(note)?null:note,
+      commentaire:String(row[NPS_COL.commentaire]||"").trim(),jour:toDateStr(row[NPS_COL.date])});
+  }
+  return out;
+}
+/* Score NPS d'un ensemble de réponses : % promoteurs (9-10) − % détracteurs (0-6) */
+function npsStats(list){
+  const notes=list.filter(x=>x.note!=null);const n=notes.length;
+  const promo=notes.filter(x=>x.note>=9).length;
+  const detr=notes.filter(x=>x.note<=6).length;
+  return{n,promo,passif:n-promo-detr,detr,score:n?((promo-detr)/n*100):null};
+}
+/* Détecte le type d'un Excel importé d'après ses colonnes */
+function detecterTypeExcel(buf){
+  const wb=XLSX.read(buf,{type:"array"});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const first=XLSX.utils.sheet_to_json(ws,{header:1,defval:""})[0]||[];
+  const hdr=first.map(h=>String(h).trim());
+  if(hdr.includes(FR.techPrec))return"retour";
+  if(hdr.includes(F.tech))return"efficience";
+  if(hdr.some(h=>/survey|end date/i.test(h)))return"nps";
+  return"inconnu";
+}
+
+/* ============ URL FLUX POUR LE MOIS ============ */
+function buildFluxUrlRetour(ym,debDate,finDate){
+  const b=moisBornes(ym);const deb=debDate||b.deb,fin=finDate||b.fin;
+  return FLUX_URL_RETOUR.replace(/DATE_TERM_ATL_DEBUT=[^&]*/,"DATE_TERM_ATL_DEBUT="+fmtSSRS(deb))
+                        .replace(/DATE_TERM_ATL_FIN=[^&]*/,"DATE_TERM_ATL_FIN="+fmtSSRS(fin));
+}
+function buildFluxUrl(ym,debDate,finDate){
+  const base=$("#flux-url").value.trim()||FLUX_URL;
+  const b=moisBornes(ym);const deb=debDate||b.deb,fin=finDate||b.fin;
+  return base.replace(/DATE_TERM_ATL_deb=[^&]*/,"DATE_TERM_ATL_deb="+fmtSSRS(deb))
+             .replace(/DATE_TERM_ATL_fin=[^&]*/,"DATE_TERM_ATL_fin="+fmtSSRS(fin));
+}
+
+/* ============ CHARGEMENT ============ */
+/* Barre de progression fixée en haut : créée une fois, pilotée par le statut. */
+function afficherBarreChargement(on){
+  let bar=document.getElementById("load-bar");
+  if(!bar){bar=document.createElement("div");bar.id="load-bar";document.body.appendChild(bar);}
+  bar.classList.toggle("on",!!on);
+}
+function setStatus(cls,msg){
+  const el=$("#src-status");el.className="status "+cls;
+  el.innerHTML=(cls==="load"?'<span class="spin"></span>':"")+msg;
+  afficherBarreChargement(cls==="load");   // barre visible pendant le chargement, cachée ensuite
+}
+function filtreMois(rows,ym){return rows.filter(r=>r.jour&&r.jour.slice(0,7)===ym);}
+
+const FLUX_FILE="flux-atelier.xlsx";
+/* Chargement intelligent (efficience + retours), dans l'ordre :
+   1) flux SSRS en direct (local via le .bat)
+   2) fichier Excel publié sur le site (GitHub Pages)
+   3) sinon : invite à importer manuellement */
+/* Récupère les interventions d'une fenêtre [deb,fin[ : CSV d'abord (rapide),
+   repli automatique sur l'ATOM (format historique éprouvé) si le CSV échoue
+   ou n'a pas les bonnes colonnes. Renvoie {rows, src}. */
+/* ATOM = format éprouvé de l'outil d'origine (renvoie le dataset complet, contrairement
+   au CSV du rapport SSRS qui peut être paginé et ne renvoyer que la 1re page). */
+async function fetchFluxEff(ym,deb,fin){
+  const r=await fetch(buildFluxUrl(ym,deb,fin),{cache:"no-store"});
+  if(!r.ok)throw new Error("flux efficience indisponible");
+  return{rows:parseAtom(await r.text()),src:"flux direct"};
+}
+async function fetchRetourWin(ym,deb,fin){
+  const r=await fetch(buildFluxUrlRetour(ym,deb,fin),{cache:"no-store"});
+  if(!r.ok)throw new Error("retours indisponibles");
+  return parseAtomRetour(await r.text());
+}
+
+/* Affichage SANS aucun appel au serveur SSRS : uniquement le cache local (+ heures/
+   déductions Firestore, qui ne saturent pas le serveur de données). Utilisé au
+   démarrage et au changement de mois — aucune mise à jour tant qu'on ne clique pas. */
+async function afficherCacheSeul(){
+  const ym=currentYM();
+  const cacheEff=await idbGet(cleFlux(ym));
+  const cacheRet=await idbGet(cleRetour(ym));
+  ROWS=(cacheEff&&Array.isArray(cacheEff.rows))?cacheEff.rows.slice():[];
+  if(cacheRet&&Array.isArray(cacheRet.rows)){ROWS_RETOUR=cacheRet.rows.slice();RETOUR_LOADED=true;}
+  else{ROWS_RETOUR=[];RETOUR_LOADED=false;}
+  await Promise.all([hydrateHours(ym).catch(()=>{}),hydrateDeductions(ym).catch(()=>{})]);
+  render();
+  if(ROWS.length||ROWS_RETOUR.length)
+    setStatus("ok",`📁 Données en cache (${ROWS.length} interventions). Cliquez « Actualiser » pour mettre à jour.`);
+  else
+    setStatus("warn",`Aucune donnée en cache pour ${ym}. Cliquez « Actualiser » pour charger (coûte 1 jeton).`);
+}
+
+/* Chargement intelligent + parallèle.
+   - force=true : recharge TOUT le mois (bouton « Actualiser le mois », clôture, transition).
+   - sinon : mois entier si rien en cache, puis seulement les jours manquants
+     (+ aujourd'hui & hier) grâce au suivi de couverture jour par jour. */
+async function chargerAuto(force){
+  const ym=currentYM();$("#btn-refresh").disabled=true;
+  setStatus("load",`⏳ Connexion aux flux atelier pour ${ym}…`);
+
+  // 1) Affichage instantané depuis le cache local
+  const cacheEff=await idbGet(cleFlux(ym));
+  const cacheRet=await idbGet(cleRetour(ym));
+  const rowsCache=(cacheEff&&Array.isArray(cacheEff.rows))?cacheEff.rows:null;
+  const retCache =(cacheRet&&Array.isArray(cacheRet.rows))?cacheRet.rows:null;
+  if(rowsCache)ROWS=rowsCache.slice();
+  if(retCache){ROWS_RETOUR=retCache.slice();RETOUR_LOADED=true;}
+  if(ROWS.length||ROWS_RETOUR.length)render();
+
+  // 2) Chargement INTELLIGENT : on ne re-télécharge que les jours manquants.
+  //    - aucun cache (ou forçage "Actualiser") -> mois entier.
+  //    - sinon -> jours pas encore chargés + aujourd'hui & hier (qui bougent encore).
+  //    Le suivi se fait jour par jour via cacheEff.days (liste des jours déjà couverts).
+  const b=moisBornes(ym);
+  const dernier=dernierJourACouvrir(ym);
+  const couvert=new Set((cacheEff&&Array.isArray(cacheEff.days))?cacheEff.days:[]);
+  let deb;
+  if(force||!rowsCache||!couvert.size){
+    deb=b.deb;                                     // rien de fiable en cache / forçage -> tout le mois
+  }else{
+    const manquants=joursMois(ym,dernier).filter(j=>!couvert.has(j));
+    const chauds=[];                               // toujours revérifier aujourd'hui + hier
+    if(ym===ymNow()){chauds.push(dernier);const h=new Date();h.setDate(h.getDate()-1);const hi=isoLocal(h);if(hi>=isoLocal(b.deb))chauds.push(hi);}
+    const aFetch=[...new Set([...manquants,...chauds])].sort();
+    deb=aFetch.length?new Date(aFetch[0]+"T00:00:00"):null;  // null = déjà à jour, aucun téléchargement
+  }
+  const cutoff=deb?isoLocal(deb):null;
+  // Jours qui seront couverts par ce téléchargement (de cutoff jusqu'à 'dernier').
+  const joursCouverts=deb?joursMois(ym,dernier).filter(j=>j>=cutoff):[];
+  const couvertureMaj=[...new Set([...couvert,...joursCouverts])].sort();
+
+  // 3) Lancement en parallèle (indépendants)
+  const pEff = (deb!==null)?fetchFluxEff(ym,deb,b.fin):Promise.resolve(null);
+  const pRet = (deb!==null)?fetchRetourWin(ym,deb,b.fin):Promise.resolve(null);
+  const pNps = chargerNps();
+  const pH   = hydrateHours(ym);
+  const pD   = hydrateDeductions(ym);
+
+  // Efficience : fusion cache (jours < cutoff) + frais (jours >= cutoff)
+  let effOK=false,srcEff="";
+  try{
+    const r=await pEff;
+    if(r){
+      const frais=filtreMois(r.rows,ym);
+      if(!cutoff||!rowsCache){ROWS=frais;}
+      else{
+        // Partition sur jourT (date terminé = champ filtré par le serveur) :
+        // le cache garde les jours antérieurs à la fenêtre, le frais fait autorité dessus.
+        const jt=x=>x.jourT||x.jour;
+        const k=x=>x.dossier+"|"+jt(x)+"|"+x.tech+"|"+x.codic;   // identité stable (hors champs modifiables)
+        const vus=new Set(frais.map(k));                          // le frais prime en cas de recouvrement
+        ROWS=rowsCache.filter(x=>jt(x)<cutoff&&!vus.has(k(x))).concat(frais);
+      }
+      srcEff=r.src;effOK=true;
+      idbSet(cleFlux(ym),{rows:ROWS,days:couvertureMaj,savedAt:Date.now()});
+    }else if(rowsCache){effOK=true;srcEff="cache";}
+  }catch(e){ if(rowsCache){effOK=true;srcEff="cache";} else ROWS=[]; }
+  render();   // rendu progressif dès que l'efficience est prête
+
+  // Retours : même logique de fusion
+  let retOK=RETOUR_LOADED;
+  try{
+    const rr=await pRet;
+    if(rr){
+      const frais=rr.filter(r=>r.jour&&r.jour.slice(0,7)===ym);
+      if(!cutoff||!retCache){ROWS_RETOUR=frais;}
+      else{
+        const k=x=>x.dossier+"|"+x.jour+"|"+(x.techCode||x.techNom||"");
+        const vus=new Set(frais.map(k));
+        ROWS_RETOUR=retCache.filter(x=>x.jour<cutoff&&!vus.has(k(x))).concat(frais);
+      }
+      RETOUR_LOADED=true;retOK=true;
+      idbSet(cleRetour(ym),{rows:ROWS_RETOUR,days:couvertureMaj,savedAt:Date.now()});
+    }
+  }catch(e){ /* on garde le cache retours */ }
+
+  let npsOK=false;try{npsOK=await pNps;}catch(e){}
+  await pH.catch(()=>{});await pD.catch(()=>{});
+
+  if(effOK)setStatus("ok",`✅ ${ROWS.length} interventions (${srcEff}) · ${retOK?ROWS_RETOUR.length+" retours":"retours non chargés"} · ${npsOK?ROWS_NPS.length+" NPS":"NPS non chargé"}${FB?" · heures synchronisées":""} — ${new Date().toLocaleTimeString("fr-FR")}`);
+  else setStatus("warn","⚠️ Flux/fichier efficience indisponible. Importez l'export Excel manuellement ci-dessous.");
+  render();majJetonsUI();   // ré-active le bouton selon le solde de jetons restant
+}
+/* Retours : flux direct puis fichier du site (retour-atelier.xlsx). Renvoie true si chargé. */
+async function chargerRetour(ym){
+  try{const resp=await fetch(buildFluxUrlRetour(ym),{cache:"no-store"});if(!resp.ok)throw 0;
+    ROWS_RETOUR=parseAtomRetour(await resp.text()).filter(r=>r.jour&&r.jour.slice(0,7)===ym);RETOUR_LOADED=true;return true;}catch(e){}
+  try{const resp=await fetch(RETOUR_FILE,{cache:"no-store"});if(!resp.ok)throw 0;
+    ROWS_RETOUR=parseExcelRetour(new Uint8Array(await resp.arrayBuffer())).filter(r=>r.jour&&r.jour.slice(0,7)===ym);RETOUR_LOADED=true;return true;}catch(e){}
+  ROWS_RETOUR=[];RETOUR_LOADED=false;return false;
+}
+/* NPS : fichier lu depuis GitHub (raw). Pas de filtre mois : les clients répondent
+   avec du décalage, donc on affiche TOUS les avis présents dans l'export courant. */
+async function chargerNps(){
+  try{const resp=await fetch(NPS_URL,{cache:"no-store"});if(!resp.ok)throw 0;
+    ROWS_NPS=parseNps(new Uint8Array(await resp.arrayBuffer()));
+    NPS_LOADED=true;return true;}catch(e){ROWS_NPS=[];NPS_LOADED=false;return false;}
+}
+/* Chargement silencieux des fichiers du site au démarrage (GitHub Pages) */
+async function initLoadFiles(ym){
+  let any=false;
+  try{const resp=await fetch(FLUX_FILE,{cache:"no-store"});if(resp.ok){ROWS=filtreMois(parseExcel(new Uint8Array(await resp.arrayBuffer())),ym);any=true;}}catch(e){}
+  try{const resp=await fetch(RETOUR_FILE,{cache:"no-store"});if(resp.ok){ROWS_RETOUR=parseExcelRetour(new Uint8Array(await resp.arrayBuffer())).filter(r=>r.jour&&r.jour.slice(0,7)===ym);RETOUR_LOADED=true;}}catch(e){}
+  await chargerNps();   // NPS depuis GitHub (best-effort)
+  if(any||NPS_LOADED){await hydrateHours(ym);await hydrateDeductions(ym);setStatus("ok",`✅ ${ROWS.length} interventions · ${ROWS_RETOUR.length} retours · ${ROWS_NPS.length} NPS (${any?"fichiers du site":"GitHub"}) pour ${ym}`);}
+  render();
+}
+/* Import manuel : détecte automatiquement s'il s'agit du flux efficience ou du flux retours */
+function chargerExcel(file){
+  const ym=currentYM();
+  setStatus("load","⏳ Lecture de "+file.name+"…");
+  const reader=new FileReader();
+  reader.onload=async e=>{try{
+    const buf=new Uint8Array(e.target.result);
+    const type=detecterTypeExcel(buf);
+    if(type==="nps"){
+      ROWS_NPS=parseNps(buf);NPS_LOADED=true;
+      setStatus("ok",`✅ ${ROWS_NPS.length} réponses NPS — ${file.name}`);
+    }else if(type==="retour"){
+      ROWS_RETOUR=parseExcelRetour(buf).filter(r=>r.jour&&r.jour.slice(0,7)===ym);RETOUR_LOADED=true;
+      setStatus("ok",`✅ ${ROWS_RETOUR.length} retours pour ${ym} — ${file.name}`);
+    }else if(type==="efficience"){
+      const all=parseExcel(buf);ROWS=filtreMois(all,ym);await hydrateHours(ym);
+      setStatus("ok",`✅ ${ROWS.length} interventions pour ${ym} (sur ${all.length} lignes) — ${file.name}${FB?" · heures synchronisées":""}`);
+    }else{ setStatus("err","❌ Fichier non reconnu (ni flux efficience, ni flux retours)."); return; }
+    render();
+  }catch(err){setStatus("err","❌ Erreur : "+err.message);}};
+  reader.onerror=()=>setStatus("err","❌ Lecture impossible.");
+  reader.readAsArrayBuffer(file);
+}
+
+/* ============ CALCUL MENSUEL ============ */
+function joursDeTech(code){
+  const map={};
+  ROWS.filter(r=>r.tech===code).forEach(r=>{(map[r.jour]=map[r.jour]||[]).push(r);});
+  return map; // {date:[rows]}
+}
+function statsJour(rows){
+  let temps=0,pieces=0,rep=0;
+  rows.forEach(r=>{temps+=tempsAlloue(r.famille,r.marque,r.topage,r.codic).temps;pieces+=r.nbPieces;
+    if(estReparation(r.topage))rep++;});
+  return{nb:rows.length,pieces,temps,rep};
+}
+/* Bilan mois d'un tech.
+   - Efficience : uniquement sur les jours AVEC heures saisies (tempsSaisi / heures).
+   - Interventions / pièces / temps alloué / conso : sur TOUS les jours (bruts),
+     visibles même sans heures saisies. */
+function bilanTech(code){
+  const map=joursDeTech(code);const dates=Object.keys(map).sort();
+  let T=0,H=0,Hbrut=0,joursSaisis=0;   // H = heures NETTES (après déductions) ; Hbrut = heures saisies brutes
+  let Tb=0,Pb=0,Nb=0,Rb=0;            // bruts : tous les jours (Rb = appareils réparés)
+  const lignes=dates.map(date=>{
+    const s=statsJour(map[date]);const h=hoursGet(code,date);
+    const ded=deductionJourSum(code,date);                 // heures déduites ce jour
+    const netH=(h!=null)?Math.max(0,h-ded):null;           // heures productives réelles
+    Tb+=s.temps;Pb+=s.pieces;Nb+=s.nb;Rb+=s.rep;
+    const compte=h!=null&&h>0;
+    if(compte){T+=s.temps;H+=netH;Hbrut+=h;joursSaisis++;}
+    return{date,...s,heures:h,ded,netH,compte};
+  });
+  const dedTotal=deductionsTotal(code);   // toutes les déductions du mois (même hors jours comptés)
+  const eff=H>0?T/H*100:null;
+  const conso=Nb>0?Pb/Nb:null;   // conso sur toutes les interventions
+  return{lignes,dates,
+    tempsSaisi:T,heuresTotal:H,heuresBrutes:Hbrut,deductionsTotal:dedTotal,joursSaisis,eff,
+    tempsTotal:Tb,piecesTotal:Pb,nbTotal:Nb,nbRepares:Rb,joursActifs:dates.length,conso};
+}
+
+/* ============ CLASSEMENTS DU MOIS ============
+   - Efficience : tous les techs ayant une efficience (heures saisies), plus haut = meilleur.
+   - Conso pièces : tous sauf conso = 0, plus bas = meilleur.
+   - Retours (taux) : uniquement les techs avec >= 50 interventions clôturées, plus bas = meilleur. */
+function rangGenerique(arr,valFn,dir,elig){
+  const el=arr.filter(elig).sort((a,b)=>dir==="desc"?valFn(b)-valFn(a):valFn(a)-valFn(b));
+  const pos={};el.forEach((x,i)=>pos[x.code]=i+1);return{pos,total:el.length};
+}
+function classements(){
+  const codes=[...new Set(ROWS.map(r=>r.tech).filter(Boolean))];
+  const data=codes.map(code=>{const b=bilanTech(code);const rets=retoursDeTech(code).length;
+    return{code,eff:b.eff,conso:b.conso,nbTotal:b.nbTotal,taux:b.nbRepares>0?rets/b.nbRepares*100:null};});
+  const npsCodes=[...new Set(ROWS_NPS.map(r=>r.tech).filter(Boolean))];
+  const npsData=npsCodes.map(code=>({code,score:npsStats(npsDeTech(code)).score}));
+  return{
+    eff:   rangGenerique(data,x=>x.eff,  "desc",x=>x.eff!=null),
+    conso: rangGenerique(data,x=>x.conso,"asc", x=>x.conso!=null&&x.conso>0),
+    retour:rangGenerique(data,x=>x.taux, "asc", x=>x.nbTotal>=50&&x.taux!=null),
+    nps:   rangGenerique(npsData,x=>x.score,"desc",x=>x.score!=null)
+  };
+}
+function updateRanks(code){
+  const R=classements();
+  // On n'affiche le rang QUE si le technicien est dans le top 20.
+  // En dessous : rien du tout (il ne doit pas connaître sa position).
+  const set=(sel,rk)=>{const el=$(sel);if(!el)return;
+    const p=rk.pos[code];
+    if(p&&p<=20){el.textContent="Classement : "+(p===1?"1er":p+"ᵉ");el.classList.add("top");}
+    else{el.textContent="";el.classList.remove("top");}};
+  set("#rank-eff",R.eff);
+  set("#rank-conso",R.conso);
+  set("#rank-retour",R.retour);
+  set("#rank-nps",R.nps);
+}
+
+/* ============ FORMAT ============ */
+function fPct(v){return v==null||isNaN(v)?"—":v.toFixed(1)+" %";}
+function fH(v){return v==null||isNaN(v)?"—":v.toFixed(2)+" h";}
+function fN(v,d=2){return v==null||isNaN(v)?"—":v.toFixed(d);}
+
+/* ============ RENDU ============ */
+function render(){ (MODE==="admin"&&!ADMIN_FOCUS)?renderAdmin():renderTech(); }
+
+function renderTech(){
+  $("#view-tech").classList.remove("hidden");$("#view-admin").classList.add("hidden");
+  const focus=(MODE==="admin"&&ADMIN_FOCUS)?ADMIN_FOCUS:null;
+  const code=focus||IDENTITY;
+  VIEW_CODE=code;
+  $("#btn-back-admin").classList.toggle("hidden",!focus);
+  const res=$("#tech-results"),emptyCard=$("#tech-empty-card");
+  if(!ROWS.length){emptyCard.classList.remove("hidden");res.classList.add("hidden");
+    $("#tech-empty").textContent="Chargez le mois pour afficher votre bilan.";return;}
+  const b=bilanTech(code);
+  emptyCard.classList.add("hidden");res.classList.remove("hidden");
+  $("#tech-title").innerHTML=`Bilan de <strong>${nomDe(code)}</strong> <span class="muted">(${code})</span> — ${currentYM()}`;
+
+  // Jauge efficience
+  const nEff=niveau("efficience",b.eff);
+  const pct=b.eff==null?0:Math.min(100,b.eff);
+  $("#tech-jauges").innerHTML=`
+    <div class="jauge-card">
+      <div class="jauge-circle jauge-${nEff}" style="--pct:${pct}"><span class="jauge-value">${fPct(b.eff)}</span></div>
+      <div class="jauge-label">Efficience du mois</div>
+      <div class="rank" id="rank-eff"></div>
+    </div>`;
+  // Stats
+  const nConso=niveau("conso",b.conso);
+  $("#tech-stats").innerHTML=`
+    <div class="stat-card b-${nConso}"><div class="stat-label">Conso moyenne pièces</div>
+      <div class="stat-value">${fN(b.conso)}</div><div class="stat-sub">${b.piecesTotal} pièces / ${b.nbTotal} interv.</div>
+      <div class="rank" id="rank-conso" style="margin-top:4px"></div></div>
+    <div class="stat-card b-neutre"><div class="stat-label">Interventions du mois</div>
+      <div class="stat-value">${b.nbTotal}</div><div class="stat-sub">${b.joursActifs} jour(s) actif(s) · ${b.joursSaisis} saisi(s)</div></div>
+    <div class="stat-card b-neutre"><div class="stat-label">Temps alloué cumulé</div>
+      <div class="stat-value">${fN(b.tempsTotal)} h</div><div class="stat-sub">standards TAR/TAN/ECC</div></div>
+    <div class="stat-card b-neutre"><div class="stat-label">Heures travaillées nettes</div>
+      <div class="stat-value">${fN(b.heuresTotal)} h</div><div class="stat-sub">${b.deductionsTotal>0?`${fN(b.heuresBrutes)} h saisies − ${fN(b.deductionsTotal)} h déduites`:`saisies (${b.joursSaisis} j)`}</div></div>`;
+
+  // Table jours (saisie heures)
+  const tb=$("#tbl-jours-body");tb.innerHTML="";
+  if(!b.dates.length){tb.innerHTML=`<tr><td colspan="7" class="empty">Aucune intervention à votre code ce mois-ci.</td></tr>`;}
+  b.lignes.forEach(l=>{
+    const effJ=l.netH>0?l.temps/l.netH*100:null;
+    const consoJ=l.nb>0?l.pieces/l.nb:null;
+    const rc=l.netH>0?("row-"+niveau("efficience",effJ)):"";
+    const tr=document.createElement("tr");if(rc)tr.className=rc;
+    const dedNote=l.ded>0?`<div style="font-size:.72rem;color:var(--danger);margin-top:3px">− ${fN(l.ded)} h déduites</div>`:"";
+    tr.innerHTML=`<td><span class="lnk" data-day="${l.date}" title="Voir les interventions de ce jour">${frDate(l.date)}</span></td>
+      <td class="num">${l.nb}</td><td class="num">${l.pieces}</td>
+      <td class="num">${fN(l.temps)} h</td>
+      <td class="num"><input type="number" class="h-input" min="0" step="0.25" data-date="${l.date}" value="${l.heures!=null?l.heures:""}" placeholder="—">${dedNote}</td>
+      <td class="num">${l.netH>0?fPct(effJ):'<span class="muted">—</span>'}</td>
+      <td class="num">${fN(consoJ)}</td>`;
+    tb.appendChild(tr);
+  });
+  tb.querySelectorAll("input.h-input").forEach(inp=>{
+    inp.addEventListener("input",()=>{hoursSet(code,inp.dataset.date,inp.value);renderTechSoft();});
+  });
+  tb.querySelectorAll("[data-day]").forEach(el=>{
+    el.addEventListener("click",()=>{DETAIL_JOUR=el.dataset.day;renderDetail(code);
+      $("#tbl-detail").scrollIntoView({behavior:"smooth",block:"start"});});
+  });
+  $("#tbl-jours-foot").innerHTML=b.dates.length?`<tr><td>TOTAL du mois</td><td class="num">${b.nbTotal}</td>
+    <td class="num">${b.piecesTotal}</td><td class="num">${fN(b.tempsTotal)} h</td>
+    <td class="num">${fN(b.heuresTotal)} h</td><td class="num">${fPct(b.eff)}</td><td class="num">${fN(b.conso)}</td></tr>`:"";
+
+  // Déductions du technicien
+  renderDeductionsTech(code);
+  $("#btn-add-deduction").classList.toggle("hidden",MODE!=="tech");
+
+  // Détail interventions (filtrable par jour cliqué)
+  DETAIL_JOUR=null;
+  renderDetail(code);
+  renderRetour(code);
+  renderNps(code);
+  updateRanks(code);
+  applyTab();
+}
+
+/* ============ ONGLET RETOURS ============ */
+function retoursDeTech(code){ return ROWS_RETOUR.filter(r=>r.techCode===code); }
+
+function renderRetour(code){
+  const rets=retoursDeTech(code).slice().sort((a,b)=>(b.jour||"").localeCompare(a.jour||""));
+  const b=bilanTech(code);
+  const taux=b.nbRepares>0?rets.length/b.nbRepares*100:null;
+  const nT=niveau("tauxRetour",taux);
+  const pct=taux==null?0:Math.min(100,taux*5);   // échelle : 20 % = jauge pleine
+  $("#ret-jauges").innerHTML=`
+    <div class="jauge-card">
+      <div class="jauge-circle jauge-${nT}" style="--pct:${pct}"><span class="jauge-value">${fPct(taux)}</span></div>
+      <div class="jauge-label">Taux de retour du mois</div>
+      <div class="rank" id="rank-retour"></div>
+    </div>`;
+  $("#ret-stats").innerHTML=`
+    <div class="stat-card b-${nT}"><div class="stat-label">Retours du mois</div>
+      <div class="stat-value">${rets.length}</div><div class="stat-sub">appareils revenus &lt; 30 j</div></div>
+    <div class="stat-card b-neutre"><div class="stat-label">Appareils réparés</div>
+      <div class="stat-value">${b.nbRepares}</div><div class="stat-sub">TAR / TAN / ECC du mois</div></div>
+    <div class="stat-card b-${nT}"><div class="stat-label">Taux de retour</div>
+      <div class="stat-value">${fPct(taux)}</div><div class="stat-sub">retours ÷ appareils réparés</div></div>`;
+  const tb=$("#tbl-retours-body");tb.innerHTML="";
+  if(!RETOUR_LOADED){tb.innerHTML=`<tr><td colspan="5" class="empty">Flux retours non chargé — cliquez « Actualiser le mois ».</td></tr>`;return;}
+  if(!rets.length){tb.innerHTML=`<tr><td colspan="5" class="empty">Aucun retour ce mois-ci. 👍</td></tr>`;return;}
+  rets.forEach(r=>{
+    const t=r.code;const cls=t==="TAR"?"tar":t==="TAN"?"tan":(t==="ECC"||t==="ETC")?"ecc":"zero";
+    tb.innerHTML+=`<tr><td>${r.jour?frDate(r.jour):"—"}</td><td>${r.dossier}</td>
+      <td>${r.marque||'<span class="muted">—</span>'}</td><td>${r.famille}</td>
+      <td><span class="tag ${cls}">${t||"—"}</span></td></tr>`;
+  });
+}
+function applyTab(){
+  document.querySelectorAll(".tab2").forEach(bt=>bt.classList.toggle("active",bt.dataset.tab===TAB));
+  const te=$("#tab-eff"),tr=$("#tab-ret"),tn=$("#tab-nps");
+  if(te)te.classList.toggle("hidden",TAB!=="eff");
+  if(tr)tr.classList.toggle("hidden",TAB!=="ret");
+  if(tn)tn.classList.toggle("hidden",TAB!=="nps");
+}
+
+/* ============ ONGLET NPS ============ */
+function npsDeTech(code){ return ROWS_NPS.filter(r=>r.tech===code); }
+function renderNps(code){
+  const list=npsDeTech(code);
+  const s=npsStats(list);
+  const nN=niveau("nps",s.score);
+  const pct=s.score==null?0:Math.max(0,Math.min(100,(s.score+100)/2));   // -100..100 → 0..100
+  $("#nps-jauges").innerHTML=`
+    <div class="jauge-card">
+      <div class="jauge-circle jauge-${nN}" style="--pct:${pct}"><span class="jauge-value">${s.score==null?"—":Math.round(s.score)}</span></div>
+      <div class="jauge-label">Score NPS</div>
+      <div class="rank" id="rank-nps"></div>
+    </div>`;
+  const p=n=>s.n?Math.round(n/s.n*100):0;
+  $("#nps-stats").innerHTML=`
+    <div class="stat-card b-neutre"><div class="stat-label">Réponses</div>
+      <div class="stat-value">${s.n}</div><div class="stat-sub">avis clients (export courant)</div></div>
+    <div class="stat-card b-vert"><div class="stat-label">Promoteurs (9-10)</div>
+      <div class="stat-value">${s.promo}</div><div class="stat-sub">${p(s.promo)} %</div></div>
+    <div class="stat-card b-orange"><div class="stat-label">Passifs (7-8)</div>
+      <div class="stat-value">${s.passif}</div><div class="stat-sub">${p(s.passif)} %</div></div>
+    <div class="stat-card b-rouge"><div class="stat-label">Détracteurs (0-6)</div>
+      <div class="stat-value">${s.detr}</div><div class="stat-sub">${p(s.detr)} %</div></div>`;
+  const tb=$("#tbl-nps-body");tb.innerHTML="";
+  if(!NPS_LOADED){tb.innerHTML=`<tr><td colspan="3" class="empty">NPS non chargé — cliquez « Actualiser le mois ».</td></tr>`;return;}
+  const avis=list.filter(x=>x.note!=null||x.commentaire).sort((a,b)=>(a.note??99)-(b.note??99));
+  if(!avis.length){tb.innerHTML=`<tr><td colspan="3" class="empty">Aucun avis pour ce technicien dans l'export.</td></tr>`;return;}
+  avis.forEach(x=>{
+    const cls=x.note==null?"zero":x.note>=9?"ecc":x.note>=7?"tar":"tan";
+    tb.innerHTML+=`<tr><td><span class="tag ${cls}">${x.note==null?"—":x.note+"/10"}</span></td>
+      <td>${x.dossier}</td><td style="white-space:normal">${x.commentaire?x.commentaire:'<span class="muted">—</span>'}</td></tr>`;
+  });
+}
+
+/* Détail des interventions : tout le mois, ou une seule journée si DETAIL_JOUR est défini */
+function renderDetail(code){
+  const db=$("#tbl-detail-body");db.innerHTML="";
+  let detail=ROWS.filter(r=>r.tech===code);
+  if(DETAIL_JOUR)detail=detail.filter(r=>r.jour===DETAIL_JOUR);
+  detail.sort((a,b)=>a.jour.localeCompare(b.jour)||String(a.dossier).localeCompare(String(b.dossier)));
+  const fi=$("#detail-filtre");
+  if(DETAIL_JOUR)fi.innerHTML=`— journée du <strong>${frDate(DETAIL_JOUR)}</strong> (${detail.length}) · <span class="lnk" id="detail-reset">↩ tout le mois</span>`;
+  else fi.textContent="(tout le mois — cliquez une date ci-dessus pour filtrer)";
+  detail.forEach(r=>{
+    const{temps}=tempsAlloue(r.famille,r.marque,r.topage,r.codic);
+    const cls=classeTopage(r.topage);const t=labelTopage(r.topage);
+    db.innerHTML+=`<tr><td>${frDate(r.jour)}</td><td>${r.dossier}</td><td>${r.famille}</td>
+      <td>${r.marque||'<span class="muted">—</span>'}</td><td>${r.codic}</td>
+      <td class="num">${r.nbPieces}</td><td><span class="tag ${cls}">${t}</span></td>
+      <td class="num">${temps?fN(temps)+" h":'<span class="muted">0 h</span>'}</td></tr>`;
+  });
+  if(!detail.length)db.innerHTML=`<tr><td colspan="8" class="empty">Aucune intervention.</td></tr>`;
+  const reset=$("#detail-reset");if(reset)reset.addEventListener("click",()=>{DETAIL_JOUR=null;renderDetail(code);});
+}
+/* Liste des déductions du technicien affiché (tab efficience). */
+function renderDeductionsTech(code){
+  const tb=$("#tbl-deductions-body");if(!tb)return;
+  const list=deductionsDe(code).slice().sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.createdAt||0)-(a.createdAt||0));
+  const peutSupprimer=(MODE==="admin")||(MODE==="tech"&&code===IDENTITY);
+  tb.innerHTML="";
+  if(!list.length){tb.innerHTML=`<tr><td colspan="4" class="empty">Aucune déduction déclarée ce mois-ci.</td></tr>`;return;}
+  list.forEach(d=>{
+    tb.innerHTML+=`<tr><td>${d.date?frDate(d.date):"—"}</td>
+      <td class="num">${fN(d.heures)} h</td>
+      <td style="white-space:normal">${d.motif?d.motif:'<span class="muted">—</span>'}</td>
+      <td class="num">${peutSupprimer?`<span class="lnk" data-del-ded="${d.id}" title="Supprimer">✕</span>`:""}</td></tr>`;
+  });
+  tb.querySelectorAll("[data-del-ded]").forEach(el=>{
+    el.addEventListener("click",async()=>{
+      if(!confirm("Supprimer cette déduction ?"))return;
+      await deleteDeduction(el.dataset.delDed);render();
+    });
+  });
+}
+/* recalcul léger : met à jour jauge/stats/total sans reconstruire les inputs (garde le focus) */
+function renderTechSoft(){
+  const code=VIEW_CODE||IDENTITY;const b=bilanTech(code);
+  const nEff=niveau("efficience",b.eff);const pct=b.eff==null?0:Math.min(100,b.eff);
+  const jc=$("#tech-jauges .jauge-circle");
+  if(jc){jc.className="jauge-circle jauge-"+nEff;jc.style.setProperty("--pct",pct);
+    jc.querySelector(".jauge-value").textContent=fPct(b.eff);}
+  const nConso=niveau("conso",b.conso);
+  const stats=$("#tech-stats").children;
+  if(stats.length){
+    stats[0].className="stat-card b-"+nConso;
+    stats[0].querySelector(".stat-value").textContent=fN(b.conso);
+    stats[0].querySelector(".stat-sub").textContent=`${b.piecesTotal} pièces / ${b.nbTotal} interv.`;
+    stats[1].querySelector(".stat-value").textContent=b.nbTotal;
+    stats[1].querySelector(".stat-sub").textContent=`${b.joursActifs} jour(s) actif(s) · ${b.joursSaisis} saisi(s)`;
+    stats[2].querySelector(".stat-value").textContent=fN(b.tempsTotal)+" h";
+    stats[3].querySelector(".stat-value").textContent=fN(b.heuresTotal)+" h";
+    stats[3].querySelector(".stat-sub").textContent=b.deductionsTotal>0?`${fN(b.heuresBrutes)} h saisies − ${fN(b.deductionsTotal)} h déduites`:`saisies (${b.joursSaisis} j)`;
+  }
+  b.lignes.forEach(l=>{
+    const inp=$(`#tbl-jours-body input[data-date="${l.date}"]`);if(!inp)return;
+    const tr=inp.closest("tr");const tds=tr.children;
+    const effJ=l.netH>0?l.temps/l.netH*100:null;const consoJ=l.nb>0?l.pieces/l.nb:null;
+    tds[5].innerHTML=l.netH>0?fPct(effJ):'<span class="muted">—</span>';
+    tds[6].textContent=fN(consoJ);
+    tr.className=l.netH>0?("row-"+niveau("efficience",effJ)):"";
+  });
+  $("#tbl-jours-foot").innerHTML=b.dates.length?`<tr><td>TOTAL du mois</td><td class="num">${b.nbTotal}</td>
+    <td class="num">${b.piecesTotal}</td><td class="num">${fN(b.tempsTotal)} h</td>
+    <td class="num">${fN(b.heuresTotal)} h</td><td class="num">${fPct(b.eff)}</td><td class="num">${fN(b.conso)}</td></tr>`:"";
+  updateRanks(code);   // l'efficience a changé -> le classement aussi
+}
+
+function renderAdmin(){
+  $("#view-admin").classList.remove("hidden");$("#view-tech").classList.add("hidden");
+  const codes=[...new Set(ROWS.map(r=>r.tech).filter(Boolean))];
+  const lignes=codes.map(code=>({code,nom:nomDe(code),b:bilanTech(code)}))
+    .sort((a,b)=>(b.b.eff??-1)-(a.b.eff??-1) || b.b.nbTotal-a.b.nbTotal);
+  const body=$("#tbl-admin-body");body.innerHTML="";
+  if(!codes.length){body.innerHTML=`<tr><td colspan="11" class="empty">Chargez le mois pour afficher les collaborateurs.</td></tr>`;}
+  let ST=0,TT=0,HH=0,PP=0,NN=0,RET=0,REP=0;   // ST=temps jours saisis ; RET=retours ; REP=appareils réparés
+  lignes.forEach(({code,nom,b})=>{
+    ST+=b.tempsSaisi;TT+=b.tempsTotal;HH+=b.heuresTotal;PP+=b.piecesTotal;NN+=b.nbTotal;REP+=b.nbRepares;
+    const rets=retoursDeTech(code).length;RET+=rets;
+    const taux=b.nbRepares>0?rets/b.nbRepares*100:null;
+    const rc=b.eff!=null?("row-"+niveau("efficience",b.eff)):"";
+    const nc=niveau("conso",b.conso),nr=niveau("tauxRetour",taux);
+    body.innerHTML+=`<tr class="${rc}"><td>${code}</td>
+      <td><span class="lnk" data-code="${code}" title="Voir le détail de ce technicien">${nom}</span></td>
+      <td class="num">${b.joursSaisis}</td><td class="num">${b.nbTotal}</td><td class="num">${b.piecesTotal}</td>
+      <td class="num">${fN(b.tempsTotal)} h</td><td class="num">${fN(b.heuresTotal)} h</td>
+      <td class="num">${b.eff!=null?fPct(b.eff):'<span class="muted">n/c</span>'}</td>
+      <td class="num"><span class="niveau ${nc}">${fN(b.conso)}</span></td>
+      <td class="num">${rets}</td>
+      <td class="num">${taux!=null?`<span class="niveau ${nr}">${fPct(taux)}</span>`:'<span class="muted">n/c</span>'}</td></tr>`;
+  });
+  body.querySelectorAll("[data-code]").forEach(el=>{
+    el.addEventListener("click",()=>{ADMIN_FOCUS=el.dataset.code;render();window.scrollTo({top:0,behavior:"smooth"});});
+  });
+  const effG=HH>0?ST/HH*100:null,consoG=NN>0?PP/NN:null,tauxG=REP>0?RET/REP*100:null;
+  $("#tbl-admin-foot").innerHTML=codes.length?`<tr><td colspan="3">TOTAL / MOYENNE</td>
+    <td class="num">${NN}</td><td class="num">${PP}</td><td class="num">${fN(TT)} h</td>
+    <td class="num">${fN(HH)} h</td><td class="num">${fPct(effG)}</td><td class="num">${fN(consoG)}</td>
+    <td class="num">${RET}</td><td class="num">${fPct(tauxG)}</td></tr>`:"";
+  $("#admin-stats").innerHTML=`
+    <div class="stat-card b-neutre"><div class="stat-label">Collaborateurs actifs</div><div class="stat-value">${codes.length}</div></div>
+    <div class="stat-card b-${niveau("efficience",effG)}"><div class="stat-label">Efficience moyenne</div><div class="stat-value">${fPct(effG)}</div></div>
+    <div class="stat-card b-${niveau("conso",consoG)}"><div class="stat-label">Conso pièces moyenne</div><div class="stat-value">${fN(consoG)}</div></div>
+    <div class="stat-card b-${niveau("tauxRetour",tauxG)}"><div class="stat-label">Taux de retour moyen</div><div class="stat-value">${fPct(tauxG)}</div></div>`;
+  renderAdminDeductions();
+}
+
+/* Rubrique déductions (vue admin/superviseur) : toutes les déductions du mois, filtrables par tech. */
+function renderAdminDeductions(){
+  // Options du filtre : techniciens ayant au moins une déduction ce mois
+  const codesAvec=[...new Set(DEDUCTIONS.map(d=>d.code))]
+    .map(c=>({code:c,nom:nomDe(c)})).sort((a,b)=>a.nom.localeCompare(b.nom,"fr"));
+  const sel=$("#deduc-filtre-tech");
+  if(sel){
+    const cur=ADMIN_DEDUC_FILTER;
+    sel.innerHTML=`<option value="">Tous les techniciens</option>`+
+      codesAvec.map(c=>`<option value="${c.code}">${c.nom} (${c.code})</option>`).join("");
+    if(codesAvec.some(c=>c.code===cur))sel.value=cur; else {sel.value="";ADMIN_DEDUC_FILTER="";}
+  }
+  let list=DEDUCTIONS.slice();
+  if(ADMIN_DEDUC_FILTER)list=list.filter(d=>d.code===ADMIN_DEDUC_FILTER);
+  list.sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.createdAt||0)-(a.createdAt||0));
+  const body=$("#tbl-admin-deduc-body");if(!body)return;body.innerHTML="";
+  if(!list.length){body.innerHTML=`<tr><td colspan="5" class="empty">Aucune déduction déclarée ce mois-ci.</td></tr>`;}
+  let totH=0;
+  list.forEach(d=>{totH+=parseFloat(d.heures)||0;
+    body.innerHTML+=`<tr><td>${nomDe(d.code)} <span class="muted">(${d.code})</span></td>
+      <td>${d.date?frDate(d.date):"—"}</td><td class="num">${fN(d.heures)} h</td>
+      <td style="white-space:normal">${d.motif?d.motif:'<span class="muted">—</span>'}</td>
+      <td class="num"><span class="lnk" data-del-ded="${d.id}" title="Supprimer">✕</span></td></tr>`;
+  });
+  $("#tbl-admin-deduc-foot").innerHTML=list.length?`<tr><td colspan="2">TOTAL (${list.length})</td><td class="num">${fN(totH)} h</td><td colspan="2"></td></tr>`:"";
+  $("#deduc-resume").textContent=`${DEDUCTIONS.length} déduction(s) ce mois · ${fN(DEDUCTIONS.reduce((s,d)=>s+(parseFloat(d.heures)||0),0))} h au total`;
+  body.querySelectorAll("[data-del-ded]").forEach(el=>{
+    el.addEventListener("click",async()=>{
+      if(!confirm("Supprimer cette déduction ?"))return;
+      await deleteDeduction(el.dataset.delDed);render();
+    });
+  });
+}
+
+/* ============ IDENTITÉ ============ */
+function majBadge(){
+  $("#user-badge").innerHTML=IDENTITY?`Vous : <strong>${nomDe(IDENTITY)}</strong> (${IDENTITY})`:`<span class="muted">non défini</span>`;
+  const sup=estSuperviseur(IDENTITY);
+  $("#mode-pill").textContent=sup?"SUPERVISEUR":(MODE==="admin"?"ADMIN":"TECHNICIEN");
+  $("#mode-pill").className="mode-pill"+(MODE==="admin"?" admin":"");
+  $("#btn-quit-admin").classList.toggle("hidden",MODE!=="admin"||sup);
+  $("#btn-info-admin").classList.toggle("hidden",MODE!=="admin");
+  $("#btn-jetons-admin").classList.toggle("hidden",MODE!=="admin");
+  $("#btn-cache-admin").classList.toggle("hidden",MODE!=="admin");
+  $("#btn-changer").classList.toggle("hidden",MODE==="admin"&&!sup);
+  $("#btn-admin").classList.toggle("hidden",MODE==="admin");
+  majJetonsUI();
+}
+function setIdentity(code){IDENTITY=code;memSet(LS_ID,code);MODE=estSuperviseur(code)?"admin":"tech";ADMIN_FOCUS=null;majBadge();render();chargerJetons();ecouterJetons();montrerInfoJetons();}
+
+/* ============ IMPORT DES HEURES DEPUIS L'APP SAV (collection "days") ============ */
+async function importerHeuresSAV(){
+  const email=$("#imp-email").value.trim(),pass=$("#imp-pass").value,ym=currentYM();
+  const msg=$("#imp-msg");
+  if(typeof firebase==="undefined"||!firebase.auth){msg.style.color="var(--danger)";msg.textContent="Firebase non chargé (Internet requis).";return;}
+  if(!email||!pass){msg.style.color="var(--danger)";msg.textContent="Email et mot de passe requis.";return;}
+  msg.style.color="var(--text-muted)";msg.textContent="Connexion…";
+  try{
+    if(!firebase.apps||!firebase.apps.length)firebase.initializeApp(FIREBASE_CONFIG);
+    await firebase.auth().signInWithEmailAndPassword(email,pass);
+    if(!FB)FB=firebase.firestore();
+    // uid -> {code,nom} via la collection users (accessible si compte admin ; sinon on utilisera le nom du jour)
+    const uidMap={};
+    try{const us=await FB.collection("users").get();us.forEach(d=>{const x=d.data();uidMap[d.id]={code:x.bilanCode||null,nom:x.displayName||x.email||null};});}catch(e){/* non-admin : ignoré */}
+    msg.textContent="Lecture des journées…";
+    const snap=await FB.collection("days").where("date",">=",ym+"-01").where("date","<=",ym+"-31").get();
+    let imported=0,skip=0,nomatch=0;const writes=[];
+    snap.forEach(doc=>{
+      const d=doc.data();if(!d||!d.date)return;
+      const h=d.heuresReelles;if(h==null||h<=0)return;
+      const u=uidMap[d.uid]||{};
+      const code=u.code||codeParNom(d.technicienNom||u.nom);
+      if(!code){nomatch++;return;}
+      const key=hKey(code,d.date);
+      if(key in HCACHE){skip++;return;}       // déjà saisi ici -> pas d'écrasement
+      HCACHE[key]=h;memSet(key,String(h));
+      writes.push(FB.collection(COLL_HEURES).doc(`${code}_${d.date}`)
+        .set({code,date:d.date,mois:d.date.slice(0,7),heures:h,updatedAt:Date.now(),source:"import_sav"}));
+      imported++;
+    });
+    await Promise.all(writes);
+    try{await firebase.auth().signOut();}catch(e){}
+    msg.style.color="var(--success)";
+    msg.innerHTML=`✅ ${imported} heures importées${skip?`, ${skip} déjà présentes conservées`:""}${nomatch?`, ${nomatch} sans technicien reconnu`:""}.`;
+    render();
+    setTimeout(()=>$("#modal-import").classList.add("hidden"),2200);
+  }catch(err){msg.style.color="var(--danger)";msg.textContent="Erreur : "+(err.code||err.message||err);}
+}
+
+function ouvrirModalIdentite(){$("#modal-identite").classList.remove("hidden");
+  const inp=$("#identite-input");inp.value="";setTimeout(()=>inp.focus(),50);afficherResultats(identiteTries());}
+function fermerModalIdentite(){if(IDENTITY)$("#modal-identite").classList.add("hidden");}
+function afficherResultats(arr){
+  const res=$("#identite-results");res.innerHTML="";
+  if(!arr.length){res.classList.add("hidden");return;}
+  arr.forEach(t=>{const d=document.createElement("div");d.textContent=`${t.nom} (${t.code})`;
+    d.addEventListener("mousedown",e=>{e.preventDefault();$("#modal-identite").classList.add("hidden");setIdentity(t.code);});
+    res.appendChild(d);});
+  res.classList.remove("hidden");
+}
+$("#identite-input").addEventListener("input",()=>{
+  const q=$("#identite-input").value.toLowerCase().trim();
+  const arr=q?identiteTries().filter(t=>t.nom.toLowerCase().includes(q)||t.code.toLowerCase().includes(q)):identiteTries();
+  afficherResultats(arr);
+});
+$("#modal-identite").addEventListener("click",e=>{if(e.target===$("#modal-identite"))fermerModalIdentite();});
+
+/* ============ MODAL CODE 1107 ============ */
+let codeCallback=null;
+function demanderCode(titre,desc,cb){
+  codeCallback=cb;$("#code-title").textContent=titre;$("#code-desc").textContent=desc||"";
+  $("#code-input").value="";$("#code-msg").textContent="";
+  $("#modal-code").classList.remove("hidden");setTimeout(()=>$("#code-input").focus(),50);
+}
+function validerCode(){
+  if($("#code-input").value.trim()===CODE_ACCES){$("#modal-code").classList.add("hidden");const cb=codeCallback;codeCallback=null;if(cb)cb();}
+  else $("#code-msg").textContent="Code incorrect.";
+}
+$("#code-ok").addEventListener("click",validerCode);
+$("#code-input").addEventListener("keydown",e=>{if(e.key==="Enter")validerCode();});
+$("#code-cancel").addEventListener("click",()=>{$("#modal-code").classList.add("hidden");codeCallback=null;});
+
+/* ============ TEMPS D'EFFICIENCE (barème TAR/TAN/ECC) ============
+   Affichage pour tous les techniciens ; modification réservée au mode admin.
+   Les modifications sont enregistrées dans Firestore (collection
+   "temps_efficience") et appliquées en direct au barème en mémoire
+   (IDX2/IDX3, partagés avec le calcul d'efficience) -> plus besoin de
+   reconstruire le logiciel à chaque changement de temps.
+   Colonnes : TAR -> "tar", TAN -> "tan", ECC -> "etc". */
+const COLL_TEMPS="temps_efficience";
+const COLL_TEMPS_LOG="temps_efficience_log";
+const LS_TEMPS_SEEN="eff_temps_seen";
+function tempsDocId(level,fam,marque){return level===1?("d1__"+fam):level===2?("d2__"+fam+"__"+(marque||"")):("d3__"+fam);}
+async function hydrateTemps(){
+  if(!FB)return;
+  try{
+    const snap=await FB.collection(COLL_TEMPS).get();
+    snap.forEach(doc=>{
+      const d=doc.data();if(!d||!d.fam)return;
+      const tgt=(d.level===1)?IDX1[normCodic(d.fam)]:(d.level===2)?IDX2[d.fam+"|"+d.marque]:IDX3[d.fam];
+      if(!tgt)return;
+      ["tar","tan","etc"].forEach(k=>{if(typeof d[k]==="number")tgt[k]=d[k];});
+    });
+  }catch(e){console.warn("Lecture bareme temps echouee:",e);}
+}
+function tempsSet(level,fam,marque,champ,val){
+  const num=parseFloat(String(val).replace(",","."));
+  if(isNaN(num)||num<0)return false;
+  const tgt=(level===1)?IDX1[normCodic(fam)]:(level===2)?IDX2[fam+"|"+marque]:IDX3[fam];
+  if(!tgt)return false;
+  const ancien=(typeof tgt[champ]==="number")?tgt[champ]:null;
+  if(ancien===num)return true;
+  tgt[champ]=num;
+  if(FB){
+    const payload={level:level,fam:fam,tar:tgt.tar,tan:tgt.tan,etc:tgt.etc,updatedAt:Date.now()};
+    if(level===2)payload.marque=marque;
+    FB.collection(COLL_TEMPS).doc(tempsDocId(level,fam,marque)).set(payload,{merge:true})
+      .catch(e=>console.warn("Ecriture bareme temps:",e));
+    FB.collection(COLL_TEMPS_LOG).add({level:level,fam:fam,marque:(level===2?marque:""),champ:champ,ancien:ancien,nouveau:num,ts:Date.now()})
+      .catch(e=>console.warn("Log bareme temps:",e));
+  }
+  return true;
+}
+function tempsListe(){
+  const out=[];
+  (window.TEMPS_DETAIL1||[]).forEach(d=>out.push({level:1,fam:normCodic(d.codic),marque:"",ligne:d.libelle||"",obj:d}));
+  (window.TEMPS_DETAIL2||[]).forEach(d=>out.push({level:2,fam:d.fam,marque:d.marque,ligne:d.ligne||"",obj:d}));
+  (window.TEMPS_DETAIL3||[]).forEach(d=>out.push({level:3,fam:d.fam,marque:"",ligne:d.libelle||"",obj:d}));
+  return out;
+}
+function tempsEsc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function renderTemps(){
+  const admin=(MODE==="admin");
+  const sub=$("#temps-sub");
+  if(sub)sub.textContent=admin
+    ? "Mode admin : cliquez une valeur (TAR, TAN ou ECC) pour la modifier. Enregistrement automatique et partage."
+    : "Bareme des temps alloues par famille et marque (lecture seule). Passez en mode admin pour modifier.";
+  const q=(($("#temps-search").value)||"").trim().toUpperCase();
+  const body=$("#tbl-temps-body");body.innerHTML="";
+  const rows=tempsListe().filter(r=>!q||(r.fam+" "+r.marque+" "+r.ligne).toUpperCase().includes(q));
+  const frag=document.createDocumentFragment();
+  const LIMITE=600;
+  rows.slice(0,LIMITE).forEach(r=>{
+    const tr=document.createElement("tr");
+    const marqueLbl=(r.level===2)?tempsEsc(r.marque):(r.level===1)?"<span class='muted'>(par CODIC)</span>":"<span class='muted'>(toutes marques)</span>";
+    const cell=(champ)=>{
+      const v=(typeof r.obj[champ]==="number")?r.obj[champ]:"";
+      if(admin)return '<input class="h-input temps-inp" data-level="'+r.level+'" data-fam="'+tempsEsc(r.fam)+'" data-marque="'+tempsEsc(r.marque)+'" data-champ="'+champ+'" type="number" min="0" step="0.05" value="'+v+'">';
+      return v===""?"—":v;
+    };
+    tr.innerHTML="<td>"+tempsEsc(r.ligne||"—")+"</td><td>"+tempsEsc(r.level===1?("CODIC "+r.fam):r.fam)+"</td><td>"+marqueLbl+"</td>"
+      +'<td class="num col-tar">'+cell("tar")+'</td><td class="num col-tan">'+cell("tan")+'</td><td class="num col-ecc">'+cell("etc")+'</td>';
+    frag.appendChild(tr);
+  });
+  body.appendChild(frag);
+  const msg=$("#temps-msg");
+  if(msg)msg.textContent=rows.length>LIMITE?(LIMITE+" premieres lignes affichees sur "+rows.length+" - affinez la recherche."):(rows.length+" ligne(s).");
+  if(admin){
+    body.querySelectorAll(".temps-inp").forEach(inp=>{
+      inp.addEventListener("change",()=>{
+        const ok=tempsSet(parseInt(inp.dataset.level,10),inp.dataset.fam,inp.dataset.marque,inp.dataset.champ,inp.value);
+        if(ok){inp.style.borderColor="var(--success)";setTimeout(()=>{inp.style.borderColor="";},900);try{render();}catch(e){}}
+        else{inp.style.borderColor="var(--danger)";}
+      });
+    });
+  }
+}
+function ouvrirTemps(){$("#modal-temps").classList.remove("hidden");renderTemps();setTimeout(()=>$("#temps-search").focus(),50);}
+(function wireTemps(){
+  const b=$("#btn-temps");if(b)b.addEventListener("click",ouvrirTemps);
+  const c=$("#temps-close");if(c)c.addEventListener("click",()=>$("#modal-temps").classList.add("hidden"));
+  const s=$("#temps-search");if(s)s.addEventListener("input",renderTemps);
+})();
+
+/* ============ POPUP DE MISE À JOUR DU BARÈME AU LANCEMENT ============
+   À l'ouverture, si des temps ont été modifiés depuis la dernière visite
+   de ce poste, une fenêtre liste les changements (ancien -> nouveau) que
+   l'utilisateur doit fermer. Journal partagé : collection Firestore
+   "temps_efficience_log". Repère de dernière lecture : localStorage. */
+const CHAMP_LBL={tar:"TAR",tan:"TAN",etc:"ECC"};
+async function checkTempsUpdates(){
+  if(!FB)return false;
+  const seenRaw=memGet(LS_TEMPS_SEEN);
+  if(seenRaw==null){memSet(LS_TEMPS_SEEN,String(Date.now()));return false;}  // 1re ouverture : baseline, pas de popup
+  const seen=parseInt(seenRaw,10)||0;
+  let list=[];
+  try{
+    const snap=await FB.collection(COLL_TEMPS_LOG).where("ts",">",seen).orderBy("ts","desc").get();
+    snap.forEach(doc=>{const d=doc.data();if(d)list.push(d);});
+  }catch(e){console.warn("Lecture journal temps:",e);return false;}
+  if(!list.length){memSet(LS_TEMPS_SEEN,String(Date.now()));return false;}
+  renderMajTemps(list);
+  return true;
+}
+function fmtDateCourt(ts){try{const d=new Date(ts);return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+" "+String(d.getHours()).padStart(2,"0")+"h"+String(d.getMinutes()).padStart(2,"0");}catch(e){return"";}}
+function renderMajTemps(list){
+  const body=$("#maj-temps-body");if(!body)return;
+  body.innerHTML="";
+  const frag=document.createDocumentFragment();
+  list.slice(0,200).forEach(d=>{
+    const li=document.createElement("div");
+    li.style.cssText="padding:9px 2px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:12px;align-items:center;font-size:.9rem";
+    const cls=(d.champ==="tar")?"tar":(d.champ==="tan")?"tan":"ecc";
+    const marque=(d.level===1)?" (par CODIC)":(d.marque?(" · "+tempsEsc(d.marque)):" · (toutes marques)");
+    const anc=(d.ancien==null?"—":d.ancien);
+    li.innerHTML="<span><strong>"+tempsEsc(d.level===1?("CODIC "+d.fam):d.fam)+"</strong>"+marque+" <span class='tag "+cls+"' style='margin-left:6px'>"+CHAMP_LBL[d.champ]+"</span></span>"
+      +"<span style='white-space:nowrap;color:var(--text-muted)'>"+anc+" &rarr; <strong style='color:var(--text)'>"+d.nouveau+"</strong> <span style='font-size:.8em;margin-left:6px'>"+fmtDateCourt(d.ts)+"</span></span>";
+    frag.appendChild(li);
+  });
+  body.appendChild(frag);
+  const c=$("#maj-temps-count");if(c)c.textContent=(list.length>1?(list.length+" modifications"):"1 modification");
+  $("#modal-maj-temps").classList.remove("hidden");
+}
+function fermerMajTemps(){memSet(LS_TEMPS_SEEN,String(Date.now()));$("#modal-maj-temps").classList.add("hidden");checkInfoMessages();}
+(function wireMajTemps(){const b=$("#maj-temps-ok");if(b)b.addEventListener("click",fermerMajTemps);})();
+
+/* ============ MESSAGES D'INFO (admin -> techniciens) ============
+   En mode admin, "Envoyer une info" diffuse un message qui s'affiche à
+   l'ouverture pour tous les techniciens (même style que le popup barème),
+   à fermer par l'utilisateur. Collection Firestore "messages_info". */
+const COLL_INFO="messages_info";
+const LS_INFO_SEEN="eff_info_seen";
+function envoyerInfo(){
+  const titre=(($("#info-titre").value)||"").trim();
+  const texte=(($("#info-texte").value)||"").trim();
+  const msg=$("#info-msg");
+  if(!texte){if(msg){msg.style.color="var(--danger)";msg.textContent="Saisissez un message.";}return;}
+  const now=Date.now();
+  memSet(LS_INFO_SEEN,String(now));          // l'expéditeur ne reçoit pas son propre message
+  if(FB){
+    FB.collection(COLL_INFO).add({titre:titre,texte:texte,ts:now})
+      .catch(e=>console.warn("Envoi info:",e));
+  }
+  if(msg){msg.style.color="var(--success)";msg.textContent="Message envoyé aux techniciens.";}
+  $("#info-titre").value="";$("#info-texte").value="";
+  setTimeout(()=>{$("#modal-envoi-info").classList.add("hidden");if(msg)msg.textContent="";},1100);
+}
+async function checkInfoMessages(){
+  if(!FB)return;
+  const seenRaw=memGet(LS_INFO_SEEN);
+  if(seenRaw==null){memSet(LS_INFO_SEEN,String(Date.now()));return;}  // 1re ouverture : baseline
+  const seen=parseInt(seenRaw,10)||0;
+  let list=[];
+  try{
+    const snap=await FB.collection(COLL_INFO).where("ts",">",seen).orderBy("ts","desc").get();
+    snap.forEach(doc=>{const d=doc.data();if(d&&d.texte)list.push(d);});
+  }catch(e){console.warn("Lecture infos:",e);return;}
+  if(!list.length){memSet(LS_INFO_SEEN,String(Date.now()));return;}
+  renderInfoMessages(list);
+}
+function renderInfoMessages(list){
+  const body=$("#info-lec-body");if(!body)return;
+  body.innerHTML="";
+  const frag=document.createDocumentFragment();
+  list.slice(0,50).forEach(d=>{
+    const div=document.createElement("div");
+    div.style.cssText="padding:10px 0;border-bottom:1px solid var(--border)";
+    const t=d.titre?("<div style='font-weight:700;margin-bottom:3px'>"+tempsEsc(d.titre)+"</div>"):"";
+    div.innerHTML=t+"<div style='white-space:pre-wrap'>"+tempsEsc(d.texte)+"</div>"
+      +"<div style='font-size:.78rem;color:var(--text-muted);margin-top:4px'>"+fmtDateCourt(d.ts)+"</div>";
+    frag.appendChild(div);
+  });
+  body.appendChild(frag);
+  $("#modal-info-lecture").classList.remove("hidden");
+}
+function fermerInfoLecture(){memSet(LS_INFO_SEEN,String(Date.now()));$("#modal-info-lecture").classList.add("hidden");}
+let INFO_LISTENER=null;
+function startInfoListener(){
+  if(!FB||INFO_LISTENER)return;
+  const startTs=Date.now();
+  try{
+    INFO_LISTENER=FB.collection(COLL_INFO).where("ts",">",startTs).onSnapshot(snap=>{
+      const seen=parseInt(memGet(LS_INFO_SEEN),10)||0;
+      let list=[];
+      snap.docChanges().forEach(ch=>{if(ch.type==="added"){const d=ch.doc.data();if(d&&d.texte&&d.ts>seen)list.push(d);}});
+      if(list.length){list.sort((a,b)=>b.ts-a.ts);renderInfoMessages(list);}
+    },err=>console.warn("Ecoute infos:",err));
+  }catch(e){console.warn("Init ecoute infos:",e);}
+}
+(function wireInfo(){
+  const b=$("#btn-info-admin");if(b)b.addEventListener("click",()=>{const m=$("#info-msg");if(m)m.textContent="";$("#modal-envoi-info").classList.remove("hidden");setTimeout(()=>$("#info-texte").focus(),50);});
+  const c=$("#info-cancel");if(c)c.addEventListener("click",()=>$("#modal-envoi-info").classList.add("hidden"));
+  const e=$("#info-envoi");if(e)e.addEventListener("click",envoyerInfo);
+  const o=$("#info-lec-ok");if(o)o.addEventListener("click",fermerInfoLecture);
+})();
+
+/* ============ ÉVÉNEMENTS ============ */
+$("#flux-url").value=FLUX_URL;
+$("#sel-month").value=ymNow();
+$("#btn-refresh").addEventListener("click",actualiserAvecJeton);  // consomme 1 jeton puis refresh intelligent
+$("#btn-import").addEventListener("click",()=>$("#file-input").click());
+$("#file-input").addEventListener("change",e=>{if(e.target.files[0])chargerExcel(e.target.files[0]);});
+$("#sel-month").addEventListener("change",()=>{ROWS=[];ROWS_RETOUR=[];RETOUR_LOADED=false;ROWS_NPS=[];NPS_LOADED=false;afficherCacheSeul();});
+$("#btn-changer").addEventListener("click",()=>demanderCode("Changer de technicien","Saisissez le code d'accès pour changer d'identité.",ouvrirModalIdentite));
+$("#btn-admin").addEventListener("click",()=>demanderCode("Mode admin","Saisissez le code d'accès administrateur.",()=>{MODE="admin";ADMIN_FOCUS=null;majBadge();render();}));
+$("#btn-quit-admin").addEventListener("click",()=>{MODE="tech";ADMIN_FOCUS=null;majBadge();render();});
+$("#btn-back-admin").addEventListener("click",()=>{ADMIN_FOCUS=null;render();window.scrollTo({top:0,behavior:"smooth"});});
+document.querySelectorAll(".tab2").forEach(bt=>bt.addEventListener("click",()=>{TAB=bt.dataset.tab;applyTab();}));
+
+/* Import des heures depuis l'app SAV */
+$("#btn-import-sav").addEventListener("click",()=>{
+  $("#imp-mois").textContent=currentYM();$("#imp-msg").style.color="var(--text-muted)";$("#imp-msg").textContent="";
+  $("#modal-import").classList.remove("hidden");setTimeout(()=>$("#imp-email").focus(),50);
+});
+$("#imp-cancel").addEventListener("click",()=>$("#modal-import").classList.add("hidden"));
+$("#imp-run").addEventListener("click",importerHeuresSAV);
+
+/* ============ MODAL DÉDUCTION DE TEMPS ============ */
+function ouvrirModalDeduction(){
+  const ym=currentYM();const[y,m]=ym.split("-").map(Number);
+  const dernier=new Date(y,m,0).getDate();
+  const d=$("#ded-date");
+  d.min=`${ym}-01`;d.max=`${ym}-${String(dernier).padStart(2,"0")}`;
+  // défaut : aujourd'hui si dans le mois affiché, sinon le 1er du mois
+  const today=new Date();const todayY=today.getFullYear()+"-"+String(today.getMonth()+1).padStart(2,"0");
+  d.value=(todayY===ym)?today.getFullYear()+"-"+String(today.getMonth()+1).padStart(2,"0")+"-"+String(today.getDate()).padStart(2,"0"):`${ym}-01`;
+  $("#ded-heures").value="";$("#ded-motif").value="";
+  $("#ded-msg").style.color="var(--text-muted)";$("#ded-msg").textContent="";
+  $("#modal-deduction").classList.remove("hidden");
+  setTimeout(()=>$("#ded-heures").focus(),50);
+}
+async function validerDeduction(){
+  const msg=$("#ded-msg");
+  const date=$("#ded-date").value;
+  const heures=parseFloat($("#ded-heures").value);
+  const motif=$("#ded-motif").value.trim();
+  if(!IDENTITY){msg.style.color="var(--danger)";msg.textContent="Identité inconnue.";return;}
+  if(!date){msg.style.color="var(--danger)";msg.textContent="Choisissez une date.";return;}
+  if(!heures||heures<=0){msg.style.color="var(--danger)";msg.textContent="Indiquez un temps supérieur à 0.";return;}
+  if(!motif){msg.style.color="var(--danger)";msg.textContent="Indiquez un motif.";return;}
+  msg.style.color="var(--text-muted)";msg.textContent="Enregistrement…";
+  await addDeduction(IDENTITY,date,heures,motif);
+  $("#modal-deduction").classList.add("hidden");
+  render();
+}
+$("#deduc-filtre-tech").addEventListener("change",e=>{ADMIN_DEDUC_FILTER=e.target.value;renderAdminDeductions();});
+$("#btn-add-deduction").addEventListener("click",ouvrirModalDeduction);
+$("#ded-cancel").addEventListener("click",()=>$("#modal-deduction").classList.add("hidden"));
+$("#ded-ok").addEventListener("click",validerDeduction);
+$("#ded-motif").addEventListener("keydown",e=>{if(e.key==="Enter")validerDeduction();});
+$("#modal-deduction").addEventListener("click",e=>{if(e.target===$("#modal-deduction"))$("#modal-deduction").classList.add("hidden");});
+
+const dz=$("#dropzone");
+dz.addEventListener("click",()=>$("#file-input").click());
+["dragover","dragenter"].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add("drag");}));
+["dragleave","drop"].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove("drag");}));
+dz.addEventListener("drop",e=>{const f=e.dataTransfer.files[0];if(f)chargerExcel(f);});
+
+/* ============ DÉMARRAGE ============
+   Aucune actualisation automatique : au lancement on n'affiche QUE le cache local
+   (zéro appel au serveur SSRS). Les données ne se mettent à jour que lorsque
+   l'utilisateur clique sur « Actualiser » (ce qui consomme 1 jeton). */
+(async function init(){
+  initFirebase();
+  await hydrateHours(ymNow());   // pré-charge les heures du mois courant (si Firebase dispo)
+  await hydrateDeductions(ymNow());
+  await hydrateTemps();          // pre-charge les overrides du bareme (si Firebase dispo)
+  if(!(await checkTempsUpdates())) await checkInfoMessages();  // popups au lancement : bareme puis infos
+  startInfoListener();          // messages d'info en temps reel pour les postes deja ouverts
+  const saved=memGet(LS_ID);
+  if(saved&&TECH_BY_CODE[saved]){IDENTITY=saved;MODE=estSuperviseur(saved)?"admin":"tech";majBadge();render();montrerInfoJetons();}
+  else{majBadge();ouvrirModalIdentite();}
+  await chargerJetons();          // solde de jetons du jour
+  ecouterJetons();                // mise à jour en temps réel si un admin crédite
+  try{ await afficherCacheSeul(); }catch(e){ /* pas de cache : l'utilisateur cliquera sur Actualiser */ }
+})();
+</script>
+</body>
+</html>
