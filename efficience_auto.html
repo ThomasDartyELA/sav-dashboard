@@ -89,6 +89,10 @@
     background:var(--accent);color:#1c1c1c;white-space:nowrap;border:1px solid var(--accent-dark)}
   .jetons-badge.vide{background:var(--danger-bg);color:var(--danger);border-color:#f3c9c9}
   .jetons-badge.illim{background:var(--success-bg);color:#166534;border-color:#bbe7c6}
+  /* Entêtes de colonnes triables (tableau des interventions) */
+  th.sortable{cursor:pointer;user-select:none;white-space:nowrap}
+  th.sortable:hover{color:var(--primary)}
+  th.sortable .fleche{font-size:.72em;opacity:.85;margin-left:2px}
   .dropzone{border:2px dashed var(--border);border-radius:10px;padding:14px;text-align:center;
     color:var(--text-muted);font-size:.85rem;cursor:pointer;transition:.15s;margin-top:12px}
   .dropzone:hover,.dropzone.drag{border-color:var(--primary);background:#fff5f5;color:var(--primary)}
@@ -402,11 +406,18 @@
       </div>
 
       <div class="sect-title">Détail des interventions <span id="detail-filtre" class="muted" style="font-weight:400;font-size:.85rem"></span></div>
+      <div style="margin:6px 0 10px">
+        <input type="text" id="detail-search" placeholder="🔎 Rechercher (n° dossier, famille, marque, codic, topage…)" spellcheck="false"
+          style="max-width:460px;width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:.92rem;background:#fff;color:var(--text)">
+      </div>
       <div class="tbl-wrap">
         <table class="data-table" id="tbl-detail">
           <thead><tr>
-            <th>Date</th><th>N° dossier</th><th>Famille</th><th>Marque</th><th>Codic</th>
-            <th class="num">Pièces</th><th>Topage</th><th class="num">Temps alloué</th>
+            <th class="sortable" data-sort="jour">Date</th><th class="sortable" data-sort="dossier">N° dossier</th>
+            <th class="sortable" data-sort="famille">Famille</th><th class="sortable" data-sort="marque">Marque</th>
+            <th class="sortable" data-sort="codic">Codic</th>
+            <th class="num sortable" data-sort="nbPieces">Pièces</th><th class="sortable" data-sort="topage">Topage</th>
+            <th class="num sortable" data-sort="temps">Temps alloué</th>
           </tr></thead>
           <tbody id="tbl-detail-body"></tbody>
         </table>
@@ -616,8 +627,33 @@ const $=s=>document.querySelector(s);
 /* Version applicative — à incrémenter à chaque publication sur GitHub.
    Affichée discrètement dans la barre du haut pour vérifier que les postes
    ont bien reçu la dernière version (mise à jour auto au lancement). */
-const APP_VERSION="2026.09.16";
+const APP_VERSION="2026.09.17";
 (function(){const v=document.getElementById("app-version");if(v)v.textContent=" · v"+APP_VERSION;})();
+
+/* Notes de la version en cours : affichées UNE fois (par version, par poste)
+   quand le technicien reçoit la mise à jour. Vider le tableau = pas de fenêtre. */
+const NOTES_VERSION=[
+  "🔎 Nouveau : une barre de recherche et le tri par colonne (date, famille, marque, topage, pièces, temps…) dans le tableau « Détail des interventions ». Cliquez sur un entête pour trier.",
+  "🧹 En mode admin : le bouton « Vider le cache » permet de purger les données en mémoire et de tout recharger proprement en cas d'erreur d'affichage."
+];
+const LS_NOTES_VUE="eff_notes_vue_"+APP_VERSION;
+function montrerNotesMaj(){
+  if(!NOTES_VERSION.length) return;
+  if(memGet(LS_NOTES_VUE)) return;
+  let m=document.getElementById("modal-notes-maj");
+  if(!m){
+    m=document.createElement("div");m.id="modal-notes-maj";m.className="modal-overlay hidden";
+    m.innerHTML=`<div class="modal-box">
+      <h3>🎉 Nouveautés — version ${APP_VERSION}</h3>
+      <p class="muted" style="margin-top:4px;font-size:.88rem">L'application vient d'être mise à jour. Voici ce qui change :</p>
+      <ul style="margin:12px 0 0;padding-left:20px;line-height:1.6">${NOTES_VERSION.map(n=>`<li style="margin-bottom:8px">${n}</li>`).join("")}</ul>
+      <div class="modal-actions"><button class="btn btn-primary" id="notes-ok">J'ai compris</button></div>
+    </div>`;
+    document.body.appendChild(m);
+    m.querySelector("#notes-ok").addEventListener("click",()=>{memSet(LS_NOTES_VUE,"1");m.classList.add("hidden");});
+  }
+  m.classList.remove("hidden");
+}
 let ROWS=[];                 // interventions du mois chargé
 let ROWS_RETOUR=[];          // retours du mois chargé (appareils revenus < 30 j)
 let RETOUR_LOADED=false;     // le flux retours a-t-il été chargé ?
@@ -627,6 +663,9 @@ let TAB="eff";               // onglet actif vue technicien : "eff" | "ret" | "n
 let IDENTITY=null;           // code technicien courant
 let MODE="tech";             // "tech" | "admin"
 let DETAIL_JOUR=null;        // filtre jour du tableau détail (null = tout le mois)
+let DETAIL_CODE=null;        // technicien actuellement affiché dans le tableau détail
+let DETAIL_SEARCH="";        // texte de la barre de recherche des interventions
+let DETAIL_SORT={key:"jour",dir:1};  // colonne + sens de tri (1 asc, -1 desc)
 let ADMIN_FOCUS=null;        // en admin : code d'un tech affiché en détail (drill-down)
 let ADMIN_DEDUC_FILTER="";   // rubrique déductions admin : code tech filtré ("" = tous)
 let VIEW_CODE=null;          // code actuellement affiché dans la vue technicien
@@ -1496,26 +1535,65 @@ function renderNps(code){
   });
 }
 
-/* Détail des interventions : tout le mois, ou une seule journée si DETAIL_JOUR est défini */
+/* Normalise pour la recherche : sans accents, minuscule. */
+function normSearch(s){return (s==null?"":String(s)).normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();}
+/* Met à jour les flèches de tri sur les entêtes du tableau détail. */
+function majEntetesTri(){
+  document.querySelectorAll("#tbl-detail thead th.sortable").forEach(th=>{
+    if(!th.dataset.label) th.dataset.label=th.textContent.trim();
+    const actif=th.dataset.sort===DETAIL_SORT.key;
+    th.innerHTML=th.dataset.label+(actif?`<span class="fleche">${DETAIL_SORT.dir>0?"▲":"▼"}</span>`:"");
+  });
+}
+/* Détail des interventions : filtre jour + recherche + tri par colonne. */
 function renderDetail(code){
+  DETAIL_CODE=code;
   const db=$("#tbl-detail-body");db.innerHTML="";
   let detail=ROWS.filter(r=>r.tech===code);
   if(DETAIL_JOUR)detail=detail.filter(r=>r.jour===DETAIL_JOUR);
-  detail.sort((a,b)=>a.jour.localeCompare(b.jour)||String(a.dossier).localeCompare(String(b.dossier)));
+  // Recherche plein texte
+  const q=normSearch(DETAIL_SEARCH.trim());
+  if(q)detail=detail.filter(r=>normSearch([r.dossier,r.famille,r.marque,r.codic,labelTopage(r.topage)].join(" ")).includes(q));
+  // Temps alloué pré-calculé (pour l'affichage ET le tri)
+  detail=detail.map(r=>({...r,_temps:tempsAlloue(r.famille,r.marque,r.topage,r.codic).temps}));
+  // Tri
+  const k=DETAIL_SORT.key,dir=DETAIL_SORT.dir;
+  detail.sort((a,b)=>{
+    let c;
+    if(k==="nbPieces")c=((a.nbPieces||0)-(b.nbPieces||0));
+    else if(k==="temps")c=((a._temps||0)-(b._temps||0));
+    else if(k==="topage")c=labelTopage(a.topage).localeCompare(labelTopage(b.topage),"fr");
+    else c=String(a[k]||"").localeCompare(String(b[k]||""),"fr",{numeric:true});
+    return (c*dir)||a.jour.localeCompare(b.jour)||String(a.dossier).localeCompare(String(b.dossier));
+  });
   const fi=$("#detail-filtre");
-  if(DETAIL_JOUR)fi.innerHTML=`— journée du <strong>${frDate(DETAIL_JOUR)}</strong> (${detail.length}) · <span class="lnk" id="detail-reset">↩ tout le mois</span>`;
-  else fi.textContent="(tout le mois — cliquez une date ci-dessus pour filtrer)";
+  const suff=q?` · <span class="muted">${detail.length} résultat(s)</span>`:"";
+  if(DETAIL_JOUR)fi.innerHTML=`— journée du <strong>${frDate(DETAIL_JOUR)}</strong> (${detail.length}) · <span class="lnk" id="detail-reset">↩ tout le mois</span>`+suff;
+  else fi.innerHTML="(tout le mois — cliquez une date ci-dessus pour filtrer)"+suff;
   detail.forEach(r=>{
-    const{temps}=tempsAlloue(r.famille,r.marque,r.topage,r.codic);
+    const temps=r._temps;
     const cls=classeTopage(r.topage);const t=labelTopage(r.topage);
     db.innerHTML+=`<tr><td>${frDate(r.jour)}</td><td>${r.dossier}</td><td>${r.famille}</td>
       <td>${r.marque||'<span class="muted">—</span>'}</td><td>${r.codic}</td>
       <td class="num">${r.nbPieces}</td><td><span class="tag ${cls}">${t}</span></td>
       <td class="num">${temps?fN(temps)+" h":'<span class="muted">0 h</span>'}</td></tr>`;
   });
-  if(!detail.length)db.innerHTML=`<tr><td colspan="8" class="empty">Aucune intervention.</td></tr>`;
+  if(!detail.length)db.innerHTML=`<tr><td colspan="8" class="empty">${q?"Aucune intervention ne correspond à la recherche.":"Aucune intervention."}</td></tr>`;
+  majEntetesTri();
   const reset=$("#detail-reset");if(reset)reset.addEventListener("click",()=>{DETAIL_JOUR=null;renderDetail(code);});
 }
+/* Câblage recherche + tri (une seule fois). */
+(function wireDetailControls(){
+  const s=$("#detail-search");
+  if(s)s.addEventListener("input",()=>{DETAIL_SEARCH=s.value;if(DETAIL_CODE)renderDetail(DETAIL_CODE);});
+  document.querySelectorAll("#tbl-detail thead th.sortable").forEach(th=>{
+    th.addEventListener("click",()=>{
+      const k=th.dataset.sort;
+      if(DETAIL_SORT.key===k)DETAIL_SORT.dir*=-1; else DETAIL_SORT={key:k,dir:1};
+      if(DETAIL_CODE)renderDetail(DETAIL_CODE);
+    });
+  });
+})();
 /* Liste des déductions du technicien affiché (tab efficience). */
 function renderDeductionsTech(code){
   const tb=$("#tbl-deductions-body");if(!tb)return;
@@ -1656,7 +1734,7 @@ function majBadge(){
   $("#btn-admin").classList.toggle("hidden",MODE==="admin");
   majJetonsUI();
 }
-function setIdentity(code){IDENTITY=code;memSet(LS_ID,code);MODE=estSuperviseur(code)?"admin":"tech";ADMIN_FOCUS=null;majBadge();render();chargerJetons();ecouterJetons();montrerInfoJetons();}
+function setIdentity(code){IDENTITY=code;memSet(LS_ID,code);MODE=estSuperviseur(code)?"admin":"tech";ADMIN_FOCUS=null;majBadge();render();chargerJetons();ecouterJetons();montrerInfoJetons();montrerNotesMaj();}
 
 /* ============ IMPORT DES HEURES DEPUIS L'APP SAV (collection "days") ============ */
 async function importerHeuresSAV(){
@@ -2008,7 +2086,7 @@ dz.addEventListener("drop",e=>{const f=e.dataTransfer.files[0];if(f)chargerExcel
   if(!(await checkTempsUpdates())) await checkInfoMessages();  // popups au lancement : bareme puis infos
   startInfoListener();          // messages d'info en temps reel pour les postes deja ouverts
   const saved=memGet(LS_ID);
-  if(saved&&TECH_BY_CODE[saved]){IDENTITY=saved;MODE=estSuperviseur(saved)?"admin":"tech";majBadge();render();montrerInfoJetons();}
+  if(saved&&TECH_BY_CODE[saved]){IDENTITY=saved;MODE=estSuperviseur(saved)?"admin":"tech";majBadge();render();montrerInfoJetons();montrerNotesMaj();}
   else{majBadge();ouvrirModalIdentite();}
   await chargerJetons();          // solde de jetons du jour
   ecouterJetons();                // mise à jour en temps réel si un admin crédite
