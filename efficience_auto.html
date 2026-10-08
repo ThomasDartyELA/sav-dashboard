@@ -155,6 +155,12 @@
   .niveau.rouge{background:var(--danger-bg);color:#991b1b} .niveau.neutre{background:var(--neutral-bg);color:#4b5563}
   .muted{color:var(--text-muted)}
   .sect-title{font-size:.95rem;font-weight:700;margin:18px 0 8px}
+  /* NPS : choix du mois + comparaison atelier */
+  .nps-barre{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 16px}
+  .nps-barre label{font-size:.85rem;font-weight:600;color:var(--text-muted)}
+  .nps-barre select{padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:.9rem;background:#fff;color:var(--text);min-width:180px}
+  .nps-barre .muted{font-size:.8rem}
+  .jauge-card.atelier{background:#faf9f7}
   .empty{padding:30px;text-align:center;color:var(--text-muted);line-height:1.7}
   .lnk{color:var(--primary);font-weight:600;text-decoration:none;cursor:pointer}
   .lnk:hover{text-decoration:underline}
@@ -332,6 +338,7 @@
     <button class="tbtn accent hidden" id="btn-info-admin">Envoyer une info</button>
     <button class="tbtn accent hidden" id="btn-jetons-admin">Gérer les jetons</button>
     <button class="tbtn hidden" id="btn-cache-admin">Vider le cache</button>
+    <button class="tbtn hidden" id="btn-code-admin">Changer le code</button>
   </div>
 </div>
 
@@ -446,14 +453,22 @@
       </div>
 
       <div id="tab-nps" class="hidden">
+        <div class="nps-barre">
+          <label for="nps-mois">Mois des réponses</label>
+          <select id="nps-mois"></select>
+          <span class="muted" id="nps-mois-info"></span>
+        </div>
         <div class="jauge-grid" id="nps-jauges"></div>
+        <div class="sect-title" style="margin-top:0">Vos résultats</div>
         <div class="stat-grid" id="nps-stats"></div>
+        <div class="sect-title">Atelier — tous techniciens confondus</div>
+        <div class="stat-grid" id="nps-stats-atelier"></div>
         <div class="sect-title">Commentaires clients</div>
-        <div class="hint" style="margin-top:0">Avis laissés par les clients sur vos interventions (enquête NPS, export en cours). Note sur 10.</div>
+        <div class="hint" style="margin-top:0">Avis laissés par les clients sur vos interventions (enquête NPS) pour le mois choisi. Note sur 10.</div>
         <div class="tbl-wrap">
           <table class="data-table" id="tbl-nps">
             <thead><tr>
-              <th>Note</th><th>N° dossier</th><th>Commentaire</th>
+              <th>Date</th><th>Note</th><th>N° dossier</th><th>Commentaire</th>
             </tr></thead>
             <tbody id="tbl-nps-body"></tbody>
           </table>
@@ -579,7 +594,35 @@ const NPS_URL="https://raw.githubusercontent.com/ThomasDartyELA/sav-dashboard/ma
 const NPS_COL={date:0,tech:8,dossier:9,note:16,commentaire:17};
 const SEUILS={efficience:{sens:"haut",bon:93,moyen:78},conso:{sens:"bas",bon:1.10,moyen:1.40},
   tauxRetour:{sens:"bas",bon:5,moyen:7},nps:{sens:"haut",bon:50,moyen:0}};
-const CODE_ACCES="1107";
+/* ============ CODE D'ACCÈS (mode admin / changement de technicien) ============
+   Plus de code en clair : on compare l'empreinte SHA-256. L'empreinte de référence
+   vient de Firestore (config_efficience/acces.codeHash) — modifiable à distance —
+   avec repli sur le cache local puis sur l'empreinte par défaut ci-dessous.
+   Le code lui-même n'apparaît jamais (ni fichier, ni réseau, ni GitHub). */
+const CODE_HASH_DEFAUT="86cb35a822329fe1de40eb82a1791be1f66f8bd327446686bdd859a89e436853"; // empreinte de l'ancien code (transition)
+const LS_CODE_HASH="eff_code_hash";
+const COLL_CONFIG="config_efficience";
+let CODE_HASH_ACTUEL=(function(){try{return localStorage.getItem(LS_CODE_HASH)||CODE_HASH_DEFAUT;}catch(e){return CODE_HASH_DEFAUT;}})();
+async function sha256hex(str){
+  const buf=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+/* Récupère l'empreinte du code depuis Firestore et la met en cache local. */
+async function hydrateCodeAcces(){
+  if(!FB)return;
+  try{
+    const snap=await FB.collection(COLL_CONFIG).doc("acces").get();
+    const h=snap.exists?snap.data().codeHash:null;
+    if(h&&typeof h==="string"&&h.length>=32){CODE_HASH_ACTUEL=h;try{localStorage.setItem(LS_CODE_HASH,h);}catch(e){}}
+  }catch(e){console.warn("Lecture code d'accès échouée :",e);}
+}
+/* Change le code d'accès (admin) : écrit son empreinte dans Firestore. */
+async function changerCodeAcces(nouveau){
+  if(!FB)throw new Error("Firestore indisponible");
+  const h=await sha256hex(nouveau);
+  await FB.collection(COLL_CONFIG).doc("acces").set({codeHash:h,updatedAt:Date.now()},{merge:true});
+  CODE_HASH_ACTUEL=h;try{localStorage.setItem(LS_CODE_HASH,h);}catch(e){}
+}
 
 /* ============ INDEX DES TEMPS (BDD) ============ */
 const IDX1={},IDX2={},IDX3={};
@@ -633,7 +676,7 @@ const $=s=>document.querySelector(s);
 /* Version applicative — à incrémenter à chaque publication sur GitHub.
    Affichée discrètement dans la barre du haut pour vérifier que les postes
    ont bien reçu la dernière version (mise à jour auto au lancement). */
-const APP_VERSION="2026.09.18";
+const APP_VERSION="2026.10.08";
 (function(){const v=document.getElementById("app-version");if(v)v.textContent=" · v"+APP_VERSION;})();
 
 /* ---- Mise à jour EN COURS DE SESSION (sans fermer le portable) ----
@@ -665,9 +708,9 @@ async function verifierMajAppli(){
 /* Notes de la version en cours : affichées UNE fois (par version, par poste)
    quand le technicien reçoit la mise à jour. Vider le tableau = pas de fenêtre. */
 const NOTES_VERSION=[
-  "🔄 L'application peut désormais se mettre à jour SANS être fermée : dès qu'une nouvelle version est publiée, une bannière « Mettre à jour » apparaît en bas de l'écran — un clic suffit, pas besoin de relancer le portable.",
-  "🔎 Une barre de recherche et le tri par colonne (date, famille, marque, topage, pièces, temps…) dans le tableau « Détail des interventions ». Cliquez sur un entête pour trier.",
-  "🧹 En mode admin : le bouton « Vider le cache » permet de purger les données en mémoire et de tout recharger proprement en cas d'erreur d'affichage."
+  "📊 Onglet « Satisfaction (NPS) » : vous voyez maintenant votre NPS ET le NPS global de l'atelier côte à côte, avec l'écart en points.",
+  "📅 Nouveau sélecteur « Mois des réponses » : si le fichier NPS contient plusieurs mois, choisissez celui que vous voulez consulter (ou « Tous les mois »).",
+  "⚡ Le NPS s'affiche dès l'ouverture, sans consommer de jeton d'actualisation."
 ];
 const LS_NOTES_VUE="eff_notes_vue_"+APP_VERSION;
 function montrerNotesMaj(){
@@ -692,6 +735,9 @@ let ROWS_RETOUR=[];          // retours du mois chargé (appareils revenus < 30 
 let RETOUR_LOADED=false;     // le flux retours a-t-il été chargé ?
 let ROWS_NPS=[];             // réponses NPS du mois chargé
 let NPS_LOADED=false;        // le fichier NPS a-t-il été chargé ?
+let NPS_MOIS=null;           // mois NPS choisi ("YYYY-MM", "*" = tous, null = automatique)
+let NPS_IMPORT=false;        // true = fichier NPS importé à la main (prioritaire sur GitHub pour la session)
+let NPS_CODE=null;           // technicien affiché dans l'onglet NPS
 let TAB="eff";               // onglet actif vue technicien : "eff" | "ret" | "nps"
 let IDENTITY=null;           // code technicien courant
 let MODE="tech";             // "tech" | "admin"
@@ -952,11 +998,49 @@ async function validerCreditJetons(){
 async function viderCacheEtRecharger(){
   if(!confirm("Vider tout le cache local et recharger les données complètes du mois ?\n\nÀ utiliser en cas d'erreur de cache. Le mois en cours sera entièrement retéléchargé depuis le serveur.")) return;
   await idbClear();
-  ROWS=[];ROWS_RETOUR=[];RETOUR_LOADED=false;ROWS_NPS=[];NPS_LOADED=false;
+  ROWS=[];ROWS_RETOUR=[];RETOUR_LOADED=false;ROWS_NPS=[];NPS_LOADED=false;NPS_IMPORT=false;NPS_MOIS=null;
   setStatus("load","🧹 Cache vidé — rechargement complet du mois en cours…");
   chargerAuto(true);                           // force = mois entier (admin illimité)
 }
 (function wireCacheAdmin(){ const b=$("#btn-cache-admin"); if(b) b.addEventListener("click",viderCacheEtRecharger); })();
+
+/* Admin : changer le code d'accès (empreinte écrite dans Firestore). */
+function ouvrirModalCodeAdmin(){
+  let m=document.getElementById("modal-code-admin");
+  if(!m){
+    m=document.createElement("div");m.id="modal-code-admin";m.className="modal-overlay hidden";
+    m.innerHTML=`<div class="modal-box">
+      <h3>Changer le code d'accès</h3>
+      <p class="muted" style="margin-top:4px;font-size:.88rem">Ce code protège le mode admin et le changement de technicien. Choisissez-en un d'au moins 6 caractères (idéalement lettres + chiffres). Il remplacera l'ancien sur tous les postes (immédiatement ici, au prochain lancement pour les autres).</p>
+      <label for="ca-new">Nouveau code</label>
+      <input type="text" id="ca-new" autocomplete="off" spellcheck="false">
+      <label for="ca-new2" style="margin-top:8px">Confirmer le nouveau code</label>
+      <input type="text" id="ca-new2" autocomplete="off" spellcheck="false">
+      <div class="code-msg" id="ca-msg" style="margin-top:8px;color:var(--text-muted)"></div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="ca-cancel">Annuler</button>
+        <button class="btn btn-primary" id="ca-ok">Enregistrer</button>
+      </div></div>`;
+    document.body.appendChild(m);
+    m.addEventListener("click",e=>{if(e.target===m)m.classList.add("hidden");});
+    m.querySelector("#ca-cancel").addEventListener("click",()=>m.classList.add("hidden"));
+    m.querySelector("#ca-ok").addEventListener("click",validerChangementCode);
+  }
+  m.querySelector("#ca-new").value="";m.querySelector("#ca-new2").value="";m.querySelector("#ca-msg").textContent="";
+  m.classList.remove("hidden");setTimeout(()=>m.querySelector("#ca-new").focus(),50);
+}
+async function validerChangementCode(){
+  const m=document.getElementById("modal-code-admin");
+  const a=m.querySelector("#ca-new").value.trim(),b=m.querySelector("#ca-new2").value.trim();
+  const msg=m.querySelector("#ca-msg");
+  if(a.length<6){msg.style.color="var(--danger)";msg.textContent="Le code doit faire au moins 6 caractères.";return;}
+  if(a!==b){msg.style.color="var(--danger)";msg.textContent="Les deux codes ne correspondent pas.";return;}
+  msg.style.color="var(--text-muted)";msg.textContent="Enregistrement…";
+  try{ await changerCodeAcces(a); msg.style.color="var(--success)";msg.textContent="✅ Nouveau code enregistré. Il est actif immédiatement.";
+    setTimeout(()=>m.classList.add("hidden"),1600);
+  }catch(e){ msg.style.color="var(--danger)";msg.textContent="Erreur : "+e.message; }
+}
+(function wireCodeAdmin(){ const b=$("#btn-code-admin"); if(b) b.addEventListener("click",ouvrirModalCodeAdmin); })();
 
 /* Message d'accueil affiché UNE SEULE FOIS (mémorisé par poste) pour expliquer
    le passage au système de jetons. */
@@ -1191,7 +1275,8 @@ async function afficherCacheSeul(){
   ROWS=(cacheEff&&Array.isArray(cacheEff.rows))?cacheEff.rows.slice():[];
   if(cacheRet&&Array.isArray(cacheRet.rows)){ROWS_RETOUR=cacheRet.rows.slice();RETOUR_LOADED=true;}
   else{ROWS_RETOUR=[];RETOUR_LOADED=false;}
-  await Promise.all([hydrateHours(ym).catch(()=>{}),hydrateDeductions(ym).catch(()=>{})]);
+  await Promise.all([hydrateHours(ym).catch(()=>{}),hydrateDeductions(ym).catch(()=>{}),
+    NPS_LOADED?Promise.resolve():chargerNps().catch(()=>{})]);   // NPS = GitHub, gratuit (aucun jeton)
   render();
   if(ROWS.length||ROWS_RETOUR.length)
     setStatus("ok",`📁 Données en cache (${ROWS.length} interventions). Cliquez « Actualiser » pour mettre à jour.`);
@@ -1302,6 +1387,7 @@ async function chargerRetour(ym){
 /* NPS : fichier lu depuis GitHub (raw). Pas de filtre mois : les clients répondent
    avec du décalage, donc on affiche TOUS les avis présents dans l'export courant. */
 async function chargerNps(){
+  if(NPS_IMPORT&&NPS_LOADED)return true;   // un fichier importé à la main reste prioritaire
   try{const resp=await fetch(NPS_URL,{cache:"no-store"});if(!resp.ok)throw 0;
     ROWS_NPS=parseNps(new Uint8Array(await resp.arrayBuffer()));
     NPS_LOADED=true;return true;}catch(e){ROWS_NPS=[];NPS_LOADED=false;return false;}
@@ -1324,8 +1410,9 @@ function chargerExcel(file){
     const buf=new Uint8Array(e.target.result);
     const type=detecterTypeExcel(buf);
     if(type==="nps"){
-      ROWS_NPS=parseNps(buf);NPS_LOADED=true;
-      setStatus("ok",`✅ ${ROWS_NPS.length} réponses NPS — ${file.name}`);
+      ROWS_NPS=parseNps(buf);NPS_LOADED=true;NPS_IMPORT=true;NPS_MOIS=null;
+      const nm=npsMoisDispo().length;
+      setStatus("ok",`✅ ${ROWS_NPS.length} réponses NPS sur ${nm} mois — ${file.name}`);
     }else if(type==="retour"){
       ROWS_RETOUR=parseExcelRetour(buf).filter(r=>r.jour&&r.jour.slice(0,7)===ym);RETOUR_LOADED=true;
       setStatus("ok",`✅ ${ROWS_RETOUR.length} retours pour ${ym} — ${file.name}`);
@@ -1388,7 +1475,7 @@ function classements(){
   const codes=[...new Set(ROWS.map(r=>r.tech).filter(Boolean))];
   const data=codes.map(code=>{const b=bilanTech(code);const rets=retoursDeTech(code).length;
     return{code,eff:b.eff,conso:b.conso,nbTotal:b.nbTotal,taux:b.nbRepares>0?rets/b.nbRepares*100:null};});
-  const npsCodes=[...new Set(ROWS_NPS.map(r=>r.tech).filter(Boolean))];
+  const npsCodes=[...new Set(npsDuMois().map(r=>r.tech).filter(Boolean))];
   const npsData=npsCodes.map(code=>({code,score:npsStats(npsDeTech(code)).score}));
   return{
     eff:   rangGenerique(data,x=>x.eff,  "desc",x=>x.eff!=null),
@@ -1535,39 +1622,86 @@ function applyTab(){
   if(tn)tn.classList.toggle("hidden",TAB!=="nps");
 }
 
-/* ============ ONGLET NPS ============ */
-function npsDeTech(code){ return ROWS_NPS.filter(r=>r.tech===code); }
-function renderNps(code){
-  const list=npsDeTech(code);
-  const s=npsStats(list);
+/* ============ ONGLET NPS ============
+   Le fichier NPS peut contenir plusieurs mois : le technicien choisit le mois
+   (date de réponse du client). Par défaut : le mois sélectionné en haut s'il est
+   présent dans le fichier, sinon le mois le plus récent. */
+const MOIS_FR=["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+function libMois(ym){const[y,m]=ym.split("-");const l=MOIS_FR[parseInt(m,10)-1]||m;return l.charAt(0).toUpperCase()+l.slice(1)+" "+y;}
+function npsMoisDispo(){
+  return [...new Set(ROWS_NPS.map(r=>(r.jour||"").slice(0,7)).filter(x=>/^\d{4}-\d{2}$/.test(x)))].sort().reverse();
+}
+function npsMoisActif(){
+  const dispo=npsMoisDispo();
+  if(NPS_MOIS==="*"||(NPS_MOIS&&dispo.includes(NPS_MOIS)))return NPS_MOIS;
+  const ym=currentYM();
+  return dispo.includes(ym)?ym:(dispo[0]||"*");
+}
+function npsDuMois(){
+  const m=npsMoisActif();
+  return m==="*"?ROWS_NPS:ROWS_NPS.filter(r=>(r.jour||"").slice(0,7)===m);
+}
+function npsDeTech(code){ return npsDuMois().filter(r=>r.tech===code); }
+function majSelectNpsMois(){
+  const sel=$("#nps-mois");if(!sel)return;
+  const dispo=npsMoisDispo(),actif=npsMoisActif();
+  let opts=dispo.map(m=>{const n=ROWS_NPS.filter(r=>(r.jour||"").slice(0,7)===m).length;
+    return `<option value="${m}">${libMois(m)} (${n} avis)</option>`;}).join("");
+  if(dispo.length>1)opts+=`<option value="*">Tous les mois (${ROWS_NPS.length} avis)</option>`;
+  if(!dispo.length)opts=`<option value="*">—</option>`;
+  sel.innerHTML=opts;sel.value=actif;sel.disabled=dispo.length<=1;
+  const info=$("#nps-mois-info");
+  if(info)info.textContent=!NPS_LOADED?"":dispo.length>1?`${dispo.length} mois disponibles dans le fichier NPS${NPS_IMPORT?" (fichier importé)":""}`
+    :dispo.length===1?`Fichier NPS : ${libMois(dispo[0])} uniquement${NPS_IMPORT?" (fichier importé)":""}`:"";
+}
+function jaugeNps(s,label,extra,atelier){
   const nN=niveau("nps",s.score);
   const pct=s.score==null?0:Math.max(0,Math.min(100,(s.score+100)/2));   // -100..100 → 0..100
-  $("#nps-jauges").innerHTML=`
-    <div class="jauge-card">
+  return `<div class="jauge-card${atelier?" atelier":""}">
       <div class="jauge-circle jauge-${nN}" style="--pct:${pct}"><span class="jauge-value">${s.score==null?"—":Math.round(s.score)}</span></div>
-      <div class="jauge-label">Score NPS</div>
-      <div class="rank" id="rank-nps"></div>
+      <div class="jauge-label">${label}</div>${extra}
     </div>`;
+}
+function cartesNps(s,sousRep){
   const p=n=>s.n?Math.round(n/s.n*100):0;
-  $("#nps-stats").innerHTML=`
-    <div class="stat-card b-neutre"><div class="stat-label">Réponses</div>
-      <div class="stat-value">${s.n}</div><div class="stat-sub">avis clients (export courant)</div></div>
+  return `<div class="stat-card b-neutre"><div class="stat-label">Réponses</div>
+      <div class="stat-value">${s.n}</div><div class="stat-sub">${sousRep}</div></div>
     <div class="stat-card b-vert"><div class="stat-label">Promoteurs (9-10)</div>
       <div class="stat-value">${s.promo}</div><div class="stat-sub">${p(s.promo)} %</div></div>
     <div class="stat-card b-orange"><div class="stat-label">Passifs (7-8)</div>
       <div class="stat-value">${s.passif}</div><div class="stat-sub">${p(s.passif)} %</div></div>
     <div class="stat-card b-rouge"><div class="stat-label">Détracteurs (0-6)</div>
       <div class="stat-value">${s.detr}</div><div class="stat-sub">${p(s.detr)} %</div></div>`;
+}
+function renderNps(code){
+  NPS_CODE=code;
+  majSelectNpsMois();
+  const mois=npsMoisActif();
+  const libPeriode=mois==="*"?"tous les mois":libMois(mois).toLowerCase();
+  const list=npsDeTech(code);
+  const s=npsStats(list);
+  const sA=npsStats(npsDuMois());               // NPS global de l'atelier (toutes les réponses du mois)
+  const nbTechs=new Set(npsDuMois().filter(r=>r.note!=null).map(r=>r.tech).filter(Boolean)).size;
+  const ecart=(s.score!=null&&sA.score!=null)?s.score-sA.score:null;
+  const ecartTxt=ecart==null?"":`<div class="stat-sub" style="font-weight:700;color:${ecart>=0?"var(--success)":"var(--danger)"}">${ecart>=0?"▲ +":"▼ "}${Math.round(ecart)} pts vs atelier</div>`;
+  $("#nps-jauges").innerHTML=
+    jaugeNps(s,"Votre NPS",`${ecartTxt}<div class="rank" id="rank-nps"></div>`,false)+
+    jaugeNps(sA,"NPS atelier",`<div class="stat-sub">${sA.n} réponses · ${nbTechs} techniciens</div>`,true);
+  $("#nps-stats").innerHTML=cartesNps(s,`vos avis clients — ${libPeriode}`);
+  $("#nps-stats-atelier").innerHTML=cartesNps(sA,`avis atelier — ${libPeriode}`);
   const tb=$("#tbl-nps-body");tb.innerHTML="";
-  if(!NPS_LOADED){tb.innerHTML=`<tr><td colspan="3" class="empty">NPS non chargé — cliquez « Actualiser le mois ».</td></tr>`;return;}
-  const avis=list.filter(x=>x.note!=null||x.commentaire).sort((a,b)=>(a.note??99)-(b.note??99));
-  if(!avis.length){tb.innerHTML=`<tr><td colspan="3" class="empty">Aucun avis pour ce technicien dans l'export.</td></tr>`;return;}
+  if(!NPS_LOADED){tb.innerHTML=`<tr><td colspan="4" class="empty">NPS non chargé — cliquez « Actualiser le mois » ou importez le fichier NPS.</td></tr>`;return;}
+  const avis=list.filter(x=>x.note!=null||x.commentaire).sort((a,b)=>(a.note??99)-(b.note??99)||(b.jour||"").localeCompare(a.jour||""));
+  if(!avis.length){tb.innerHTML=`<tr><td colspan="4" class="empty">Aucun avis pour ce technicien sur ${libPeriode==="tous les mois"?"l'ensemble du fichier":libPeriode}.</td></tr>`;return;}
+  let html="";
   avis.forEach(x=>{
     const cls=x.note==null?"zero":x.note>=9?"ecc":x.note>=7?"tar":"tan";
-    tb.innerHTML+=`<tr><td><span class="tag ${cls}">${x.note==null?"—":x.note+"/10"}</span></td>
-      <td>${x.dossier}</td><td style="white-space:normal">${x.commentaire?x.commentaire:'<span class="muted">—</span>'}</td></tr>`;
+    html+=`<tr><td>${x.jour?frDate(x.jour):"—"}</td><td><span class="tag ${cls}">${x.note==null?"—":x.note+"/10"}</span></td>
+      <td>${x.dossier}</td><td style="white-space:normal">${x.commentaire?escNps(x.commentaire):'<span class="muted">—</span>'}</td></tr>`;
   });
+  tb.innerHTML=html;
 }
+function escNps(t){return String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 
 /* Normalise pour la recherche : sans accents, minuscule. */
 function normSearch(s){return (s==null?"":String(s)).normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();}
@@ -1764,6 +1898,7 @@ function majBadge(){
   $("#btn-info-admin").classList.toggle("hidden",MODE!=="admin");
   $("#btn-jetons-admin").classList.toggle("hidden",MODE!=="admin");
   $("#btn-cache-admin").classList.toggle("hidden",MODE!=="admin");
+  $("#btn-code-admin").classList.toggle("hidden",MODE!=="admin");
   $("#btn-changer").classList.toggle("hidden",MODE==="admin"&&!sup);
   $("#btn-admin").classList.toggle("hidden",MODE==="admin");
   majJetonsUI();
@@ -1834,8 +1969,9 @@ function demanderCode(titre,desc,cb){
   $("#code-input").value="";$("#code-msg").textContent="";
   $("#modal-code").classList.remove("hidden");setTimeout(()=>$("#code-input").focus(),50);
 }
-function validerCode(){
-  if($("#code-input").value.trim()===CODE_ACCES){$("#modal-code").classList.add("hidden");const cb=codeCallback;codeCallback=null;if(cb)cb();}
+async function validerCode(){
+  let h="";try{h=await sha256hex($("#code-input").value.trim());}catch(e){h="";}
+  if(h&&h===CODE_HASH_ACTUEL){$("#modal-code").classList.add("hidden");const cb=codeCallback;codeCallback=null;if(cb)cb();}
   else $("#code-msg").textContent="Code incorrect.";
 }
 $("#code-ok").addEventListener("click",validerCode);
@@ -2052,7 +2188,8 @@ $("#sel-month").value=ymNow();
 $("#btn-refresh").addEventListener("click",actualiserAvecJeton);  // consomme 1 jeton puis refresh intelligent
 $("#btn-import").addEventListener("click",()=>$("#file-input").click());
 $("#file-input").addEventListener("change",e=>{if(e.target.files[0])chargerExcel(e.target.files[0]);});
-$("#sel-month").addEventListener("change",()=>{ROWS=[];ROWS_RETOUR=[];RETOUR_LOADED=false;ROWS_NPS=[];NPS_LOADED=false;afficherCacheSeul();});
+$("#sel-month").addEventListener("change",()=>{ROWS=[];ROWS_RETOUR=[];RETOUR_LOADED=false;NPS_MOIS=null;afficherCacheSeul();});
+$("#nps-mois").addEventListener("change",e=>{NPS_MOIS=e.target.value;if(NPS_CODE){renderNps(NPS_CODE);updateRanks(NPS_CODE);}});
 $("#btn-changer").addEventListener("click",()=>demanderCode("Changer de technicien","Saisissez le code d'accès pour changer d'identité.",ouvrirModalIdentite));
 $("#btn-admin").addEventListener("click",()=>demanderCode("Mode admin","Saisissez le code d'accès administrateur.",()=>{MODE="admin";ADMIN_FOCUS=null;majBadge();render();}));
 $("#btn-quit-admin").addEventListener("click",()=>{MODE="tech";ADMIN_FOCUS=null;majBadge();render();});
@@ -2114,6 +2251,7 @@ dz.addEventListener("drop",e=>{const f=e.dataTransfer.files[0];if(f)chargerExcel
    l'utilisateur clique sur « Actualiser » (ce qui consomme 1 jeton). */
 (async function init(){
   initFirebase();
+  await hydrateCodeAcces();      // récupère l'empreinte du code d'accès (Firestore)
   await hydrateHours(ymNow());   // pré-charge les heures du mois courant (si Firebase dispo)
   await hydrateDeductions(ymNow());
   await hydrateTemps();          // pre-charge les overrides du bareme (si Firebase dispo)
