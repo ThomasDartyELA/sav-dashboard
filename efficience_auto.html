@@ -210,7 +210,7 @@
   </div>
 </div>
 
-<!-- ============ MODAL CODE 1107 ============ -->
+<!-- ============ MODAL CODE D'ACCÈS ============ -->
 <div id="modal-code" class="modal-overlay hidden">
   <div class="modal-box">
     <h3 id="code-title">Code d'accès</h3>
@@ -338,7 +338,6 @@
     <button class="tbtn accent hidden" id="btn-info-admin">Envoyer une info</button>
     <button class="tbtn accent hidden" id="btn-jetons-admin">Gérer les jetons</button>
     <button class="tbtn hidden" id="btn-cache-admin">Vider le cache</button>
-    <button class="tbtn hidden" id="btn-code-admin">Changer le code</button>
   </div>
 </div>
 
@@ -594,35 +593,7 @@ const NPS_URL="https://raw.githubusercontent.com/ThomasDartyELA/sav-dashboard/ma
 const NPS_COL={date:0,tech:8,dossier:9,note:16,commentaire:17};
 const SEUILS={efficience:{sens:"haut",bon:93,moyen:78},conso:{sens:"bas",bon:1.10,moyen:1.40},
   tauxRetour:{sens:"bas",bon:5,moyen:7},nps:{sens:"haut",bon:50,moyen:0}};
-/* ============ CODE D'ACCÈS (mode admin / changement de technicien) ============
-   Plus de code en clair : on compare l'empreinte SHA-256. L'empreinte de référence
-   vient de Firestore (config_efficience/acces.codeHash) — modifiable à distance —
-   avec repli sur le cache local puis sur l'empreinte par défaut ci-dessous.
-   Le code lui-même n'apparaît jamais (ni fichier, ni réseau, ni GitHub). */
-const CODE_HASH_DEFAUT="86cb35a822329fe1de40eb82a1791be1f66f8bd327446686bdd859a89e436853"; // empreinte de l'ancien code (transition)
-const LS_CODE_HASH="eff_code_hash";
-const COLL_CONFIG="config_efficience";
-let CODE_HASH_ACTUEL=(function(){try{return localStorage.getItem(LS_CODE_HASH)||CODE_HASH_DEFAUT;}catch(e){return CODE_HASH_DEFAUT;}})();
-async function sha256hex(str){
-  const buf=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(str));
-  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
-}
-/* Récupère l'empreinte du code depuis Firestore et la met en cache local. */
-async function hydrateCodeAcces(){
-  if(!FB)return;
-  try{
-    const snap=await FB.collection(COLL_CONFIG).doc("acces").get();
-    const h=snap.exists?snap.data().codeHash:null;
-    if(h&&typeof h==="string"&&h.length>=32){CODE_HASH_ACTUEL=h;try{localStorage.setItem(LS_CODE_HASH,h);}catch(e){}}
-  }catch(e){console.warn("Lecture code d'accès échouée :",e);}
-}
-/* Change le code d'accès (admin) : écrit son empreinte dans Firestore. */
-async function changerCodeAcces(nouveau){
-  if(!FB)throw new Error("Firestore indisponible");
-  const h=await sha256hex(nouveau);
-  await FB.collection(COLL_CONFIG).doc("acces").set({codeHash:h,updatedAt:Date.now()},{merge:true});
-  CODE_HASH_ACTUEL=h;try{localStorage.setItem(LS_CODE_HASH,h);}catch(e){}
-}
+const CODE_ACCES="1108";   // code mode admin / changement de technicien
 
 /* ============ INDEX DES TEMPS (BDD) ============ */
 const IDX1={},IDX2={},IDX3={};
@@ -710,7 +681,8 @@ async function verifierMajAppli(){
 const NOTES_VERSION=[
   "📊 Onglet « Satisfaction (NPS) » : vous voyez maintenant votre NPS ET le NPS global de l'atelier côte à côte, avec l'écart en points.",
   "📅 Nouveau sélecteur « Mois des réponses » : si le fichier NPS contient plusieurs mois, choisissez celui que vous voulez consulter (ou « Tous les mois »).",
-  "⚡ Le NPS s'affiche dès l'ouverture, sans consommer de jeton d'actualisation."
+  "⚡ Le NPS s'affiche dès l'ouverture, sans consommer de jeton d'actualisation.",
+  "🎫 Vous disposez maintenant de 5 jetons d'actualisation par jour (au lieu de 3)."
 ];
 const LS_NOTES_VUE="eff_notes_vue_"+APP_VERSION;
 function montrerNotesMaj(){
@@ -853,14 +825,14 @@ async function deleteDeduction(id){
 }
 
 /* ============ JETONS D'ACTUALISATION ============
-   Chaque « Actualiser » coûte 1 jeton. 3 jetons/tech/jour, remis à 3 chaque nuit.
+   Chaque « Actualiser » coûte 1 jeton. 5 jetons/tech/jour, remis à 5 chaque nuit.
    Admin (mode admin ou superviseur) : illimité, et peut créditer des jetons.
    Stockage Firestore (partagé + résistant à la triche) :
    - doc `<code>_<date>`  : {code, date, utilises, bonus}   (par technicien)
    - doc `_ALL_<date>`    : {bonus}                          (bonus équipe entière)
    restants = 3 + bonusPerso + bonusEquipe - utilises. */
 const COLL_JETONS="jetons_efficience";
-const JETONS_BASE=3;
+const JETONS_BASE=5;
 let JETONS_RESTANTS=JETONS_BASE, JETONS_UTILISES=0;
 function estAdminJetons(){ return MODE==="admin" || estSuperviseur(IDENTITY); }
 function jetonDocId(code,date){ return `${code}_${date}`; }
@@ -924,7 +896,7 @@ function majJetonsUI(){
   }
   if(hint) hint.textContent=admin
     ? "Mode admin : actualisations illimitées. Bouton « Gérer les jetons » pour en distribuer."
-    : "Chaque « Actualiser » consomme 1 jeton. 3 jetons par jour, remis à zéro chaque nuit.";
+    : "Chaque « Actualiser » consomme 1 jeton. 5 jetons par jour, remis à zéro chaque nuit.";
   if(btn){
     const bloque=!admin && JETONS_RESTANTS<=0;
     btn.disabled=bloque;
@@ -1004,43 +976,6 @@ async function viderCacheEtRecharger(){
 }
 (function wireCacheAdmin(){ const b=$("#btn-cache-admin"); if(b) b.addEventListener("click",viderCacheEtRecharger); })();
 
-/* Admin : changer le code d'accès (empreinte écrite dans Firestore). */
-function ouvrirModalCodeAdmin(){
-  let m=document.getElementById("modal-code-admin");
-  if(!m){
-    m=document.createElement("div");m.id="modal-code-admin";m.className="modal-overlay hidden";
-    m.innerHTML=`<div class="modal-box">
-      <h3>Changer le code d'accès</h3>
-      <p class="muted" style="margin-top:4px;font-size:.88rem">Ce code protège le mode admin et le changement de technicien. Choisissez-en un d'au moins 6 caractères (idéalement lettres + chiffres). Il remplacera l'ancien sur tous les postes (immédiatement ici, au prochain lancement pour les autres).</p>
-      <label for="ca-new">Nouveau code</label>
-      <input type="text" id="ca-new" autocomplete="off" spellcheck="false">
-      <label for="ca-new2" style="margin-top:8px">Confirmer le nouveau code</label>
-      <input type="text" id="ca-new2" autocomplete="off" spellcheck="false">
-      <div class="code-msg" id="ca-msg" style="margin-top:8px;color:var(--text-muted)"></div>
-      <div class="modal-actions">
-        <button class="btn btn-ghost" id="ca-cancel">Annuler</button>
-        <button class="btn btn-primary" id="ca-ok">Enregistrer</button>
-      </div></div>`;
-    document.body.appendChild(m);
-    m.addEventListener("click",e=>{if(e.target===m)m.classList.add("hidden");});
-    m.querySelector("#ca-cancel").addEventListener("click",()=>m.classList.add("hidden"));
-    m.querySelector("#ca-ok").addEventListener("click",validerChangementCode);
-  }
-  m.querySelector("#ca-new").value="";m.querySelector("#ca-new2").value="";m.querySelector("#ca-msg").textContent="";
-  m.classList.remove("hidden");setTimeout(()=>m.querySelector("#ca-new").focus(),50);
-}
-async function validerChangementCode(){
-  const m=document.getElementById("modal-code-admin");
-  const a=m.querySelector("#ca-new").value.trim(),b=m.querySelector("#ca-new2").value.trim();
-  const msg=m.querySelector("#ca-msg");
-  if(a.length<6){msg.style.color="var(--danger)";msg.textContent="Le code doit faire au moins 6 caractères.";return;}
-  if(a!==b){msg.style.color="var(--danger)";msg.textContent="Les deux codes ne correspondent pas.";return;}
-  msg.style.color="var(--text-muted)";msg.textContent="Enregistrement…";
-  try{ await changerCodeAcces(a); msg.style.color="var(--success)";msg.textContent="✅ Nouveau code enregistré. Il est actif immédiatement.";
-    setTimeout(()=>m.classList.add("hidden"),1600);
-  }catch(e){ msg.style.color="var(--danger)";msg.textContent="Erreur : "+e.message; }
-}
-(function wireCodeAdmin(){ const b=$("#btn-code-admin"); if(b) b.addEventListener("click",ouvrirModalCodeAdmin); })();
 
 /* Message d'accueil affiché UNE SEULE FOIS (mémorisé par poste) pour expliquer
    le passage au système de jetons. */
@@ -1054,7 +989,7 @@ function montrerInfoJetons(){
       <h3>🎫 Nouveauté : système de jetons d'actualisation</h3>
       <p style="margin-top:10px;line-height:1.55">L'application a été mise à jour. Avant, les données se rafraîchissaient automatiquement très souvent, ce qui <strong>surchargeait les serveurs</strong>.</p>
       <p style="line-height:1.55">Désormais, il n'y a plus de rafraîchissement automatique : à l'ouverture, l'appli affiche les dernières données enregistrées. Pour les mettre à jour, cliquez sur <strong>« Actualiser le mois »</strong>.</p>
-      <p style="line-height:1.55">Chaque actualisation coûte <strong>1 jeton</strong>. Vous disposez de <strong>3 jetons par jour</strong>, remis à zéro chaque matin. Si vous en avez besoin de plus, demandez à un responsable d'en ajouter.</p>
+      <p style="line-height:1.55">Chaque actualisation coûte <strong>1 jeton</strong>. Vous disposez de <strong>5 jetons par jour</strong>, remis à zéro chaque matin. Si vous en avez besoin de plus, demandez à un responsable d'en ajouter.</p>
       <p style="line-height:1.55">Merci de votre compréhension ! 🙏</p>
       <div class="modal-actions">
         <button class="btn btn-primary" id="info-jetons-ok">J'ai compris</button>
@@ -1898,7 +1833,6 @@ function majBadge(){
   $("#btn-info-admin").classList.toggle("hidden",MODE!=="admin");
   $("#btn-jetons-admin").classList.toggle("hidden",MODE!=="admin");
   $("#btn-cache-admin").classList.toggle("hidden",MODE!=="admin");
-  $("#btn-code-admin").classList.toggle("hidden",MODE!=="admin");
   $("#btn-changer").classList.toggle("hidden",MODE==="admin"&&!sup);
   $("#btn-admin").classList.toggle("hidden",MODE==="admin");
   majJetonsUI();
@@ -1962,16 +1896,15 @@ $("#identite-input").addEventListener("input",()=>{
 });
 $("#modal-identite").addEventListener("click",e=>{if(e.target===$("#modal-identite"))fermerModalIdentite();});
 
-/* ============ MODAL CODE 1107 ============ */
+/* ============ MODAL CODE D'ACCÈS ============ */
 let codeCallback=null;
 function demanderCode(titre,desc,cb){
   codeCallback=cb;$("#code-title").textContent=titre;$("#code-desc").textContent=desc||"";
   $("#code-input").value="";$("#code-msg").textContent="";
   $("#modal-code").classList.remove("hidden");setTimeout(()=>$("#code-input").focus(),50);
 }
-async function validerCode(){
-  let h="";try{h=await sha256hex($("#code-input").value.trim());}catch(e){h="";}
-  if(h&&h===CODE_HASH_ACTUEL){$("#modal-code").classList.add("hidden");const cb=codeCallback;codeCallback=null;if(cb)cb();}
+function validerCode(){
+  if($("#code-input").value.trim()===CODE_ACCES){$("#modal-code").classList.add("hidden");const cb=codeCallback;codeCallback=null;if(cb)cb();}
   else $("#code-msg").textContent="Code incorrect.";
 }
 $("#code-ok").addEventListener("click",validerCode);
@@ -2251,7 +2184,6 @@ dz.addEventListener("drop",e=>{const f=e.dataTransfer.files[0];if(f)chargerExcel
    l'utilisateur clique sur « Actualiser » (ce qui consomme 1 jeton). */
 (async function init(){
   initFirebase();
-  await hydrateCodeAcces();      // récupère l'empreinte du code d'accès (Firestore)
   await hydrateHours(ymNow());   // pré-charge les heures du mois courant (si Firebase dispo)
   await hydrateDeductions(ymNow());
   await hydrateTemps();          // pre-charge les overrides du bareme (si Firebase dispo)
