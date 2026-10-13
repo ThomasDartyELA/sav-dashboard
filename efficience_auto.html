@@ -477,12 +477,58 @@
     </section>
   </div>
 
+  <!-- VUE CLÔTURES (clôtureurs) -->
+  <div id="view-clotures" class="hidden">
+    <section class="card">
+      <button class="btn btn-ghost hidden" id="btn-back-admin-clot" style="margin-bottom:12px">← Retour à la vue admin</button>
+      <h2 id="clot-title">Mes clôtures</h2>
+      <div class="hint" style="margin-top:0">Tous les dossiers que vous avez clôturés ce mois-ci, y compris ceux clôturés pour d'autres techniciens (ils restent comptés dans l'efficience du technicien crédité).</div>
+      <div class="stat-grid" id="clot-stats"></div>
+      <div class="form-row" style="margin:4px 0 10px;align-items:flex-end;gap:12px;flex-wrap:wrap">
+        <div style="flex:1 1 260px;max-width:420px">
+          <label for="clot-search">Rechercher</label>
+          <input type="text" id="clot-search" placeholder="🔎 N° dossier, modèle, marque, codic, statut, tech…" spellcheck="false"
+            style="width:100%;margin-top:6px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:.92rem;background:#fff;color:var(--text)">
+        </div>
+        <div style="max-width:200px">
+          <label for="clot-jour">Jour</label>
+          <select id="clot-jour" style="width:100%;margin-top:6px;padding:9px 11px;border:1px solid var(--border);border-radius:8px;font-size:.92rem;background:#fff;color:var(--text)"></select>
+        </div>
+        <div style="max-width:280px">
+          <label for="clot-tech">Technicien crédité</label>
+          <select id="clot-tech" style="width:100%;margin-top:6px;padding:9px 11px;border:1px solid var(--border);border-radius:8px;font-size:.92rem;background:#fff;color:var(--text)"></select>
+        </div>
+        <div style="max-width:260px">
+          <label for="clot-statut">Dernier statut</label>
+          <select id="clot-statut" style="width:100%;margin-top:6px;padding:9px 11px;border:1px solid var(--border);border-radius:8px;font-size:.92rem;background:#fff;color:var(--text)"></select>
+        </div>
+        <button class="btn btn-ghost" id="clot-export" style="font-size:.82rem;padding:9px 14px">⇩ Exporter en Excel</button>
+      </div>
+      <div class="muted" id="clot-filtre" style="font-size:.85rem;margin-bottom:6px"></div>
+      <div class="tbl-wrap">
+        <table class="data-table" id="tbl-clot">
+          <thead><tr>
+            <th class="sortable" data-sort="jour">Date</th><th>Heure</th><th class="sortable" data-sort="dossier">N° dossier</th>
+            <th class="sortable" data-sort="famille">Famille</th><th class="sortable" data-sort="marque">Marque</th>
+            <th class="sortable" data-sort="modele">Modèle</th><th class="sortable" data-sort="codic">Codic</th>
+            <th class="sortable" data-sort="topage">Topage</th><th class="sortable" data-sort="typeInter">Type inter.</th><th class="sortable" data-sort="statut">Dernier statut</th>
+            <th class="sortable" data-sort="tech">Tech crédité</th>
+          </tr></thead>
+          <tbody id="clot-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
   <!-- VUE ADMIN -->
   <div id="view-admin" class="hidden">
     <section class="card">
       <h2 style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
         <span>Vue admin — tous les collaborateurs</span>
-        <button class="btn btn-ghost" id="btn-import-sav" style="font-size:.78rem;padding:8px 12px">⇩ Importer les heures de l'app SAV</button>
+        <span style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-ghost" id="btn-admin-clotures" style="font-size:.78rem;padding:8px 12px">📦 Clôtures de Christophe Danière</button>
+          <button class="btn btn-ghost" id="btn-import-sav" style="font-size:.78rem;padding:8px 12px">⇩ Importer les heures de l'app SAV</button>
+        </span>
       </h2>
       <div class="hint" style="margin-top:0">Interventions, pièces et temps alloué s'affichent pour tous. L'efficience nécessite les heures saisies (n/c sinon). Cliquez un nom pour voir le détail d'un technicien.</div>
       <div class="stat-grid" id="admin-stats"></div>
@@ -578,10 +624,18 @@ const TECH_BY_CODE={}; TECHNICIENS.forEach(t=>TECH_BY_CODE[t.code]=t);
 const SUPERVISEURS=[{code:"VFE",nom:"VERONIQUE FESTAZ"}];
 SUPERVISEURS.forEach(s=>TECH_BY_CODE[s.code]=s);
 function estSuperviseur(code){ return SUPERVISEURS.some(s=>s.code===code); }
+/* Clôtureurs : clôturent des dossiers POUR les techniciens (le dossier compte pour le tech
+   du topage). Pas d'efficience ni de classement : vue dédiée « Mes clôtures » listant tout ce
+   qu'ils ont clôturé, repéré par les colonnes INTERVENANT TERM ATL (code tech) et
+   CODE USER TERM ATL (identifiant YS). Non listés dans les tableaux techniciens. */
+const CLOTUREURS=[{code:"L37",nom:"CHRISTOPHE DANIERE",ys:"YS56737"}];
+CLOTUREURS.forEach(c=>TECH_BY_CODE[c.code]=c);
+function estClotureur(code){ return CLOTUREURS.some(c=>c.code===code); }
+function clotureurDe(code){ return CLOTUREURS.find(c=>c.code===code)||null; }
 function nomDe(code){ const t=TECH_BY_CODE[code]; return t?t.nom:code; }
 function techsTries(){ return TECHNICIENS.slice().sort((a,b)=>a.nom.localeCompare(b.nom,"fr")); }
 /* Liste du sélecteur d'identité : superviseurs en tête, puis techniciens triés. */
-function identiteTries(){ return SUPERVISEURS.concat(techsTries()); }
+function identiteTries(){ return SUPERVISEURS.concat(techsTries().concat(CLOTUREURS).sort((a,b)=>a.nom.localeCompare(b.nom,"fr"))); }
 /* Normalise un nom en ensemble de mots trié (sans accents/casse/ordre) pour le rapprochement */
 function techNormMots(s){return (s||"").toString().normalize("NFD").replace(/[̀-ͯ]/g,"")
   .toUpperCase().replace(/[-']/g," ").split(/\s+/).filter(Boolean).sort().join(" ");}
@@ -594,7 +648,13 @@ function codeParNom(nom){ return nom?(_NOM2CODE[techNormMots(nom)]||null):null; 
 const FLUX_URL="http://195.51.51.24/ReportServer_PILOTAGE?%2FNOMAD%20Reporting%20RE7%2FATELIER%2FFLUX%20SORTIE%20NOMAD%20ATELIER&DATE_TERM_ATL_deb=07%2F01%2F2026%2000%3A00%3A00&DATE_TERM_ATL_fin=12%2F31%2F2026%2000%3A00%3A00&LIEU_TRAIT=945056&CODE_SOC_LIEU=945056&CODE_LIEU=56&CODE_LIEU_2=56&CODE_SOCIETE=945&rs%3AParameterLanguage=&rs%3ACommand=Render&rs%3AFormat=ATOM&rc%3AItemPath=Tablix1";
 const F={dossier:"NUM_DOS_NOMAD",famille:"FAMILLE",marque:"MARQUE",codic:"APPAREIL_CODIC",
   nbPieces:"NB_PIECES_UTILISEES",topage:"COPER_TERM_ATL",tech:"CODE_TECH_TOPAGE_TAR_TAN",
-  dateCode:"DATE_CODE_TERM_ATL",dateTermine:"DATE_TERMINE_ATELIER1"};
+  dateCode:"DATE_CODE_TERM_ATL",dateTermine:"DATE_TERMINE_ATELIER1",
+  // Qui a clôturé (peut différer du tech crédité) + infos utiles au suivi des clôtures
+  userCode:"CODE_USER_TERM_ATL",intervenant:"INTERVENANT_TERM_ATL",userNom:"USER_TERM_ATL",
+  heure:"HEURE_CODE_TERM_ATL",modele:"MODELE",statut:"DERN_STATUT",typeInter:"TYPE_INTER_REALISE"};
+/* Rapprochement tolérant des noms de colonnes (ATOM "CODE_USER_TERM_ATL", textbox suffixée
+   "…1", ou export Excel "CODE USER TERM ATL") : majuscules, sans séparateurs ni chiffres finaux. */
+function normCol(n){return String(n||"").toUpperCase().replace(/[^A-Z0-9]/g,"").replace(/\d+$/,"");}
 /* Flux RETOURS ATELIER (2e rapport SSRS) — champs par nom de colonne */
 // Flux RETOURS mis à jour le 2026-09-15 : le rapport source est passé de
 // RETOURS_ATELIER à RETOURS_ATELIER_2 (les dates sont réécrites par buildFluxUrlRetour).
@@ -661,7 +721,7 @@ const $=s=>document.querySelector(s);
 /* Version applicative — à incrémenter à chaque publication sur GitHub.
    Affichée discrètement dans la barre du haut pour vérifier que les postes
    ont bien reçu la dernière version (mise à jour auto au lancement). */
-const APP_VERSION="2026.10.12";
+const APP_VERSION="2026.10.13";
 (function(){const v=document.getElementById("app-version");if(v)v.textContent=" · v"+APP_VERSION;})();
 
 /* ---- Mise à jour EN COURS DE SESSION (sans fermer le portable) ----
@@ -693,6 +753,7 @@ async function verifierMajAppli(){
 /* Notes de la version en cours : affichées UNE fois (par version, par poste)
    quand le technicien reçoit la mise à jour. Vider le tableau = pas de fenêtre. */
 const NOTES_VERSION=[
+  "📦 Nouveau profil <strong>« Clôtures »</strong> pour Christophe Danière (L37) : liste de tous les dossiers qu'il clôture, y compris pour les autres techniciens (ça reste compté dans votre efficience). Votre prochaine actualisation recharge le mois complet une fois.",
   "🛠️ <strong>Correctif synchro des journées</strong> : une journée pouvait rester incomplète (ex. « vendredi 2 ») si vous aviez actualisé dans la journée puis plus rien pendant plusieurs jours. Les 2 derniers jours sont maintenant toujours revérifiés. Votre prochaine actualisation recharge le mois complet (une seule fois).",
   "🧹 Nouveau bouton <strong>« Vider le cache et tout recharger »</strong>, à côté de « Actualiser le mois », accessible à tous (1 jeton). À utiliser si une journée ou des interventions semblent manquer.",
   "⏱️ <strong>Barème des temps mis à jour</strong> (BDD du 12/10/2026) : aspis balais Dreame/Mova 0,75 → 0,85 h TAR ; brosses à cheveux / à dents et tondeuses recond. 0,60 → 0,33 h TAR ; fours à poser recond. 0,75 → 0,60 h TAR ; vidéoprojecteurs 0,75 → 1,00 h TAR.",
@@ -1068,8 +1129,12 @@ const cleFlux=ym=>"eff3_"+ym, cleRetour=ym=>"ret3_"+ym;
 const cleFluxV2=ym=>"eff2_"+ym, cleRetourV2=ym=>"ret2_"+ym;
 /* Lit le cache v3 ; à défaut, reprend les LIGNES v2 pour l'affichage mais SANS leur
    couverture (days=[]) => la prochaine actualisation retélécharge tout le mois. */
+/* Schéma des lignes en cache : si les lignes ont été enregistrées avant l'ajout d'un champ
+   (ex. "clôturé par"), on garde l'affichage mais on oublie la couverture => rechargement complet. */
+const CACHE_SCHEMA=2;
 async function lireCache(cle,cleV2){
-  const c=await idbGet(cle); if(c) return c;
+  const c=await idbGet(cle);
+  if(c) return (c.schema===CACHE_SCHEMA)?c:{rows:c.rows||[],days:[],savedAt:c.savedAt||0};
   const v2=await idbGet(cleV2);
   return (v2&&Array.isArray(v2.rows))?{rows:v2.rows,days:[],savedAt:v2.savedAt||0}:null;
 }
@@ -1090,15 +1155,24 @@ function toDateStr(v){
 }
 function buildRow(get){
   const dc=toDateStr(get(F.dateCode)),dt=toDateStr(get(F.dateTermine));
-  return{dossier:get(F.dossier)||"",famille:norm(get(F.famille)),marque:norm(get(F.marque)),
+  const ci=norm(get(F.intervenant)),cu=norm(get(F.userCode));
+  const row={dossier:get(F.dossier)||"",famille:norm(get(F.famille)),marque:norm(get(F.marque)),
     codic:get(F.codic)||"",nbPieces:parseFloat(String(get(F.nbPieces)||"0").replace(",","."))||0,
     topage:norm(get(F.topage)),tech:norm(get(F.tech)),jour:dc||dt,
-    jourT:dt||dc};   // date "terminé atelier" = champ filtré par SSRS (repère du cache incrémental)
+    jourT:dt||dc,    // date "terminé atelier" = champ filtré par SSRS (repère du cache incrémental)
+    ci,cu};          // clôturé par : code intervenant (Lxx) + identifiant (YSxxxxx)
+  // Détails supplémentaires uniquement pour les lignes clôturées par un clôtureur (cache léger)
+  if(CLOTUREURS.some(c=>ci===c.code||cu===c.ys)){
+    row.heure=String(get(F.heure)||"").trim();row.modele=String(get(F.modele)||"").trim();
+    row.statut=String(get(F.statut)||"").trim();row.typeInter=String(get(F.typeInter)||"").trim();
+  }
+  return row;
 }
 /* Colonnes réellement utilisées : on ignore tout le reste du rapport (30+ colonnes). */
 const F_NEEDED=new Set(Object.values(F));
+const F_NORM={};Object.values(F).forEach(n=>F_NORM[normCol(n)]=n);   // repli tolérant
 /* Constructeur "flux efficience" avec saut des lignes totalement vides. */
-function fluxBuilder(get){return (get(F.dossier)===""&&get(F.tech)==="")?null:buildRow(get);}
+function fluxBuilder(get){return (get(F.dossier)===""&&get(F.tech)===""&&get(F.intervenant)==="")?null:buildRow(get);}
 /* Mappe une feuille XLSX (Excel OU CSV) en lignes, via en-tête -> index de colonne.
    requireCols : si une colonne attendue manque, on lève (=> repli ATOM). */
 function rowsFromWb(wb,builder,requireCols){
@@ -1106,6 +1180,8 @@ function rowsFromWb(wb,builder,requireCols){
   const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:""});
   if(!data.length)return[];
   const hdr=data[0].map(h=>String(h).trim());const col={};hdr.forEach((h,i)=>col[h]=i);
+  hdr.forEach((h,i)=>{const k=normCol(h);if(col["~"+k]==null)col["~"+k]=i;});
+  const _get=col; Object.values(F).forEach(n=>{if(_get[n]==null&&_get["~"+normCol(n)]!=null)_get[n]=_get["~"+normCol(n)];});
   if(requireCols)for(const c of requireCols)if(col[c]==null)throw new Error("Colonnes attendues introuvables : "+c);
   const out=[];
   for(let r=1;r<data.length;r++){const row=data[r];const get=n=>col[n]==null?"":row[col[n]];
@@ -1120,8 +1196,10 @@ function parseAtom(xmlText){
   for(let i=0;i<entries.length;i++){
     const props={};const nodes=entries[i].getElementsByTagName("*");
     for(let j=0;j<nodes.length;j++){const el=nodes[j];
-      if(el.childElementCount===0){const ln=el.localName;if(ln&&F_NEEDED.has(ln))props[ln]=el.textContent;}}
-    if(props[F.dossier]!=null||props[F.tech]!=null)out.push(buildRow(n=>props[n]));
+      if(el.childElementCount===0){const ln=el.localName;if(!ln)continue;
+        if(F_NEEDED.has(ln))props[ln]=el.textContent;
+        else{const c=F_NORM[normCol(ln)];if(c&&props[c]==null)props[c]=el.textContent;}}}
+    if(props[F.dossier]!=null||props[F.tech]!=null||props[F.intervenant]!=null)out.push(buildRow(n=>props[n]));
   }
   return out;
 }
@@ -1326,7 +1404,7 @@ async function chargerAuto(force){
         ROWS=rowsCache.filter(x=>jt(x)<cutoff&&!vus.has(k(x))).concat(frais);
       }
       srcEff=r.src;effOK=true;
-      await idbSet(cleFlux(ym),{rows:ROWS,days:couvertureMaj,savedAt:Date.now()});
+      await idbSet(cleFlux(ym),{rows:ROWS,days:couvertureMaj,savedAt:Date.now(),schema:CACHE_SCHEMA});
     }else if(rowsCache){effOK=true;srcEff="cache";}
   }catch(e){ if(rowsCache){effOK=true;srcEff="cache";} else ROWS=[]; }
   render();   // rendu progressif dès que l'efficience est prête
@@ -1338,7 +1416,7 @@ async function chargerAuto(force){
     if(rr){
       ROWS_RETOUR=rr.filter(r=>r.jour&&r.jour.slice(0,7)===ym);   // mois complet = fait autorité
       RETOUR_LOADED=true;retOK=true;
-      await idbSet(cleRetour(ym),{rows:ROWS_RETOUR,savedAt:Date.now()});
+      await idbSet(cleRetour(ym),{rows:ROWS_RETOUR,savedAt:Date.now(),schema:CACHE_SCHEMA});
     }
   }catch(e){ /* on garde le cache retours */ }
 
@@ -1478,7 +1556,113 @@ function fH(v){return v==null||isNaN(v)?"—":v.toFixed(2)+" h";}
 function fN(v,d=2){return v==null||isNaN(v)?"—":v.toFixed(d);}
 
 /* ============ RENDU ============ */
-function render(){ (MODE==="admin"&&!ADMIN_FOCUS)?renderAdmin():renderTech(); }
+function render(){
+  const vc=$("#view-clotures");if(vc)vc.classList.add("hidden");
+  const cl=(MODE==="admin")?((ADMIN_FOCUS&&estClotureur(ADMIN_FOCUS))?ADMIN_FOCUS:null):(estClotureur(IDENTITY)?IDENTITY:null);
+  if(cl)return renderClotures(cl);
+  (MODE==="admin"&&!ADMIN_FOCUS)?renderAdmin():renderTech();
+}
+
+/* ============ VUE CLÔTURES (clôtureurs, ex. Christophe Danière) ============
+   Tout ce que la personne a clôturé (INTERVENANT TERM ATL = son code, ou CODE USER TERM ATL
+   = son YS), quel que soit le technicien crédité. Aucun calcul d'efficience. */
+let CLOT_SEARCH="",CLOT_JOUR="",CLOT_STATUT="",CLOT_TECH="",CLOT_SORT={key:"jour",dir:-1};
+function statutEnAttente(r){return /^ECH/i.test(r.statut||"");}   // ex. « ECH TOPE, ATT EDI BE »
+function cloturesDe(code){
+  const c=clotureurDe(code);if(!c)return[];
+  return ROWS.filter(r=>r.ci===c.code||(c.ys&&r.cu===c.ys));
+}
+function cloturesFiltrees(code){
+  let l=cloturesDe(code);
+  if(CLOT_JOUR)l=l.filter(r=>r.jour===CLOT_JOUR);
+  if(CLOT_TECH)l=l.filter(r=>r.tech===CLOT_TECH);
+  if(CLOT_STATUT)l=l.filter(r=>(r.statut||"")===CLOT_STATUT);
+  const q=normSearch(CLOT_SEARCH.trim());
+  if(q)l=l.filter(r=>normSearch([r.dossier,r.famille,r.marque,r.modele,r.codic,labelTopage(r.topage),r.statut,r.typeInter,r.tech,nomDe(r.tech)].join(" ")).includes(q));
+  const k=CLOT_SORT.key,dir=CLOT_SORT.dir;
+  const val=r=>k==="jour"?(r.jour+" "+(r.heure||"")):k==="tech"?nomDe(r.tech):k==="topage"?labelTopage(r.topage):(r[k]||"");
+  return l.slice().sort((a,b)=>String(val(a)).localeCompare(String(val(b)),"fr",{numeric:true})*dir
+    ||String(a.dossier).localeCompare(String(b.dossier),"fr",{numeric:true}));
+}
+function escH(t){return String(t==null?"":t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function renderClotures(code){
+  $("#view-tech").classList.add("hidden");$("#view-admin").classList.add("hidden");
+  const v=$("#view-clotures");v.classList.remove("hidden");
+  const c=clotureurDe(code);
+  $("#btn-back-admin-clot").classList.toggle("hidden",MODE!=="admin");
+  $("#clot-title").innerHTML=`Clôtures de <strong>${escH(c.nom)}</strong> <span class="muted">(${c.code} · ${c.ys})</span> — ${currentYM()}`;
+  const tous=cloturesDe(code);
+  if(!ROWS.length){
+    $("#clot-stats").innerHTML="";$("#clot-body").innerHTML=`<tr><td colspan="11" class="empty">Chargez le mois (« Actualiser le mois ») pour afficher vos clôtures.</td></tr>`;
+    $("#clot-filtre").textContent="";return;
+  }
+  // Stats
+  const auj=isoLocal(new Date());
+  const nAuj=tous.filter(r=>r.jour===auj).length,nEch=tous.filter(statutEnAttente).length;
+  const nTech=new Set(tous.map(r=>r.tech).filter(Boolean)).size;
+  $("#clot-stats").innerHTML=`
+    <div class="stat-card b-neutre"><div class="stat-label">Clôtures du mois</div><div class="stat-value">${tous.length}</div><div class="stat-sub">${new Set(tous.map(r=>r.jour)).size} jour(s)</div></div>
+    <div class="stat-card b-neutre"><div class="stat-label">Aujourd'hui</div><div class="stat-value">${nAuj}</div><div class="stat-sub">${frDate(auj)}</div></div>
+    <div class="stat-card b-neutre"><div class="stat-label">Échanges en cours</div><div class="stat-value">${nEch}</div><div class="stat-sub">dernier statut « ECH … » (ex. att. EDI BE)</div></div>
+    <div class="stat-card b-neutre"><div class="stat-label">Techniciens crédités</div><div class="stat-value">${nTech}</div><div class="stat-sub">dossiers clôturés pour eux</div></div>`;
+  // Listes des filtres (jours, techs)
+  const jours={};tous.forEach(r=>jours[r.jour]=(jours[r.jour]||0)+1);
+  const sj=$("#clot-jour");
+  sj.innerHTML=`<option value="">Tout le mois (${tous.length})</option>`+Object.keys(jours).sort().reverse()
+    .map(j=>`<option value="${j}"${j===CLOT_JOUR?" selected":""}>${frDate(j)} (${jours[j]})</option>`).join("");
+  if(CLOT_JOUR&&!jours[CLOT_JOUR]){CLOT_JOUR="";sj.value="";}
+  const techs={};tous.forEach(r=>{const t=r.tech||"";techs[t]=(techs[t]||0)+1;});
+  const st=$("#clot-tech");
+  st.innerHTML=`<option value="">Tous les techniciens</option>`+Object.keys(techs).sort((a,b)=>nomDe(a).localeCompare(nomDe(b),"fr"))
+    .map(t=>`<option value="${escH(t)}"${t===CLOT_TECH?" selected":""}>${escH(t?nomDe(t)+" ("+t+")":"(sans tech)")} — ${techs[t]}</option>`).join("");
+  if(CLOT_TECH&&techs[CLOT_TECH]==null){CLOT_TECH="";st.value="";}
+  const stats={};tous.forEach(r=>{const k=r.statut||"";stats[k]=(stats[k]||0)+1;});
+  const ss=$("#clot-statut");
+  ss.innerHTML=`<option value="">Tous les statuts</option>`+Object.keys(stats).sort((a,b)=>stats[b]-stats[a])
+    .map(k=>`<option value="${escH(k)}"${k===CLOT_STATUT?" selected":""}>${escH(k||"(vide)")} — ${stats[k]}</option>`).join("");
+  if(CLOT_STATUT&&stats[CLOT_STATUT]==null){CLOT_STATUT="";ss.value="";}
+  // Tableau
+  const l=cloturesFiltrees(code);
+  $("#clot-filtre").innerHTML=`${l.length} dossier(s) affiché(s)`+(l.length!==tous.length?` sur ${tous.length}`:"");
+  $("#clot-body").innerHTML=l.length?l.map(r=>{
+    const cls=classeTopage(r.topage),t=labelTopage(r.topage);
+    const ech=statutEnAttente(r);
+    return `<tr><td>${frDate(r.jour)}</td><td>${escH(r.heure||"")}</td><td>${escH(r.dossier)}</td><td>${escH(r.famille)}</td>
+      <td>${escH(r.marque)||'<span class="muted">—</span>'}</td><td>${escH(r.modele||"")}</td><td>${escH(r.codic)}</td>
+      <td><span class="tag ${cls}">${escH(t)}</span></td>
+      <td>${escH(r.typeInter||"")}</td>
+      <td>${ech?'<span class="tag tar">'+escH(r.statut)+'</span>':escH(r.statut||"")}</td>
+      <td>${r.tech?escH(nomDe(r.tech))+' <span class="muted">('+escH(r.tech)+')</span>':'<span class="muted">—</span>'}</td></tr>`;
+  }).join(""):`<tr><td colspan="11" class="empty">${tous.length?"Aucune clôture ne correspond aux filtres.":"Aucune clôture à votre nom ce mois-ci."}</td></tr>`;
+  document.querySelectorAll("#tbl-clot th[data-sort]").forEach(th=>{
+    if(!th.dataset.label) th.dataset.label=th.textContent.trim();
+    const actif=th.dataset.sort===CLOT_SORT.key;
+    th.innerHTML=th.dataset.label+(actif?`<span class="fleche">${CLOT_SORT.dir>0?"▲":"▼"}</span>`:"");
+  });
+}
+/* Export Excel de la liste affichée (filtres appliqués). */
+function exporterClotures(){
+  const code=(MODE==="admin"&&ADMIN_FOCUS)?ADMIN_FOCUS:IDENTITY;
+  const l=cloturesFiltrees(code);
+  if(typeof XLSX==="undefined"){alert("Export indisponible (bibliothèque Excel non chargée).");return;}
+  const data=l.map(r=>({"Date":frDate(r.jour),"Heure":r.heure||"","N° dossier":r.dossier,"Famille":r.famille,"Marque":r.marque,
+    "Modèle":r.modele||"","Codic":r.codic,"Topage":labelTopage(r.topage),"Dernier statut":r.statut||"",
+    "Type intervention":r.typeInter||"","Tech crédité":r.tech?nomDe(r.tech)+" ("+r.tech+")":"","Pièces":r.nbPieces}));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(data),"Clôtures");
+  XLSX.writeFile(wb,`clotures_${code}_${currentYM()}.xlsx`);
+}
+(function wireClotures(){
+  const rr=()=>render();
+  const s=$("#clot-search");if(s)s.addEventListener("input",()=>{CLOT_SEARCH=s.value;rr();});
+  const j=$("#clot-jour");if(j)j.addEventListener("change",()=>{CLOT_JOUR=j.value;rr();});
+  const t=$("#clot-tech");if(t)t.addEventListener("change",()=>{CLOT_TECH=t.value;rr();});
+  const e=$("#clot-statut");if(e)e.addEventListener("change",()=>{CLOT_STATUT=e.value;rr();});
+  const x=$("#clot-export");if(x)x.addEventListener("click",exporterClotures);
+  const b=$("#btn-back-admin-clot");if(b)b.addEventListener("click",()=>{ADMIN_FOCUS=null;render();window.scrollTo({top:0,behavior:"smooth"});});
+  const a=$("#btn-admin-clotures");if(a)a.addEventListener("click",()=>{ADMIN_FOCUS=CLOTUREURS[0].code;render();window.scrollTo({top:0,behavior:"smooth"});});
+  document.querySelectorAll("#tbl-clot th[data-sort]").forEach(th=>th.addEventListener("click",()=>{
+    const k=th.dataset.sort;CLOT_SORT=(CLOT_SORT.key===k)?{key:k,dir:-CLOT_SORT.dir}:{key:k,dir:k==="jour"?-1:1};rr();}));
+})();
 
 function renderTech(){
   $("#view-tech").classList.remove("hidden");$("#view-admin").classList.add("hidden");
