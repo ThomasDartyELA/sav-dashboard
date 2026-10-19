@@ -1,0 +1,1643 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#E30613">
+<title>Démo robot – Atelier SAV</title>
+<style>
+  :root {
+    --red: #E30613; --red-dark: #B8050F; --red-soft: #FDE8EA;
+    --yellow: #F5B400; --yellow-soft: #FFF4D1;
+    --ink: #1A1A1A; --ink-2: #4A4A4A; --muted: #8C8C8C;
+    --bg: #F2F2F2; --card: #FFFFFF; --line: #E4E4E4;
+    --ok: #1E9E5A;
+    --radius: 22px;
+    --shadow: 0 2px 10px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.05);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body {
+    font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: #D9D9D9; color: var(--ink);
+    display: flex; justify-content: center;
+    user-select: none;
+  }
+  .phone {
+    width: 100%; max-width: 480px; height: 100vh; height: 100dvh; background: var(--bg);
+    position: relative; display: flex; flex-direction: column; overflow: hidden;
+    box-shadow: 0 0 40px rgba(0,0,0,.12);
+  }
+
+  /* ---------- Barre d'application ---------- */
+  .appbar {
+    background: var(--red); color: #fff; padding: 18px 20px 20px;
+    border-radius: 0 0 26px 26px; position: relative; z-index: 20; flex-shrink: 0;
+    box-shadow: 0 4px 14px rgba(227,6,19,.25);
+  }
+  .appbar-top { display: flex; align-items: center; justify-content: space-between; }
+  .brand { font-size: 13px; font-weight: 700; letter-spacing: .3px; opacity: .95; display: flex; align-items: center; gap: 10px; }
+  .brand img { width: 46px; height: 46px; border-radius: 10px; background: #fff; padding: 3px; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
+  .brand span { color: var(--yellow); }
+  .appbar h1 { margin: 6px 0 12px; font-size: 24px; font-weight: 800; letter-spacing: -.2px; }
+  .icon-btn { width: 42px; height: 42px; border-radius: 50%; border: none; background: rgba(255,255,255,.18); color: #fff; display: grid; place-items: center; cursor: pointer; }
+  .icon-btn svg { width: 22px; height: 22px; }
+  .pills { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; background: rgba(0,0,0,.18); color: #fff; font-size: 13px; font-weight: 600; padding: 6px 12px; border-radius: 20px; }
+  .pill i { width: 9px; height: 9px; border-radius: 50%; background: #FF9A9A; display: inline-block; }
+  .pill.on { background: var(--yellow); color: var(--ink); }
+  .pill.on i { background: var(--ok); }
+  .pill.sleep { background: #FF8A00; color: #fff; }
+  .pill.sleep i { background: #fff; animation: pulse 1s infinite; }
+  .appbar-top .right { display: flex; gap: 8px; }
+  .icon-btn.spin svg { animation: spin .8s linear infinite; }
+
+  main { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 18px 16px 18px; }
+
+  /* ---------- Écran de connexion ---------- */
+  .connect-screen { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 7vh; }
+  .big-connect {
+    width: 190px; height: 190px; border-radius: 50%; border: none; cursor: pointer;
+    background: var(--card); color: var(--red); box-shadow: 0 10px 30px rgba(227,6,19,.18), inset 0 0 0 10px var(--red-soft);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+    font-size: 18px; font-weight: 800; transition: transform .12s;
+  }
+  .big-connect:active { transform: scale(.96); }
+  .big-connect svg { width: 70px; height: 70px; }
+  .big-connect.busy svg { animation: pulse 1s infinite; }
+  .connect-screen p { color: var(--ink-2); font-size: 15px; line-height: 1.5; max-width: 320px; margin: 26px 0 0; }
+  .connect-screen small { color: var(--muted); font-size: 13px; margin-top: 10px; display: block; }
+
+  /* ---------- Puissance ---------- */
+  .power { background: var(--card); border-radius: 18px; padding: 6px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; box-shadow: var(--shadow); margin-bottom: 22px; }
+  .power button { border: none; background: transparent; border-radius: 14px; padding: 12px 4px; font-size: 15px; font-weight: 700; color: var(--ink-2); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .power button small { font-weight: 500; font-size: 11.5px; color: var(--muted); }
+  .power button.active { background: var(--ink); color: #fff; }
+  .power button.active small { color: var(--yellow); }
+
+  /* ---------- Tuiles ---------- */
+  .sec-title { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin: 6px 6px 12px; }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 26px; }
+  .tile {
+    background: var(--card); border: none; border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 20px 10px 16px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 10px;
+    min-height: 168px; position: relative; transition: transform .12s, background .2s, box-shadow .2s; font-family: inherit;
+  }
+  .tile:active { transform: scale(.95); }
+  .tile .ico { width: 78px; height: 78px; border-radius: 50%; background: var(--red-soft); color: var(--red); display: grid; place-items: center; transition: background .2s, color .2s; }
+  .tile .ico svg { width: 44px; height: 44px; }
+  .tile .name { font-size: 15.5px; font-weight: 700; color: var(--ink); text-align: center; line-height: 1.2; }
+  .tile .val { font-size: 12.5px; color: var(--muted); font-weight: 600; min-height: 16px; text-align: center; font-variant-numeric: tabular-nums; }
+  .tile .more { position: absolute; top: 12px; right: 14px; color: var(--muted); font-size: 18px; line-height: 1; }
+  .tile.on { background: var(--red); box-shadow: 0 8px 22px rgba(227,6,19,.32); }
+  .tile.on .ico { background: #fff; color: var(--red); }
+  .tile.on .name { color: #fff; }
+  .tile.on .val { color: var(--yellow); }
+  .tile.on .more { color: rgba(255,255,255,.8); }
+  .tile.on.spin .ico svg { animation: spin 1.1s linear infinite; }
+  .tile.pending { opacity: .6; pointer-events: none; }
+  .tile.error { animation: shake .4s; }
+  .tile:disabled { opacity: .45; }
+
+  /* ---------- Bouton STOP ---------- */
+  .stop-wrap { flex-shrink: 0; padding: 10px 16px 10px; background: var(--bg); display: none; }
+  .tabbar { flex-shrink: 0; display: none; grid-template-columns: repeat(4, 1fr); background: var(--card); border-top: 1px solid var(--line); padding: 6px 6px calc(8px + env(safe-area-inset-bottom)); }
+  .tabbar button { border: none; background: transparent; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 2px; font: inherit; font-size: 12px; font-weight: 700; color: var(--muted); cursor: pointer; border-radius: 14px; position: relative; }
+  .tabbar button svg { width: 30px; height: 30px; }
+  .tabbar button.active { color: var(--red); background: var(--red-soft); }
+  .tabbar button .badge { position: absolute; top: 6px; right: 22%; min-width: 18px; height: 18px; border-radius: 9px; background: var(--red); color: #fff; font-size: 11px; line-height: 18px; display: none; }
+  .tabbar button .badge.show { display: block; }
+  .stop-btn { width: 100%; height: 62px; border: none; border-radius: 35px; background: var(--ink); color: #fff; font-size: 19px; font-weight: 800; letter-spacing: .5px; display: flex; align-items: center; justify-content: center; gap: 12px; cursor: pointer; box-shadow: 0 8px 22px rgba(0,0,0,.28); }
+  .stop-btn:active { transform: scale(.98); }
+  .stop-btn.busy { background: var(--red); }
+  .stop-btn.busy .sq { background: #fff; animation: pulse .6s infinite; }
+  .stop-btn .sq { width: 22px; height: 22px; border-radius: 4px; background: var(--red); }
+
+  /* ---------- Feuille du bas ---------- */
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 40; opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .overlay.show { opacity: 1; pointer-events: auto; }
+  .sheet { position: fixed; left: 50%; bottom: 0; width: 100%; max-width: 480px; background: var(--card); border-radius: 28px 28px 0 0; z-index: 41; padding: 12px 20px calc(24px + env(safe-area-inset-bottom)); transform: translate(-50%, 105%); transition: transform .25s ease; max-height: 88vh; overflow-y: auto; }
+  .sheet.show { transform: translate(-50%, 0); }
+  .grab { width: 44px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto 14px; }
+  .sheet h2 { margin: 0 0 4px; font-size: 21px; font-weight: 800; }
+  .sheet .sub { color: var(--muted); font-size: 14px; margin-bottom: 18px; min-height: 18px; font-variant-numeric: tabular-nums; }
+  .sheet .sub.live { color: var(--red); font-weight: 700; }
+  .acts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .act { border: none; border-radius: 20px; background: var(--bg); padding: 18px 8px; font-size: 15px; font-weight: 700; color: var(--ink); display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; font-family: inherit; }
+  .act:active { transform: scale(.96); }
+  .act svg { width: 40px; height: 40px; color: var(--red); }
+  .act.stop { background: var(--ink); color: #fff; }
+  .act.stop svg { color: var(--red); }
+  .act.wide { grid-column: span 2; }
+  .act .dot { width: 40px; height: 40px; border-radius: 50%; border: 3px solid var(--line); }
+
+  .dpad { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 84px); gap: 10px; max-width: 320px; margin: 0 auto; }
+  .dpad .act { padding: 0; justify-content: center; }
+  .dpad .act svg { width: 44px; height: 44px; }
+
+  .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+  .settings-row select, .settings-row button { font: inherit; font-size: 14px; padding: 9px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; }
+  .settings-row button.danger { background: var(--red); color: #fff; border-color: var(--red); }
+  #log { margin-top: 14px; height: 36vh; overflow-y: auto; background: #111; color: #cfd6e3; border-radius: 14px; padding: 10px; font: 11.5px Consolas, monospace; white-space: pre-wrap; word-break: break-all; user-select: text; }
+  #log .tx { color: #7cc4ff; } #log .rx { color: #7fe0a8; } #log .err { color: #ff8a8a; } #log .info { color: #9aa3b2; }
+
+  /* ---------- Toast ---------- */
+  .toast { position: fixed; top: 16px; left: 50%; transform: translate(-50%, calc(-100% - 40px)); background: var(--ink); color: #fff; padding: 12px 18px; border-radius: 16px; font-size: 14px; font-weight: 600; z-index: 60; transition: transform .25s; max-width: 90%; text-align: center; box-shadow: 0 8px 22px rgba(0,0,0,.25); }
+  .toast.show { transform: translate(-50%, 0); }
+  .toast.err { background: var(--red); }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes pulse { 50% { transform: scale(.88); opacity: .6; } }
+  @keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+  @media (min-width: 520px) { body { padding: 20px 0; } .phone { height: calc(100vh - 40px); border-radius: 30px; } }
+  /* ---------- Sélecteur de mode ---------- */
+  .modeswitch { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: rgba(0,0,0,.18); border-radius: 14px; padding: 4px; margin-top: 12px; }
+  .modeswitch button { border: none; background: transparent; color: #fff; font: inherit; font-size: 14px; font-weight: 700; padding: 9px 6px; border-radius: 11px; cursor: pointer; }
+  .modeswitch button.active { background: #fff; color: var(--red); }
+  body.tech .phone { max-width: 760px; }
+  body.tech .sheet { max-width: 760px; }
+  body.tech #screenMain, body.tech #tabbar { display: none !important; }
+  body:not(.tech) #screenTech { display: none !important; }
+
+  /* ---------- Écran technicien ---------- */
+  .tcard { background: var(--card); border-radius: 18px; box-shadow: var(--shadow); padding: 16px; margin-bottom: 14px; }
+  .tcard h3 { margin: 0 0 12px; font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  .tcard h3 .sp { flex: 1; }
+  .tbtn { border: none; border-radius: 12px; padding: 10px 14px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; background: var(--bg); color: var(--ink); }
+  .tbtn.red { background: var(--red); color: #fff; }
+  .tbtn.dark { background: var(--ink); color: #fff; }
+  .tbtn:disabled { opacity: .45; cursor: not-allowed; }
+  .tbtn.big { width: 100%; padding: 16px; font-size: 17px; border-radius: 16px; }
+  .idgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px 14px; font-size: 13px; }
+  .idgrid div span { display: block; color: var(--muted); font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; }
+  .idgrid div b { font-size: 14.5px; font-variant-numeric: tabular-nums; word-break: break-all; }
+  .cfgrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .cfgrow:last-child { border-bottom: none; }
+  .seg { display: inline-flex; background: var(--bg); border-radius: 10px; padding: 3px; gap: 3px; }
+  .seg button { border: none; background: transparent; font: inherit; font-size: 13px; font-weight: 700; padding: 6px 10px; border-radius: 8px; cursor: pointer; color: var(--ink-2); }
+  .seg button.on { background: var(--ink); color: #fff; }
+  .progress { height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; margin: 12px 0 4px; }
+  .progress div { height: 100%; width: 0; background: var(--red); transition: width .3s; }
+  .verdict { margin-top: 12px; padding: 14px; border-radius: 14px; font-weight: 800; font-size: 16px; text-align: center; display: none; }
+  .verdict.ok { display: block; background: #E3F5EB; color: var(--ok); }
+  .verdict.nok { display: block; background: var(--red-soft); color: var(--red); }
+  .tlist { display: flex; flex-direction: column; }
+  .trow { display: grid; grid-template-columns: 30px 1fr auto; gap: 10px; align-items: center; padding: 10px 2px; border-bottom: 1px solid var(--line); }
+  .trow:last-child { border-bottom: none; }
+  .trow .st { font-size: 20px; text-align: center; }
+  .trow .nm { font-weight: 700; font-size: 14.5px; }
+  .trow .dt { font-size: 12.5px; color: var(--ink-2); margin-top: 2px; white-space: pre-line; font-variant-numeric: tabular-nums; }
+  .trow .cr { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .trow.run { background: var(--yellow-soft); border-radius: 10px; }
+  .trow .go { width: 40px; height: 40px; border-radius: 50%; border: none; background: var(--red-soft); color: var(--red); font-size: 16px; cursor: pointer; }
+  .trow .go:disabled { opacity: .4; cursor: not-allowed; }
+  .livebar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .livebar button.on { background: var(--red); color: #fff; }
+  .livegrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+  .lv { background: var(--bg); border-radius: 12px; padding: 10px; }
+  .lv span { display: block; font-size: 11.5px; color: var(--muted); font-weight: 700; }
+  .lv b { font-size: 18px; font-variant-numeric: tabular-nums; }
+  .lv.hot { background: var(--yellow-soft); }
+  .lv.act { background: var(--red); color: #fff; }
+  .lv.act span { color: #fff; }
+  .lv .bar { height: 6px; background: #ddd; border-radius: 3px; margin-top: 6px; overflow: hidden; }
+  .lv .bar i { display: block; height: 100%; background: var(--red); }
+  .tform { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .tform label { font-size: 12px; font-weight: 700; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
+  .tform input, .tform textarea { font: inherit; font-size: 14px; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+  .tform .full { grid-column: span 2; }
+  .tactions { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+  .tactions .tbtn { flex: 1; }
+  /* invite d'action manuelle */
+  .mp-icons { display: flex; gap: 12px; justify-content: center; margin: 14px 0; }
+  .mp-icons div { flex: 1; max-width: 150px; background: var(--bg); border-radius: 16px; padding: 14px 8px; text-align: center; font-weight: 700; font-size: 14px; }
+  .mp-icons div.ok { background: #E3F5EB; color: var(--ok); }
+  .mp-icons div i { display: block; font-style: normal; font-size: 26px; margin-bottom: 4px; }
+  .mp-count { text-align: center; color: var(--muted); font-size: 13px; margin-top: 6px; }
+  @media (max-width: 520px) { .tform { grid-template-columns: 1fr; } .tform .full { grid-column: span 1; } }
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <header class="appbar">
+    <div class="appbar-top">
+      <div class="brand"><img src="data:image/png;base64,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96LDg56ampqdnc3lcm4de8pHHMfGGCcoDlnucICKxeL+A/s73sEtuu/7xWKxVqs5d7gjvnNA9tLSUn9//zvf+c6/+7u/e//733/llVfOzs76vu+gyI4/cXfRWodh6NzYffv2HThw4OGHH56cnKzX64jotnb1zIzneU5KisViHMcHDhw4cODAoUOHqktVd8dyufziF79YKeWCu9SGps/jZKhard5///0AsLi46PwE5yS1VinJuhhjx8cn1g0P/9Zv/44xJggC5QIgolazFgNDlXCobBUopQkwm8PXQEiuHxki5f2D02Prz9s2sGFEmJXSoNByrCgo50ulQnFmahqEekwSRyBUtWZzcHDwPe9+Ty5f+O6tt9500+c3bNhQrUWe5yFRHMYRR0ColLLMS0tLzOx53o033viud73LuYpuLZhZKTV2aGx8fNwtYhaJTs1THMebN28+evSoQx2dJHWc6VKp9OCDD87Pz2/cuNE5N9m4plgsVqtV5xc7l6LDXjiHulQq7dq1a9euXVdfffXb3/728fHxQqGQdX0SzL0lpkQ0ODgYRdH555+/c+fOwcHBwcHBgYEBh1n/0z/90913371p06aVxGhxcfG1r33t0572NKXUwsLCkSNH5ubmJicnf3L7T1JHcPPmzc95znN+8pOfOG2dzRu6OKtQKNTr9VtuueW8887bs2ePtTaOY3dKUxRQRJDI07pYKJxx5pmXP/1yK+yOEy6zfAgIIO9BX5ELvqAowGwSTUMyrguMtRa8UINaPwiDZTaRQgRM7JQSHBwY2Lt3H4kCko4Mooh4vhIBIv3yl79849Ztb37rW3PFwr//678qpfLFYhTHxlqtCYEcQoVEnudZa++777777rvvgvMvcJBXes3Ozk5OTq40/JKIarXaS1/60ltvvfX222+vVCo9cWRjjFLqyJEj5557ru/72Q0LgsAhb8mSde1l6r06DKZer1944YXve9/73vSmN7ncxUo5KWYOw3DXrl1//Md/fOGFFzrvO71uvfXW2267zekwZ9GyImuMmZ+ff+UrX/nyl788+1fj4+M3feGmUrGUAlHXXXfdzTffPDg4WCgUssG8+9SFQiEMw927d1trv/CFL0RRNDAwMDc3VyqVkIitdTQeQmw2mxs2bHjRVVcZNs66AoBN2i+0dEXO80cGVCHPkfFUQSSEdhMmiBLFUUxY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" alt="Darty">Atelier SAV</div>
+      <div class="right">
+      <button class="icon-btn" id="btnRestart" aria-label="Reconnecter" title="Reconnecter le robot" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4v6h-6"/><path d="M20.5 10A9 9 0 1 0 18 18.4"/></svg></button>
+      <button class="icon-btn" id="btnSettings" aria-label="Réglages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+      </div>
+    </div>
+    <h1>Robot Dreame</h1>
+    <div class="pills">
+      <span class="pill" id="pillConn"><i></i><b>Hors ligne</b></span>
+      <span class="pill" id="pillFct"><i></i><b>Mode test inactif</b></span>
+      <span class="pill on" id="pillBatt" style="display:none">🔋 <b>— V</b></span>
+      <span class="pill on" id="pillPad" style="display:none;cursor:pointer">🎮 <b>Manette</b></span>
+    </div>
+    <div class="modeswitch" id="modeSwitch"><button data-m="demo" class="active">🎮 Démo</button><button data-m="tech">🛠️ Technicien</button></div>
+  </header>
+
+  <main>
+    <section class="connect-screen" id="screenConnect">
+      <button class="big-connect" id="btnConnect">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M6 8h12v3a6 6 0 0 1-12 0V8zM12 17v5"/></svg>
+        Connecter
+      </button>
+      <p>Brancher le câble du robot sur le PC, puis appuyer sur <b>Connecter</b> et choisir le port dans la liste.</p>
+      <small id="connectHint">Chrome ou Edge sur ordinateur</small>
+    </section>
+
+    <section id="screenMain" style="display:none">
+      <div class="power" id="power">
+        <button data-p="0">Doux<small>faible</small></button>
+        <button data-p="1" class="active">Normal<small>standard</small></button>
+        <button data-p="2">Fort<small>maximum</small></button>
+      </div>
+      <div id="tiles"></div>
+    </section>
+    <section id="screenTech" style="display:none">
+      <div class="tcard">
+        <h3>🤖 Robot <span class="sp"></span><button class="tbtn" id="btnIdent">Lire l'identité</button></h3>
+        <div class="idgrid">
+          <div><span>N° de série</span><b id="idSn">—</b></div>
+          <div><span>Projet</span><b id="idProj">—</b></div>
+          <div><span>Version</span><b id="idVer">—</b></div>
+          <div><span>Git</span><b id="idGit">—</b></div>
+          <div><span>Batterie</span><b id="idBatt">—</b></div>
+          <div><span>Température</span><b id="idTemp">—</b></div>
+          <div><span>Charge</span><b id="idCharge">—</b></div>
+          <div><span>Consommation</span><b id="idDis">—</b></div>
+        </div>
+      </div>
+
+      <div class="tcard">
+        <h3>⚙️ Configuration du modèle</h3>
+        <div class="cfgrow"><span>Serpillière</span><div class="seg" data-cfg="mop"><button data-v="roller">Rouleau</button><button data-v="disc">Disques</button><button data-v="none">Aucune</button></div></div>
+        <div class="cfgrow"><span>Laser (LDS) relevable</span><div class="seg" data-cfg="ldsLift"><button data-v="yes">Oui</button><button data-v="no">Non</button></div></div>
+        <div class="cfgrow"><span>Brosse latérale montée</span><div class="seg" data-cfg="side"><button data-v="yes">Oui</button><button data-v="no">Non</button></div></div>
+      </div>
+
+      <div class="tcard">
+        <h3>🧪 Test complet <span class="sp"></span><span id="autoCount" style="font-size:13px;color:var(--muted)"></span></h3>
+        <button class="tbtn red big" id="btnAuto">▶ Lancer le test complet</button>
+        <div class="progress"><div id="autoBar"></div></div>
+        <div class="verdict" id="autoVerdict"></div>
+        <div class="tlist" id="testList"></div>
+      </div>
+
+      <div class="tcard">
+        <h3>📡 Mesures en direct</h3>
+        <div class="livebar" id="liveBar"></div>
+        <div class="livegrid" id="liveGrid"><div style="grid-column:1/-1;color:var(--muted);font-size:13px">Choisir un groupe de capteurs à observer.</div></div>
+      </div>
+
+      <div class="tcard">
+        <h3>📄 Rapport de contrôle</h3>
+        <div class="tform">
+          <label>Technicien<input id="rpTech" autocomplete="off"></label>
+          <label>N° dossier / commande<input id="rpFile" autocomplete="off"></label>
+          <label class="full">Remarques<textarea id="rpNote" rows="2"></textarea></label>
+        </div>
+        <div class="tactions">
+          <button class="tbtn dark" id="btnReport">⬇ Télécharger le rapport</button>
+          <button class="tbtn" id="btnPrint">🖨 Imprimer</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="stop-wrap" id="stopWrap">
+    <button class="stop-btn" id="btnStop"><span class="sq"></span>TOUT ARRÊTER<small style="font-size:12px;font-weight:600;opacity:.75;margin-left:4px">+ déconnecter</small></button>
+  </div>
+  <nav class="tabbar" id="tabbar"></nav>
+</div>
+
+<div class="overlay" id="overlay"></div>
+<div class="sheet" id="sheet"><div class="grab"></div><div id="sheetBody"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================================
+   ICÔNES (SVG, trait)
+   ========================================================================= */
+const S = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const ICON = {
+  fan: S(`<circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><path d="M12 10.4C11 7.5 11.6 4.6 13.9 4.3c2.4-.3 3.3 2.6 1.4 4.3-1 .9-2.2 1.5-3.3 1.8z"/><path d="M13.4 12.8c3-.6 5.8.4 5.9 2.7.1 2.4-2.9 3-4.3 1-.8-1.1-1.3-2.4-1.6-3.7z"/><path d="M10.6 12.8c-2 2.3-4.8 3.2-6.3 1.4-1.5-1.9.6-4 2.9-3.4 1.3.3 2.5 1.1 3.4 2z"/>`),
+  brush: S(`<rect x="3" y="8" width="18" height="8" rx="4"/><path d="M7 8.5l2.5 7M11 8.5l2.5 7M15 8.5l2.5 7"/>`),
+  side: S(`<circle cx="12" cy="12" r="2.2"/><path d="M12 9.8V3M13.9 10.9l5.8-3.4M13.9 13.1l5.8 3.4M12 14.2V21M10.1 13.1l-5.8 3.4M10.1 10.9L4.3 7.5"/>`),
+  roller: S(`<rect x="2.5" y="7" width="19" height="10" rx="5"/><circle cx="7.5" cy="12" r="2"/><circle cx="16.5" cy="12" r="2"/><path d="M9.5 12h5"/>`),
+  mop: S(`<circle cx="7" cy="12" r="5"/><circle cx="17" cy="12" r="5"/><circle cx="7" cy="12" r="1.6"/><circle cx="17" cy="12" r="1.6"/>`),
+  drop: S(`<path d="M12 3c3 4.2 6 7.4 6 11a6 6 0 0 1-12 0c0-3.6 3-6.8 6-11z"/><path d="M9.5 14.5a2.5 2.5 0 0 0 2.5 2.5"/>`),
+  air: S(`<path d="M3 8.5h10a3 3 0 1 0-3-3"/><path d="M3 15.5h14a3 3 0 1 1-3 3"/><path d="M3 12h16"/>`),
+  lds: S(`<circle cx="12" cy="12" r="3"/><path d="M12 12l6-6"/><path d="M5.6 5.6a9 9 0 1 0 12.8 0"/>`),
+  wheel: S(`<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.5"/><path d="M12 3.5v6M12 14.5v6M3.5 12h6M14.5 12h6"/>`),
+  lift: S(`<path d="M12 3v18M7 8l5-5 5 5M7 16l5 5 5-5"/>`),
+  extend: S(`<path d="M3 12h18M8 7l-5 5 5 5M16 7l5 5-5 5"/>`),
+  wlift: S(`<circle cx="12" cy="16" r="5"/><circle cx="12" cy="16" r="1.5"/><path d="M12 8V2M8.5 5.5L12 2l3.5 3.5"/>`),
+  battery: S(`<rect x="2.5" y="7" width="17" height="10" rx="2"/><path d="M21.5 10.5v3"/><path d="M6 10v4M9.5 10v4"/>`),
+  chip: S(`<rect x="6" y="6" width="12" height="12" rx="2"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/><path d="M9 2.5v3M15 2.5v3M9 18.5v3M15 18.5v3M2.5 9h3M2.5 15h3M18.5 9h3M18.5 15h3"/>`),
+  led: S(`<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.9V16h5v-.2c0-.8.4-1.5 1-1.9A6 6 0 0 0 12 3z"/>`),
+  up: S(`<path d="M12 19V5M5 12l7-7 7 7"/>`),
+  down: S(`<path d="M12 5v14M5 12l7 7 7-7"/>`),
+  left: S(`<path d="M19 12H5M12 5l-7 7 7 7"/>`),
+  right: S(`<path d="M5 12h14M12 5l7 7-7 7"/>`),
+  rotL: S(`<path d="M3 4v6h6"/><path d="M3.5 10A9 9 0 1 1 6 18.4"/>`),
+  rotR: S(`<path d="M21 4v6h-6"/><path d="M20.5 10A9 9 0 1 0 18 18.4"/>`),
+  stop: S(`<rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/>`),
+  out: S(`<path d="M4 12h14M13 7l5 5-5 5M4 5v14"/>`),
+  in: S(`<path d="M20 12H6M11 7l-5 5 5 5M20 5v14"/>`),
+};
+
+/* =========================================================================
+   PROTOCOLE (voir protocole_FCT_dreame.md)
+   ========================================================================= */
+const RESP = { C: "R", D: "A", S: "Z" };
+function F(g, l, p = [], crlf = false) {
+  const b = [0x3C, g.charCodeAt(0), l.charCodeAt(0), ...p, 0x3E];
+  return new Uint8Array(crlf ? b.concat([0x0D, 0x0A]) : b);
+}
+const i8 = v => [v & 0xFF];
+const i16 = v => [v & 0xFF, (v >> 8) & 0xFF];
+const keyOf = b => RESP[String.fromCharCode(b[1])] + String.fromCharCode(b[2]);
+const rd16 = (f, i) => { const v = f[i] | (f[i + 1] << 8); return v & 0x8000 ? v - 0x10000 : v; };
+const mA = v => v < 0 ? "—" : `${v} mA`;
+const DECODE = {
+  Zp: f => f.length === 8 ? (rd16(f, 3) < 0 && rd16(f, 5) < 0 ? "Position atteinte ✓" : `Moteur G ${mA(rd16(f, 3))} · D ${mA(rd16(f, 5))}`) : null,
+  RB: f => f.length === 12 ? `${Math.round((Math.abs(rd16(f, 3)) + Math.abs(rd16(f, 5))) / 2)} mm/s · ${mA(rd16(f, 7))} / ${mA(rd16(f, 9))}` : null,
+  Rk: f => f.length === 8 ? `${rd16(f, 3).toLocaleString("fr-FR")} tr/min · ${mA(rd16(f, 5))}` : null,
+  RF: f => f.length === 6 ? mA(rd16(f, 3)) : null,
+  RD: f => f.length === 6 ? mA(rd16(f, 3)) : null,
+  Rx: f => f.length === 6 ? mA(rd16(f, 3)) : null,
+  AC: f => f.length === 8 ? `${mA(rd16(f, 3))} / ${mA(rd16(f, 5))}` : null,
+  AP: f => f.length === 6 ? `Levage ${mA(rd16(f, 3))}` : null,
+};
+
+/* =========================================================================
+   ORGANES
+   toggle : un appui = marche, un second = arrêt ; levels = puissance Doux/Normal/Fort
+   sheet  : ouvre un panneau de gros boutons
+   ========================================================================= */
+let power = 1;
+/* LED du LDS : <CN 00 cc>, cc = 01 rouge, 02 vert, 04 bleu, 00 éteint. Réponse normale : <RN 00>.
+   Vérifié sur le robot le 14/10/2026 : les mélanges (03, 05, 06, 07) ne s'affichent pas. */
+const LDS_COLORS = [
+  { name: "Rouge", code: 1, css: "#E30613" }, { name: "Vert", code: 2, css: "#1E9E5A" }, { name: "Bleu", code: 4, css: "#1E6FE3" },
+  { name: "Éteint", code: 0, css: "#333" },
+];
+/* Animations. La LED n'a que 8 états (bits R/V/B) :
+   - seq  : enchaînement de couleurs (les mélanges intermédiaires adoucissent les transitions)
+   - pwm  : fondu simulé par allumage/extinction rapide (modulation sigma-delta), expérimental */
+const ANIMS = {
+  rainbow: { name: "🌈 Ronde RVB", seq: [1, 2, 4], ms: 450 },
+  flame:   { name: "🔥 Flamme", seq: [1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1], ms: 90 },
+  ocean:   { name: "🌊 Vague", seq: [4, 4, 2, 4, 4, 0], ms: 300 },
+  police:  { name: "🚨 Gyrophare", seq: [1, 1, 0, 4, 4, 0], ms: 110 },
+  breathe: { name: "💙 Respiration (expérimental)", pwm: { color: 4, period: 3000 } },
+  breatheRgb: { name: "🎨 Fondu couleurs (expérimental)", pwm: { cycle: [1, 2, 4], period: 2600 } },
+};
+let animT = null, animName = null;
+function startAnim(name) {
+  stopAnim();
+  const a = ANIMS[name]; animName = name;
+  if (a.seq) {
+    let i = 0;
+    const step = () => send(F("C", "N", [0, a.seq[i++ % a.seq.length]]), "", true);
+    step(); animT = setInterval(step, a.ms);
+  } else {
+    // Fondu simulé : tick de 12 ms, luminosité en cosinus, trame envoyée seulement au changement d'état
+    const t0 = performance.now(); let acc = 0, last = -1, sent = 0, winStart = t0;
+    animT = setInterval(() => {
+      const t = performance.now() - t0, P = a.pwm.period;
+      const duty = (1 - Math.cos(2 * Math.PI * (t % P) / P)) / 2;
+      const color = a.pwm.cycle ? a.pwm.cycle[Math.floor(t / P) % a.pwm.cycle.length] : a.pwm.color;
+      acc += duty; let code = 0;
+      if (acc >= 1) { acc -= 1; code = color; }
+      if (performance.now() - winStart > 1000) { winStart = performance.now(); sent = 0; }
+      if (code !== last && sent < 60) { last = code; sent++; send(F("C", "N", [0, code]), "", true); }  // max 60 trames/s
+    }, 12);
+  }
+  toast(a.name);
+}
+function stopAnim() { if (animT) clearInterval(animT); animT = null; animName = null; }
+const DEVICES = [
+  { id: "fan", sec: "Aspiration", name: "Aspiration", icon: "fan", spin: true, levels: [55, 80, 110],
+    on: v => F("C", "G", i8(v)), off: () => F("C", "G", [0]), query: () => F("C", "k", [0x20], true) },
+  { id: "roller", sec: "Aspiration", name: "Brosse principale", icon: "brush", spin: false, levels: [55, 80, 110],
+    on: v => F("C", "E", i8(v)), off: () => F("C", "E", [0]), query: () => F("C", "F", [0x20], true) },
+  { id: "side", sec: "Aspiration", name: "Brosse latérale", icon: "side", spin: true, levels: [55, 80, 125],
+    on: v => F("C", "C", i8(v)), off: () => F("C", "C", [0]), query: () => F("C", "D", [0x01], true) },
+  { id: "sideExt", sec: "Aspiration", name: "Bras brosse latérale", icon: "extend", sheet: [
+      { label: "Sortir", icon: "out", build: () => F("D", "M", i16(8000)) },
+      { label: "Rentrer", icon: "in", build: () => F("D", "M", i16(-8000)) },
+      { label: "Arrêt", icon: "stop", stop: true, wide: true, build: () => F("D", "M", i16(0)) } ] },
+  { id: "brushLift", sec: "Aspiration", name: "Levage brosse", icon: "lift", sheet: [
+      { label: "Descendre", icon: "down", build: () => F("D", "A", [1]) },
+      { label: "Monter", icon: "up", build: () => F("D", "A", [2]) },
+      { label: "Arrêt", icon: "stop", stop: true, wide: true, build: () => F("D", "A", [0]) } ] },
+
+  { id: "wheels", sec: "Déplacement", name: "Roues", icon: "wheel", dpad: true, levels: [100, 200, 300],
+    query: () => F("C", "B", [0x20], true),
+    move: (l, r) => F("C", "A", [...i16(l), ...i16(r)], true), halt: () => F("C", "A", [0, 0, 0, 0]) },
+
+  { id: "wheelLift", sec: "Déplacement", name: "Levage des roues", icon: "wlift", query: () => F("S", "p", [2]),
+    note: "Positions 0, 1, 2 capturées ; Lever et Verrou déduits (*)", sheet: [
+      { label: "Position 1", icon: "up", poll: true, build: () => F("S", "o", [1]) },
+      { label: "Position 2", icon: "up", poll: true, build: () => F("S", "o", [2]) },
+      { label: "Position 0", icon: "down", poll: true, wide: true, build: () => F("S", "o", [0]) },
+      { label: "Lever *", icon: "up", poll: true, build: () => F("S", "o", [5]) },
+      { label: "Verrou *", icon: "stop", poll: true, build: () => F("S", "o", [7]) } ] },
+
+  { id: "mop", sec: "Lavage", name: "Serpillières", icon: "mop", spin: true, levels: [1000, 1600, 4000],
+    on: v => F("D", "B", [...i16(v), ...i16(v), 0]), off: () => F("D", "B", [0, 0, 0, 0, 0]), query: () => F("D", "C", [0]) },
+  { id: "rollerMotor", sec: "Lavage", name: "Rouleau", icon: "roller", spin: false, levels: [5000, 8000, 12000],
+    on: v => F("C", "w", i16(v)), off: () => F("C", "w", i16(0)), query: () => F("C", "x", [0], true) },
+  { id: "waterPump", sec: "Lavage", name: "Pompe à eau", icon: "drop",
+    on: () => F("C", "I", [1]), off: () => F("C", "I", [0]) },
+  { id: "airPump", sec: "Lavage", name: "Pompe à air", icon: "air",
+    on: () => F("D", "H", [3]), off: () => F("D", "H", [0]) },
+
+  { id: "ldsMotor", sec: "Laser", name: "Laser LDS", icon: "lds", spin: true,
+    on: () => F("D", "E", [0x53]), off: () => F("D", "E", [0x45]) },
+  { id: "ldsLift", sec: "Laser", name: "Levage laser", icon: "lift", query: () => F("D", "P", [0]), sheet: [
+      { label: "Monter", icon: "up", poll: true, build: () => F("D", "O", [1]) },
+      { label: "Descendre", icon: "down", poll: true, build: () => F("D", "O", [0]) },
+      { label: "Arrêt", icon: "stop", stop: true, wide: true, build: () => F("D", "O", [2]) } ] },
+  { id: "led", sec: "Laser", name: "Lumières", icon: "led", sheet: [
+      { label: "Start blanc", color: "#FFFFFF", build: () => F("C", "N", [1]) },
+      { label: "Start orange", color: "#FF8A00", build: () => F("C", "N", [2]) },
+      { label: "Home blanc", color: "#FFFFFF", build: () => F("C", "N", [4]) },
+      { label: "Home orange", color: "#FF8A00", build: () => F("C", "N", [8]) },
+      { label: "Éteindre", icon: "stop", stop: true, wide: true, build: () => F("C", "N", [0]) } ] },
+  { id: "ldsLed", sec: "Laser", name: "Couleur du laser", icon: "led", sheet: [
+      ...LDS_COLORS.filter(c => c.code).map(c => ({ label: c.name + (c.hyp ? " *" : ""), color: c.css, build: () => F("C", "N", [0, c.code]) })),
+      ...Object.entries(ANIMS).map(([k, a]) => ({ label: a.name, anim: k, icon: "led" })),
+      { label: "Éteindre", icon: "stop", stop: true, wide: true, build: () => F("C", "N", [0, 0]) } ] },
+];
+const SECTIONS = ["Aspiration", "Déplacement", "Lavage", "Laser"];
+const byId = Object.fromEntries(DEVICES.map(d => [d.id, d]));
+const READ_KEY = {};
+DEVICES.forEach(d => { if (d.query) READ_KEY[keyOf(d.query())] = d.id; });
+
+/* =========================================================================
+   ÉTAT, JOURNAL, TOAST
+   ========================================================================= */
+let port = null, reader = null, writer = null, keepReading = false, rxBuf = [];
+let linkReadyAt = 0, fctActive = false;
+const pending = {}, running = new Set(), readings = {};
+let wheelDir = null, sheetDev = null;
+const $ = id => document.getElementById(id);
+const hex = b => Array.from(b, x => x.toString(16).padStart(2, "0").toUpperCase()).join(" ");
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const logLines = [];
+function log(kind, text) {
+  const d = new Date(), line = `[${d.toTimeString().slice(0, 8)}] ${text}`;
+  logLines.push({ kind, line });
+  if (logLines.length > 600) logLines.shift();
+  const el = $("log");
+  if (el) { const div = document.createElement("div"); div.className = kind; div.textContent = line; el.appendChild(div); el.scrollTop = el.scrollHeight; }
+}
+let toastT;
+function toast(msg, err) {
+  const t = $("toast"); t.textContent = msg; t.className = "toast show" + (err ? " err" : "");
+  clearTimeout(toastT); toastT = setTimeout(() => t.className = "toast" + (err ? " err" : ""), 2600);
+}
+
+/* =========================================================================
+   SÉRIE
+   ========================================================================= */
+/* Connexion : copie du logiciel Dreame FCT v3.0 (analysé le 14/10/2026)
+   1. fenêtre Chrome de choix du port, à chaque connexion
+   2. ouverture 115200 bps, 8 bits, 1 stop, sans parité
+   3. une lecture continue ; débranchement → simple passage en « déconnecté »
+   Aucune surveillance, aucune reconnexion automatique : rien ne peut déclarer
+   le robot déconnecté à tort. Seul ajout : entrée en mode test juste après. */
+let lastRx = 0, asleep = false, connecting = false, lastPortInfo = null, reconnectT = null;
+async function connect() {
+  if (!("serial" in navigator)) { toast("Ouvrir cette page dans Chrome ou Edge sur ordinateur", true); return; }
+  if (connecting) return;
+  const btn = $("btnConnect");
+  let p;
+  try { p = await navigator.serial.requestPort(); }             // 1. choix du port (comme Dreame)
+  catch (e) { if (e.name !== "NotFoundError") toast("Aucun port choisi", true); return; }
+  connecting = true; btn.classList.add("busy");
+  $("connectHint").textContent = "Connexion…";
+  try {
+    if (port) await closePort();                                  // ancien port éventuel
+    await openPort(p);                                            // 2. ouverture
+  } catch (e) {
+    connecting = false; btn.classList.remove("busy"); port = null;
+    log("err", "Ouverture : " + e.message);
+    $("connectHint").textContent = "Le port est peut-être utilisé par un autre onglet (logiciel Dreame ?) : le fermer puis réessayer.";
+    toast("Port indisponible : fermer les autres onglets qui l'utilisent", true);
+    return;
+  }
+  connecting = false; btn.classList.remove("busy");
+  await enterFct();                                               // mode test
+}
+async function openPort(p) {
+  await p.open({ baudRate: parseInt(baud, 10), dataBits: 8, stopBits: 1, parity: "none" });
+  port = p;
+  writer = p.writable.getWriter();
+  rxBuf = []; Object.keys(pending).forEach(k => delete pending[k]);
+  keepReading = true; readLoop(p);                                // 3. lecture continue
+  p.addEventListener("disconnect", onPortLost);
+  try { lastPortInfo = p.getInfo(); } catch (_) {}
+  setConn(true);
+  log("info", `Port ouvert à ${baud} bps.`);
+  await sleep(300);
+}
+let lastFctSent = 0;
+async function enterFct(quiet) {
+  if (!writer) return false;
+  lastFctSent = Date.now();
+  const ok = await sendAck(F("S", "A", [0x5F]), "Mode test", quiet ? 2 : 4, true);
+  if (!quiet) {
+    if (ok) toast("Robot prêt ✓");
+    else toast("Le robot ne répond pas : l'allumer, puis toucher « Mode test inactif »", true);
+  }
+  return ok;
+}
+async function closePort() {
+  keepReading = false;
+  try { if (reader) await reader.cancel(); } catch (_) {}
+  try { if (reader) reader.releaseLock(); } catch (_) {}
+  try { if (writer) writer.releaseLock(); } catch (_) {}
+  writer = null; reader = null;
+  try { if (port) { port.removeEventListener("disconnect", onPortLost); await port.close(); } } catch (_) {}
+}
+async function disconnect() {
+  await closePort();
+  port = null;
+  resetState();
+  setConn(false); setFct(false);
+}
+/* Câble débranché (événement « disconnect », comme Dreame) */
+function onPortLost() {
+  log("err", "Port série perdu (câble débranché ?).");
+  keepReading = false; writer = null; reader = null; port = null;
+  resetState(); setConn(false); setFct(false);
+  $("connectHint").textContent = "Câble débranché. Le rebrancher puis appuyer sur Connecter.";
+  toast("Câble du robot débranché", true);
+}
+/* Remet l'affichage à zéro : plus aucun organe considéré en marche */
+function resetState() {
+  stopAnim();
+  running.clear(); wheelDir = null;
+  Object.keys(readings).forEach(k => delete readings[k]);
+  renderTiles();
+}
+async function readLoop(p) {
+  // Comme Dreame : on lit tant que le port est ouvert. Seul ajout : après une erreur
+  // passagère (parasite sur la ligne), on reprend la lecture au lieu de l'abandonner.
+  while (keepReading && port === p && p.readable) {
+    reader = p.readable.getReader();
+    try { while (true) { const { value, done } = await reader.read(); if (done) break; if (value) onBytes(value); } }
+    catch (e) { if (keepReading && e.name !== "AbortError") log("err", "Lecture : " + e.message); }
+    finally { try { reader.releaseLock(); } catch (_) {} reader = null; }
+  }
+}
+/* Compatibilité : plus de reconnexion automatique */
+function scheduleReconnect() {}
+/* Découpage des réponses. Les valeurs peuvent contenir 3C ou 3E (ex. turbine « 52 6B A6 44 3C 05 3E »,
+   relevé le 14/10/2026) : on lit donc chaque réponse selon sa longueur connue, et on ne se fie
+   aux délimiteurs que pour les réponses de longueur inconnue. */
+const FRAME_LEN = {
+  RB: 12, Rk: 8, RF: 6, RD: 6, Rx: 6, AC: 8, Ac: 6, RS: 14, Zp: 8, Rq: 8, RO: 22, Rm: 16, RM: 9,
+  RA: 5, RC: 5, RE: 5, RG: 5, RI: 5, RN: 5, Rw: 5, RT: 5, AA: 5, AB: 5, AH: 5, AM: 5, AO: 5, AE: 5, ZA: 5, ZB: 5, Zo: 5,
+};
+function onBytes(chunk) {
+  for (const b of chunk) {
+    if (!rxBuf.length) { if (b === 0x0D || b === 0x0A) continue; rxBuf.push(b); continue; }
+    rxBuf.push(b);
+    if (rxBuf[0] === 0x3C) {
+      if (rxBuf.length < 3) continue;
+      const k2 = String.fromCharCode(rxBuf[1], rxBuf[2]);
+      const need = (typeof dynLen !== "undefined" && dynLen[k2]) || FRAME_LEN[k2];
+      if (need) {
+        if (rxBuf.length < need) continue;
+        if (rxBuf[need - 1] === 0x3E) { onFrame(); continue; }
+        // longueur attendue mais pas de « > » : trame abîmée, on se recale sur le prochain « < »
+        const i = rxBuf.indexOf(0x3C, 1); const rest = i > 0 ? rxBuf.slice(i) : [];
+        rxBuf = rxBuf.slice(0, i > 0 ? i : rxBuf.length); onFrame(); rxBuf = rest; continue;
+      }
+      if (b === 0x3E) onFrame();
+      else if (b === 0x3C) { rxBuf.pop(); onFrame(); rxBuf = [0x3C]; }
+    } else if (b === 0x0A || b === 0x3C) {
+      if (b === 0x3C) { rxBuf.pop(); onFrame(); rxBuf = [0x3C]; } else onFrame();
+    }
+    if (rxBuf.length > 512) onFrame();
+  }
+}
+const ACK_ANY = new Set(["RN"]);   // LED : le robot répond 00 même quand la commande est appliquée
+function onFrame() {
+  const f = Uint8Array.from(rxBuf); rxBuf = [];
+  if (f.every(b => b === 0x0D || b === 0x0A)) return;
+  lastRx = Date.now();
+  if (f[0] === 0x2B) {
+    log("info", "Lien établi (+Connected), attente 3 s.");
+    linkReadyAt = Date.now() + 3000;
+    return;
+  }
+  if (f[0] !== 0x3C || f[f.length - 1] !== 0x3E || f.length < 4) { log("rx", "RX " + hex(f)); return; }
+  const key = String.fromCharCode(f[1], f[2]);
+  if (f.length === 5 && pending[key]) {
+    const ok = f[3] === 0x01 || ACK_ANY.has(key), cb = pending[key]; delete pending[key];
+    if (key === "ZA") setFct(ok);
+    if (key === "ZB" && ok) setFct(false);
+    log("rx", `RX ${hex(f)} ${ok ? "✓" : "✗"}`); cb(ok); return;
+  }
+  if (waiters[key]) { const w = waiters[key]; delete waiters[key]; w(f); }
+  if (key === "RN") return;
+  if (key === "RS" && f.length === 14) { setBattery(rd16(f, 7)); techBattery(f); return; }
+  const id = READ_KEY[key];
+  if (id && DECODE[key]) {
+    const txt = DECODE[key](f);
+    if (txt) { readings[id] = txt; updateReading(id); }
+    return;
+  }
+  log("rx", "RX " + hex(f));
+}
+/* =========================================================================
+   FILE D'ENVOI — mesures faites sur le robot (14/10/2026) :
+   · trames collées (< 10 ms d'écart) : perdues à 80-100 %
+   · écart ≥ 25 ms : 100 % acceptées ; réponse du robot en 75-80 ms
+   → toutes les trames passent par une file unique, 35 ms minimum entre deux envois.
+   Priorité : commandes (boutons, manette, arrêts) avant lectures et animations.
+   Les lectures/animations en attente sont remplacées par la plus récente (pas d'embouteillage).
+   ========================================================================= */
+const TX_GAP = 35;
+const txHigh = [], txLow = new Map();
+let txBusy = false, lastTxAt = 0;
+function send(bytes, tag, quiet) {
+  if (!writer) return Promise.resolve(false);
+  return new Promise(res => {
+    const item = { bytes, tag, quiet, res };
+    if (quiet) {                                   // lecture ou animation : basse priorité, la plus récente gagne
+      const k = keyOf(bytes);
+      const old = txLow.get(k); if (old) old.res(true);
+      txLow.set(k, item);
+    } else txHigh.push(item);
+    pumpTx();
+  });
+}
+async function pumpTx() {
+  if (txBusy) return;
+  txBusy = true;
+  try {
+    while (writer && (txHigh.length || txLow.size)) {
+      let item;
+      if (txHigh.length) item = txHigh.shift();
+      else { const k = txLow.keys().next().value; item = txLow.get(k); txLow.delete(k); }
+      const wait = lastTxAt + TX_GAP - performance.now();
+      if (wait > 0) await sleep(wait);
+      if (!writer) { item.res(false); break; }
+      try {
+        await writer.write(item.bytes);
+        lastTxAt = performance.now();
+        if (!item.quiet) log("tx", `TX ${hex(item.bytes)}  ${item.tag || ""}`);
+        item.res(true);
+      } catch (e) { item.res(false); log("err", "Écriture : " + e.message); break; }
+    }
+  } finally {
+    txBusy = false;
+    if (!writer) { txHigh.splice(0).forEach(i => i.res(false)); txLow.forEach(i => i.res(false)); txLow.clear(); }
+  }
+}
+function waitAck(key, ms) {
+  return new Promise(res => {
+    const h = ok => { clearTimeout(t); res(ok); };
+    const t = setTimeout(() => { if (pending[key] === h) delete pending[key]; res(null); }, ms);
+    pending[key] = h;
+  });
+}
+async function sendAck(bytes, tag, tries = 3, noRecover) {
+  const w = linkReadyAt - Date.now(); if (w > 0) await sleep(w);
+  const key = keyOf(bytes);
+  for (let i = 0; i < tries; i++) {
+    const a = waitAck(key, 500);
+    if (!(await send(bytes, tag))) return false;
+    const ok = await a;
+    if (ok !== null) return ok;
+    log("err", `Pas de réponse (${tag})${i < tries - 1 ? ", nouvel envoi" : ""}`);
+  }
+  // Toujours sans réponse : le robot est peut-être sorti du mode test (veille, bouton…).
+  // On relance le mode test une fois, puis on renvoie la commande.
+  if (!noRecover && key !== "ZA" && key !== "ZB" && writer) {
+    log("info", "Relance du mode test puis nouvel essai.");
+    setFct(false);
+    if (await sendAck(F("S", "A", [0x5F]), "Mode test (relance)", 3, true)) {
+      toast("Mode test relancé ✓");
+      const a = waitAck(key, 600);
+      if (await send(bytes, tag + " (après relance)")) { const ok = await a; if (ok !== null) return ok; }
+    } else toast("Le robot ne répond plus : vérifier qu'il est allumé", true);
+  }
+  return false;
+}
+
+/* Lectures : un organe en marche interrogé à tour de rôle toutes les 300 ms */
+let pollIdx = 0;
+setInterval(() => {
+  if (!writer || stopping) return;
+  const ids = [...running].filter(id => byId[id].query);
+  if (sheetDev && byId[sheetDev].query && !ids.includes(sheetDev) && sheetPoll) ids.push(sheetDev);
+  if (!ids.length) return;
+  const d = byId[ids[pollIdx++ % ids.length]];
+  send(d.query(), "", true);
+}, 300);
+let sheetPoll = false;
+
+/* Lecture de la batterie toutes les 3 s, uniquement pour l'affichage
+   (une absence de réponse ne déclenche plus rien). */
+setInterval(() => { if (writer && fctActive && !stopping && !connecting) send(F("C", "S", [1], true), "", true); }, 3000);
+
+/* Bouton ↻ « Reconnecter » : tout arrêter, fermer, puis reconnecter comme au départ */
+async function restartAll() {
+  if (connecting) return;
+  if (writer) { try { await stopAll(true); } catch (_) {} }
+  await disconnect();
+  connect();
+}
+function setBattery(cV) {
+  const p = $("pillBatt");
+  if (!(cV > 500 && cV < 3000)) return;           // valeur incohérente ignorée
+  p.style.display = "";
+  p.querySelector("b").textContent = (cV / 100).toFixed(2).replace(".", ",") + " V";
+}
+
+/* =========================================================================
+   INTERFACE
+   ========================================================================= */
+let baud = "115200";
+function setConn(on) {
+  $("pillConn").className = "pill" + (on ? (asleep ? " sleep" : " on") : "");
+  $("pillConn").querySelector("b").textContent = on ? (asleep ? "Veille – réveil…" : "Connecté") : "Hors ligne";
+  $("btnRestart").style.display = on ? "" : "none";
+  $("screenConnect").style.display = on ? "none" : "";
+  $("screenMain").style.display = on ? "" : "none";
+  $("screenTech").style.display = on ? "" : "none";
+  $("stopWrap").style.display = on ? "block" : "none";
+  $("tabbar").style.display = on ? "grid" : "none";
+}
+function setFct(on) {
+  fctActive = on;
+  $("pillFct").className = "pill" + (on ? " on" : "");
+  $("pillFct").querySelector("b").textContent = on ? "Mode test actif" : "Mode test inactif";
+}
+function levelLabel(d) {
+  if (!d.levels) return "";
+  const v = d.levels[power];
+  if (d.id === "wheels") return `${v} mm/s`;
+  return v >= 1000 ? `${(v / 1000).toFixed(1).replace(".", ",")} V` : `${(v / 10).toFixed(1).replace(".", ",")} V`;
+}
+let currentSec = SECTIONS[0];
+const SEC_ICON = { "Aspiration": "fan", "Déplacement": "wheel", "Lavage": "drop", "Laser": "lds" };
+const SEC_SHORT = { "Aspiration": "Aspiration", "Déplacement": "Roues", "Lavage": "Lavage", "Laser": "Laser" };
+function renderTabs() {
+  const nav = $("tabbar");
+  nav.innerHTML = SECTIONS.map(sec => {
+    const n = DEVICES.filter(d => d.sec === sec && (running.has(d.id) || (d.id === "wheels" && wheelDir))).length;
+    return `<button class="${sec === currentSec ? "active" : ""}" data-sec="${sec}">${ICON[SEC_ICON[sec]]}${SEC_SHORT[sec]}<span class="badge${n ? " show" : ""}">${n}</span></button>`;
+  }).join("");
+  nav.querySelectorAll("button").forEach(b => b.onclick = () => { currentSec = b.dataset.sec; renderTiles(); $("screenMain").parentElement.scrollTop = 0; });
+}
+function renderTiles() {
+  const box = $("tiles"); box.innerHTML = "";
+  renderTabs();
+  for (const sec of [currentSec]) {
+    const t = document.createElement("div"); t.className = "sec-title"; t.textContent = sec; box.appendChild(t);
+    const g = document.createElement("div"); g.className = "grid"; box.appendChild(g);
+    for (const d of DEVICES.filter(x => x.sec === sec)) {
+      const on = running.has(d.id) || (d.id === "wheels" && wheelDir);
+      const b = document.createElement("button");
+      b.className = "tile" + (on ? " on" : "") + (d.spin || d.id === "wheels" ? " spin" : "");
+      b.id = "tile_" + d.id;
+      b.innerHTML = `${d.sheet || d.dpad ? '<span class="more">⋯</span>' : ""}<div class="ico">${ICON[d.icon]}</div><div class="name">${d.name}</div><div class="val" id="val_${d.id}"></div>`;
+      b.onclick = () => tap(d);
+      g.appendChild(b);
+      updateReading(d.id);
+    }
+  }
+}
+function updateReading(id) {
+  const d = byId[id], el = $("val_" + id);
+  const on = running.has(id) || (id === "wheels" && wheelDir);
+  if (el && d.action) { el.textContent = readings[id] || "Toucher pour tester"; return; }
+  if (el) el.textContent = on ? (readings[id] || levelLabel(d) || "En marche") : (d.sheet || d.dpad ? "Toucher pour piloter" : (d.levels ? levelLabel(d) : "Arrêté"));
+  if (sheetDev === id && $("sheetSub")) {
+    $("sheetSub").textContent = readings[id] || (on ? "En marche" : "À l'arrêt");
+    $("sheetSub").className = "sub" + (readings[id] && (on || sheetPoll) ? " live" : "");
+  }
+}
+function setTile(id, cls, on) {
+  const t = $("tile_" + id); if (!t) return;
+  t.classList.toggle(cls, on);
+  if (cls === "on") renderTabs();
+}
+function bump(id) { const t = $("tile_" + id); if (!t) return; t.classList.remove("error"); void t.offsetWidth; t.classList.add("error"); }
+
+async function tap(d) {
+  if (d.sheet || d.dpad) return openSheet(d);
+  if (d.action) return d.action();
+  return setDev(d, !running.has(d.id));
+}
+/* Met un organe en marche (on = true) ou à l'arrêt ; sans effet s'il est déjà dans l'état voulu */
+async function setDev(d, turningOn) {
+  if (turningOn && !fctActive) { toast("Mode test inactif : reconnecter le robot", true); return false; }
+  if (turningOn === running.has(d.id)) return true;
+  setTile(d.id, "pending", true);
+  const bytes = turningOn ? d.on(d.levels ? d.levels[power] : 0) : d.off();
+  const ok = await sendAck(bytes, `${d.name} ${turningOn ? "marche" : "arrêt"}`);
+  setTile(d.id, "pending", false);
+  if (ok) {
+    if (turningOn) running.add(d.id); else { running.delete(d.id); delete readings[d.id]; }
+    setTile(d.id, "on", turningOn);
+    updateReading(d.id);
+    return true;
+  }
+  bump(d.id); toast(`${d.name} : pas de réponse du robot`, true);
+  return false;
+}
+
+/* Levage du LDS maintenu : monte/descend tant que la touche est enfoncée */
+async function ldsHold(dir) {
+  const code = dir === "up" ? 1 : dir === "down" ? 0 : 2;
+  if (dir !== "stop" && !fctActive) { toast("Mode test inactif", true); return; }
+  const ok = await sendAck(F("D", "O", [code]), `Levage LDS ${dir}`, dir === "stop" ? 3 : 2);
+  if (dir === "stop") { running.delete("ldsLift"); delete readings.ldsLift; }
+  else if (ok) running.add("ldsLift");
+  if (!ok) toast("Levage LDS : pas de réponse du robot", true);
+  updateReading("ldsLift");
+}
+
+/* Changement de puissance : réapplique aux organes en marche */
+async function setPower(p) {
+  power = p;
+  document.querySelectorAll("#power button").forEach(b => b.classList.toggle("active", +b.dataset.p === p));
+  for (const id of running) {
+    const d = byId[id];
+    if (d.levels && d.on) await sendAck(d.on(d.levels[p]), `${d.name} puissance`);
+    updateReading(id);
+  }
+  if (wheelDir) await wheelMove(wheelDir);
+  DEVICES.forEach(d => updateReading(d.id));
+}
+
+/* ---------- Feuille du bas ---------- */
+function openSheet(d) {
+  sheetDev = d.id; sheetPoll = false;
+  let html = `<h2>${d.name}</h2><div class="sub" id="sheetSub"></div>`;
+  if (d.dpad) {
+    html += `<div class="dpad">
+      <span></span><button class="act" data-w="fwd">${ICON.up}</button><span></span>
+      <button class="act" data-w="pl">${ICON.rotL}</button><button class="act stop" data-w="stop">${ICON.stop}</button><button class="act" data-w="pr">${ICON.rotR}</button>
+      <span></span><button class="act" data-w="back">${ICON.down}</button><span></span></div>
+      <p style="text-align:center;color:var(--muted);font-size:13px;margin:16px 0 0">Robot soulevé · vitesse ${levelLabel(d)}</p>`;
+  } else {
+    html += `<div class="acts">` + d.sheet.map((a, i) =>
+      `<button class="act${a.stop ? " stop" : ""}${a.wide ? " wide" : ""}" data-i="${i}">${a.color ? `<span class="dot" style="background:${a.color}"></span>` : ICON[a.icon]}${a.label}</button>`).join("") + `</div>`;
+  }
+  $("sheetBody").innerHTML = html;
+  if (d.dpad) $("sheetBody").querySelectorAll("[data-w]").forEach(b => b.onclick = () => wheelMove(b.dataset.w));
+  else $("sheetBody").querySelectorAll("[data-i]").forEach(b => b.onclick = () => sheetAction(d, d.sheet[+b.dataset.i], b));
+  $("overlay").classList.add("show"); $("sheet").classList.add("show");
+  updateReading(d.id);
+}
+function closeSheet() {
+  $("overlay").classList.remove("show"); $("sheet").classList.remove("show");
+  sheetDev = null; sheetPoll = false;
+}
+async function sheetAction(d, a, btn) {
+  if (a.anim) { if (!fctActive) return toast("Mode test inactif", true); startAnim(a.anim); $("sheetSub").textContent = a.label + " ✓"; return; }
+  if (d.id === "ldsLed") stopAnim();
+  if (!fctActive && !a.stop) { toast("Mode test inactif", true); return; }
+  btn.style.opacity = .5;
+  const ok = await sendAck(a.build(), `${d.name} ${a.label}`);
+  btn.style.opacity = "";
+  if (!ok) { toast(`${d.name} : pas de réponse du robot`, true); return; }
+  sheetPoll = !!a.poll;
+  if (a.stop) { sheetPoll = false; running.delete(d.id); delete readings[d.id]; }
+  $("sheetSub").textContent = a.label + " ✓";
+}
+async function wheelMove(dir) {
+  const d = byId.wheels, v = d.levels[power];
+  if (!fctActive && dir !== "stop") { toast("Mode test inactif", true); return; }
+  const map = { fwd: [v, v], back: [-v, -v], pl: [-v, v], pr: [v, -v] };
+  const bytes = dir === "stop" ? d.halt() : d.move(...map[dir]);
+  const ok = await sendAck(bytes, `Roues ${dir}`);
+  if (!ok) { toast("Roues : pas de réponse du robot", true); return; }
+  if (dir === "stop") { wheelDir = null; running.delete("wheels"); delete readings.wheels; }
+  else { wheelDir = dir; running.add("wheels"); }
+  setTile("wheels", "on", !!wheelDir);
+  updateReading("wheels");
+}
+
+/* ---------- Tout arrêter ---------- */
+/* Arrêt général : chaque trame attend l'accusé du robot (≈ 65 ms) avant la suivante.
+   Les organes en marche passent en premier et sont renvoyés jusqu'à 3 fois. */
+let stopping = false;
+async function stopAll(quiet) {
+  if (typeof techRunning !== "undefined" && techRunning) techAbort = true;
+  stopLive();
+  if (stopping) return;
+  stopping = true;
+  stopAnim(); clearInterval(liftT);
+  const btn = $("btnStop"); btn.classList.add("busy");
+  if (!quiet) toast("Arrêt de tous les organes…");
+  try {
+    const list = [{ id: "wheels", name: "Roues", f: byId.wheels.halt() }];
+    DEVICES.filter(d => d.off).forEach(d => list.push({ id: d.id, name: d.name, f: d.off() }));
+    DEVICES.filter(d => d.sheet && d.id !== "led").forEach(d =>
+      d.sheet.filter(a => a.stop).forEach(a => list.push({ id: d.id, name: d.name, f: a.build() })));
+    const isOn = x => running.has(x.id) || (x.id === "wheels" && wheelDir);
+    list.sort((a, b) => isOn(b) - isOn(a));            // organes en marche d'abord
+    const fails = [];
+    for (const x of list) {
+      if (!writer) break;
+      if (asleep) { await send(x.f, x.name + " arrêt"); await sleep(70); continue; }
+      const ok = await sendAck(x.f, x.name + " arrêt", isOn(x) ? 3 : 1);
+      if (!ok && isOn(x)) fails.push(x.name);
+    }
+    running.clear(); wheelDir = null;
+    Object.keys(readings).forEach(k => delete readings[k]);
+    renderTiles();
+    if (!quiet) {
+      if (fails.length) toast("Sans réponse du robot : " + fails.join(", "), true);
+      else toast("Tout est arrêté ✓");
+    }
+  } finally { stopping = false; btn.classList.remove("busy"); }
+}
+
+/* Bouton TOUT ARRÊTER : arrêt de tous les organes, sortie du mode test, déconnexion.
+   Le robot repasse en fonctionnement normal et reste utilisable sans l'appli. */
+let releasing = false;
+async function stopAndRelease() {
+  if (releasing) return;
+  releasing = true;
+  clearInterval(reconnectT); reconnectT = null;
+  try {
+    if (writer) {
+      await stopAll(true);
+      toast("Sortie du mode test…");
+      const ok = await sendAck(F("S", "B", [0x5F]), "Quitter mode test", 3);
+      log(ok ? "info" : "err", ok ? "Mode test quitté (ZB 01)." : "Pas de confirmation de sortie du mode test.");
+    }
+    await disconnect();
+    $("connectHint").textContent = "Robot libéré. Appuyer sur Connecter pour reprendre.";
+    toast("Tout est arrêté · robot libéré et déconnecté ✓");
+  } finally { releasing = false; }
+}
+
+/* ---------- Réglages ---------- */
+function openSettings() {
+  sheetDev = null;
+  $("sheetBody").innerHTML = `<h2>Réglages</h2><div class="sub">Mode technicien</div>
+    <div class="settings-row"><span>Vitesse du port</span><select id="selBaud">
+      ${["115200", "921600", "256000", "1000000"].map(b => `<option ${b === baud ? "selected" : ""}>${b}</option>`).join("")}</select></div>
+    <div class="settings-row"><span>Mode test</span><button id="setFct">${fctActive ? "Quitter" : "Entrer"}</button></div>
+    <div class="settings-row"><span>Reconnecter le robot</span><button id="setRestart">↻ Reconnecter</button></div>
+    <div class="settings-row"><span>Connexion</span><button class="danger" id="setDisc" ${writer ? "" : "disabled"}>Déconnecter</button></div>
+    <div class="settings-row"><span>Manette</span><button id="setPad">Voir les commandes</button></div>
+    <div class="settings-row"><span>Journal</span><button id="setLog">⬇ Exporter</button></div>
+    <div id="log"></div>`;
+  const el = $("log");
+  logLines.forEach(l => { const div = document.createElement("div"); div.className = l.kind; div.textContent = l.line; el.appendChild(div); });
+  el.scrollTop = el.scrollHeight;
+  $("selBaud").onchange = e => { baud = e.target.value; };
+  $("setFct").onclick = async () => {
+    if (!writer) return toast("Robot non connecté", true);
+    if (fctActive) { await stopAll(); await sendAck(F("S", "B", [0x5F]), "Quitter mode test", 2); setFct(false); }
+    else await enterFct();
+    closeSheet();
+  };
+  $("setDisc").onclick = async () => { clearInterval(reconnectT); reconnectT = null; await stopAll(); await disconnect(); closeSheet(); };
+  $("setRestart").onclick = () => { closeSheet(); restartAll(); };
+  $("setPad").onclick = openPadHelp;
+  $("setLog").onclick = () => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([logLines.map(l => l.line).join("\r\n")], { type: "text/plain" }));
+    a.download = `demo_robot_${new Date().toISOString().replace(/[:.]/g, "-")}.txt`; a.click();
+  };
+  $("overlay").classList.add("show"); $("sheet").classList.add("show");
+}
+
+/* =========================================================================
+   MANETTE (PS5 DualSense, Xbox… via l'API Gamepad de Chrome)
+   Correspondance « standard » des boutons :
+   0 × · 1 ○ · 2 □ · 3 △ · 4 L1 · 5 R1 · 6 L2 · 7 R2 · 8 Create · 9 Options
+   10 L3 · 11 R3 · 12 ↑ · 13 ↓ · 14 ← · 15 → · 16 PS · 17 pavé tactile
+   ========================================================================= */
+const HOLD = d => ({ down: () => setDev(byId[d], true), up: () => setDev(byId[d], false) });
+const GP_MAP = [
+  { b: 0, label: "×", txt: "Aspiration (maintenir)", ...HOLD("fan") },
+  { b: 1, label: "○", txt: "Brosse principale (maintenir)", ...HOLD("roller") },
+  { b: 2, label: "□", txt: "Brosse latérale (maintenir)", ...HOLD("side") },
+  { b: 3, label: "△", txt: "Rouleau (maintenir)", ...HOLD("rollerMotor") },
+  { b: 7, label: "R2", txt: "Monter le LDS (maintenir)", down: () => ldsHold("up"), up: () => ldsHold("stop") },
+  { b: 6, label: "L2", txt: "Descendre le LDS (maintenir)", down: () => ldsHold("down"), up: () => ldsHold("stop") },
+  { b: 10, label: "L3", txt: "Puissance suivante (Doux → Normal → Fort)", down: () => { setPower((power + 1) % 3); toast("Puissance : " + ["Doux", "Normal", "Fort"][power]); } },
+  { b: 8, label: "Create", txt: "Couleur du laser suivante", down: () => cycleLdsColor() },
+  { b: 11, label: "R3", txt: "Animation du laser suivante", down: () => cycleAnim() },
+  { b: 5, label: "R1", txt: "Laser LDS – rotation (maintenir)", ...HOLD("ldsMotor") },
+  { b: 4, label: "L1", txt: "Levage des roues : position suivante", down: () => cycleWheelLift() },
+  { b: 9, label: "Options", txt: "TOUT ARRÊTER + déconnecter", stop: true, down: () => stopAndRelease() },
+  { b: 17, label: "Pavé tactile", txt: "Relancer le mode test", stop: true, down: () => enterFct() },
+];
+const COLOR_SEQ = [1, 2, 4, 0];
+let colorIdx = -1;
+async function cycleLdsColor() {
+  stopAnim();
+  colorIdx = (colorIdx + 1) % COLOR_SEQ.length;
+  const c = LDS_COLORS.find(x => x.code === COLOR_SEQ[colorIdx]);
+  const ok = await sendAck(F("C", "N", [0, c.code]), "Couleur laser");
+  if (ok) toast("Laser : " + c.name);
+}
+const ANIM_SEQ = [...Object.keys(ANIMS), null];
+function cycleAnim() {
+  const next = ANIM_SEQ[(ANIM_SEQ.indexOf(animName) + 1) % ANIM_SEQ.length];
+  if (next) startAnim(next); else { stopAnim(); send(F("C", "N", [0, 0]), "laser éteint"); toast("Animation arrêtée"); }
+}
+const LIFT_SEQ = [1, 2, 0];
+let liftIdx = -1;
+async function cycleWheelLift() {
+  liftIdx = (liftIdx + 1) % LIFT_SEQ.length;
+  const pos = LIFT_SEQ[liftIdx];
+  const ok = await sendAck(F("S", "o", [pos]), "Levage roues");
+  if (ok) { toast("Levage des roues : position " + pos); readings.wheelLift = "Position " + pos; liftPoll(); }
+  else toast("Levage des roues : pas de réponse", true);
+}
+/* Lecture du levage pendant 5 s après un mouvement (manette) */
+let liftT = null;
+function liftPoll() {
+  clearInterval(liftT); let n = 0;
+  liftT = setInterval(() => { if (!writer || ++n > 10) return clearInterval(liftT); send(byId.wheelLift.query(), "", true); }, 500);
+}
+const LED_SEQ = [1, 2, 4, 8, 0];
+let ledIdx = -1;
+async function cycleLed() {
+  ledIdx = (ledIdx + 1) % LED_SEQ.length;
+  const ok = await sendAck(F("C", "N", [LED_SEQ[ledIdx]]), "LED");
+  if (ok) toast(["Start blanc", "Start orange", "Home blanc", "Home orange", "LED éteintes"][ledIdx]);
+}
+
+let gpIndex = null, gpPrev = [], gpDir = null, gpQueue = Promise.resolve();
+const gpRun = fn => (gpQueue = gpQueue.then(fn).catch(e => log("err", "Manette : " + e.message)));
+function rumble(gp, strong = .6, ms = 120) {
+  try { gp && gp.vibrationActuator && gp.vibrationActuator.playEffect("dual-rumble", { duration: ms, strongMagnitude: strong, weakMagnitude: strong }); } catch (_) {}
+}
+function setGpPill(on, name) {
+  const p = $("pillPad");
+  p.style.display = on ? "" : "none";
+  if (on) p.title = name || "";
+}
+window.addEventListener("gamepadconnected", e => {
+  gpIndex = e.gamepad.index; gpPrev = [];
+  setGpPill(true, e.gamepad.id);
+  toast("🎮 Manette connectée");
+  log("info", "Manette : " + e.gamepad.id);
+  rumble(e.gamepad, .4, 200);
+});
+window.addEventListener("gamepaddisconnected", e => {
+  if (e.gamepad.index !== gpIndex) return;
+  gpIndex = null; setGpPill(false);
+  toast("Manette déconnectée", true);
+  releaseAllHeld();   // sécurité
+});
+window.addEventListener("blur", releaseAllHeld);
+/* Relâche tout ce qui est maintenu (manette perdue, fenêtre quittée) */
+function releaseAllHeld() {
+  if (gpDir) { gpDir = null; gpRun(() => wheelMove("stop")); }
+  GP_MAP.forEach(m => { if (m.up && gpPrev[m.b]) gpRun(m.up); });
+  gpPrev = [];
+}
+
+function readDir(gp) {
+  const btn = i => gp.buttons[i] && gp.buttons[i].pressed;
+  const x = gp.axes[0] || 0, y = gp.axes[1] || 0, dead = 0.55;
+  if (btn(12) || y < -dead) return "fwd";
+  if (btn(13) || y > dead) return "back";
+  if (btn(14) || x < -dead) return "pl";
+  if (btn(15) || x > dead) return "pr";
+  return null;
+}
+function gpLoop() {
+  const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+  const gp = gpIndex !== null ? pads[gpIndex] : null;
+  if (gp && writer) {
+    const pressed = gp.buttons.map(b => b.pressed || b.value > 0.5);
+    for (const m of GP_MAP) {
+      if (pressed[m.b] && !gpPrev[m.b]) {                 // appui
+        if (techMode && !m.stop) continue;
+        if (!fctActive && !m.stop) { toast("Mode test inactif", true); continue; }
+        rumble(gp, m.stop ? 1 : .35, m.stop ? 300 : 90);
+        gpRun(m.down);
+      } else if (!pressed[m.b] && gpPrev[m.b] && m.up) {  // relâchement
+        gpRun(m.up);
+      }
+    }
+    // Roues : on roule tant que la direction est maintenue, arrêt au relâchement
+    const dir = techMode ? null : readDir(gp);
+    if (dir !== gpDir) {
+      gpDir = dir;
+      if (fctActive) gpRun(() => wheelMove(dir || "stop"));
+    }
+    gpPrev = pressed;
+  }
+  requestAnimationFrame(gpLoop);
+}
+requestAnimationFrame(gpLoop);
+
+function openPadHelp() {
+  sheetDev = null;
+  const rows = [
+    ["Croix ou stick gauche", "Roues (arrêt au relâchement)"],
+    ...GP_MAP.map(m => [m.label, m.txt]),
+  ];
+  $("sheetBody").innerHTML = `<h2>🎮 Manette</h2><div class="sub">${gpIndex !== null ? "Manette connectée ✓" : "Brancher la manette en USB ou l'appairer en Bluetooth, puis appuyer sur un bouton"}</div>` +
+    rows.map(([k, v]) => `<div class="settings-row"><b style="min-width:120px">${k}</b><span style="text-align:right">${v}</span></div>`).join("");
+  $("overlay").classList.add("show"); $("sheet").classList.add("show");
+}
+
+/* =========================================================================
+   MODE TECHNICIEN
+   Trames et critères relevés sur le logiciel Dreame FCT v3.0 (test automatique
+   capturé le 14/10/2026). Les seuils marqués « atelier » ne sont pas fournis par
+   Dreame : ils sont fixés d'après les mesures d'un robot conforme.
+   ========================================================================= */
+const CFG_KEY = "fct_demo_cfg_v1", MODE_KEY = "fct_demo_mode_v1";
+const techCfg = { mop: "roller", ldsLift: "yes", side: "yes" };
+try { Object.assign(techCfg, JSON.parse(localStorage.getItem(CFG_KEY) || "{}")); } catch (_) {}
+const saveCfg = () => { try { localStorage.setItem(CFG_KEY, JSON.stringify(techCfg)); } catch (_) {} };
+let techMode = false, techRunning = false, techAbort = false, sheetLocked = false;
+const techResults = {}, ident = {}, battInfo = {};
+
+function setMode(t) {
+  techMode = t;
+  document.body.classList.toggle("tech", t);
+  document.querySelectorAll("#modeSwitch button").forEach(b => b.classList.toggle("active", (b.dataset.m === "tech") === t));
+  try { localStorage.setItem(MODE_KEY, t ? "tech" : "demo"); } catch (_) {}
+  if (!t) stopLive();
+  if (t && wheelDir) wheelMove("stop");
+}
+
+/* ---------- Requête avec réponse attendue ---------- */
+const waiters = {}, dynLen = {};
+function ask(bytes, key, ms = 900, len) {
+  return new Promise(res => {
+    if (len) dynLen[key] = len;
+    const h = f => { clearTimeout(t); delete dynLen[key]; res(f); };
+    const t = setTimeout(() => { if (waiters[key] === h) { delete waiters[key]; delete dynLen[key]; } res(null); }, ms);
+    waiters[key] = h;
+    send(bytes, "lecture " + key);
+  });
+}
+async function askRetry(bytes, key, ms, len, tries = 2) {
+  for (let i = 0; i < tries; i++) { const f = await ask(bytes, key, ms, len); if (f) return f; }
+  return null;
+}
+const ascii = (f, from = 3) => Array.from(f.slice(from, -1)).filter(b => b >= 0x20 && b < 0x7F).map(b => String.fromCharCode(b)).join("");
+const u16 = (f, i) => f[i] | (f[i + 1] << 8);
+
+/* ---------- Décodages ---------- */
+function decBattery(f) {          // <RS> 14 octets
+  return { charging: f[3], level: f[4], chargeV: rd16(f, 5) / 100, voltage: rd16(f, 7) / 100, chargeI: rd16(f, 9), dischargeI: rd16(f, 11) };
+}
+function decButtons(f) {          // <RM> 9 octets
+  return { key: f[3], bump: f[4], drop: f[5], dirtbox: f[6], waterbox: f[7] };
+}
+function decCliff(f) {            // <Rm> 16 octets : arrière G, gauche, avant G, avant D, droite, arrière D
+  return ["Arrière G", "Gauche", "Avant G", "Avant D", "Droite", "Arrière D"].map((n, i) => [n, rd16(f, 3 + 2 * i)]);
+}
+function decImu(f) {              // <RO> 22 octets
+  return ["Gyro X", "Gyro Y", "Gyro Z", "Accél X", "Accél Y", "Accél Z", "Cap", "Roulis", "Tangage"].map((n, i) => [n, rd16(f, 3 + 2 * i)]);
+}
+function techBattery(f) {
+  Object.assign(battInfo, decBattery(f));
+  const set = (id, v) => { const e = $(id); if (e) e.textContent = v; };
+  set("idBatt", `${battInfo.level} % · ${battInfo.voltage.toFixed(2).replace(".", ",")} V`);
+  set("idCharge", battInfo.charging ? `En charge · ${battInfo.chargeI} mA` : "Hors base");
+  set("idDis", `${battInfo.dischargeI} mA`);
+}
+
+/* ---------- Petits outils de test ---------- */
+const cmd = (bytes, tag, tries = 3) => sendAck(bytes, tag, tries);
+function checkAbort() { if (techAbort || !writer) throw new Error("ARRET"); }
+async function twait(ms, label) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) { checkAbort(); setRowDetail(curTest, `${label} · ${Math.ceil((end - Date.now()) / 1000)} s`); await sleep(Math.min(250, end - Date.now())); }
+}
+const inRange = (v, a, b) => v >= a && v <= b;
+
+/* ---------- Invite d'action manuelle (feuille du bas) ----------
+   opts : { title, desc, icons:[{id,label,icon}], buttons:[{label,value,cls}], watch(set) → résolution auto, timeout } */
+function manual(opts) {
+  return new Promise(resolve => {
+    sheetLocked = true; sheetDev = null;
+    const icons = (opts.icons || []).map(i => `<div id="mp_${i.id}"><i>${i.icon}</i>${i.label}</div>`).join("");
+    const btns = (opts.buttons || []).map((b, k) => `<button class="act${b.cls ? " " + b.cls : ""}${opts.buttons.length === 1 ? " wide" : ""}" data-k="${k}">${b.label}</button>`).join("");
+    $("sheetBody").innerHTML = `<h2>${opts.title}</h2><div class="sub" style="color:var(--ink-2)">${opts.desc || ""}</div>` +
+      (icons ? `<div class="mp-icons">${icons}</div>` : "") + `<div class="mp-count" id="mpCount"></div>` +
+      (btns ? `<div class="acts" style="margin-top:14px">${btns}</div>` : "");
+    $("overlay").classList.add("show"); $("sheet").classList.add("show");
+    let done = false, timer = null;
+    const finish = v => { if (done) return; done = true; clearInterval(timer); sheetLocked = false; closeSheet(); resolve(v); };
+    $("sheetBody").querySelectorAll("[data-k]").forEach(b => b.onclick = () => finish(opts.buttons[+b.dataset.k].value));
+    const end = opts.timeout ? Date.now() + opts.timeout : 0;
+    timer = setInterval(() => {
+      if (techAbort || !writer) return finish(null);
+      if (!end) return;
+      const s = Math.ceil((end - Date.now()) / 1000);
+      if ($("mpCount")) $("mpCount").textContent = s > 0 ? `${s} s restantes` : "";
+      if (s <= 0) finish(opts.onTimeout !== undefined ? opts.onTimeout : null);
+    }, 250);
+    if (opts.watch) opts.watch(id => { const e = $("mp_" + id); if (e) e.classList.add("ok"); }, finish, () => done);
+  });
+}
+/* Surveille les boutons/capteurs (<CM 01>) jusqu'à ce que test(état) soit vrai */
+async function watchButtons(isDone, onState, until) {
+  while (!until()) {
+    const f = await ask(F("C", "M", [1], true), "RM", 600, 9);
+    if (f && f.length === 9) { const s = decButtons(f); onState(s); if (isDone(s)) return s; }
+    await sleep(200);
+  }
+  return null;
+}
+
+/* =========================================================================
+   LISTE DES TESTS (ordre du test automatique Dreame)
+   ========================================================================= */
+let curTest = null;
+const TESTS = [
+  { id: "core", name: "Carte cœur et identité", crit: "Réponse au test carte, SN lisible", run: async () => {
+      if (!await cmd(F("C", "T", [0x20]), "Test carte cœur", 2)) return ["nok", "Pas de réponse au test carte"];
+      await twait(5000, "Démarrage de la carte");
+      const sn = await askRetry(F("C", "Z", [0x20], true), "RZ", 1500);
+      const v = async c => { const f = await askRetry(F("C", "V", [c], true), "RV", 900); return f ? ascii(f) : "—"; };
+      ident.sn = sn ? ascii(sn) : "—"; ident.proj = await v(0x74); ident.ver = await v(0x63); ident.git = await v(0x67);
+      showIdent();
+      return sn ? ["ok", `SN ${ident.sn} · ${ident.proj} · ${ident.ver}`] : ["nok", "Numéro de série illisible"];
+    } },
+  { id: "side", name: "Brosse latérale", crit: "8,8 V pendant 5 s · 20 à 150 mA (Dreame)", run: async () => {
+      if (techCfg.side === "no") return ["skip", "Non montée (configuration)"];
+      if (!await cmd(F("C", "C", [88]), "Brosse latérale 8,8 V")) return ["nok", "Pas de réponse"];
+      await twait(5000, "Rotation");
+      const f = await askRetry(F("C", "D", [1], true), "RD", 800, 6);
+      await cmd(F("C", "C", [0]), "Brosse latérale arrêt");
+      if (!f) return ["nok", "Courant illisible"];
+      const i = rd16(f, 3);
+      return [inRange(i, 20, 150) ? "ok" : "nok", `${i} mA`];
+    } },
+  { id: "fan", name: "Turbine", crit: "10 V pendant 10 s · ≥ 15 000 tr/min et 100 à 1 500 mA (atelier)", run: async () => {
+      if (!await cmd(F("C", "G", [100]), "Turbine 10 V")) return ["nok", "Pas de réponse"];
+      await twait(10000, "Montée en régime");
+      const f = await askRetry(F("C", "k", [0x20], true), "Rk", 800, 8);
+      await cmd(F("C", "G", [0]), "Turbine arrêt");
+      if (!f) return ["nok", "Mesure illisible"];
+      const rpm = rd16(f, 3), i = rd16(f, 5);
+      return [rpm >= 15000 && inRange(i, 100, 1500) ? "ok" : "nok", `${rpm.toLocaleString("fr-FR")} tr/min · ${i} mA`];
+    } },
+  { id: "roller", name: "Brosse principale", crit: "8 V pendant 5 s · 100 à 800 mA (atelier)", run: async () => {
+      if (!await cmd(F("C", "E", [80]), "Brosse principale 8 V")) return ["nok", "Pas de réponse"];
+      await twait(5000, "Rotation");
+      const f = await askRetry(F("C", "F", [0x20], true), "RF", 800, 6);
+      await cmd(F("C", "E", [0]), "Brosse principale arrêt");
+      if (!f) return ["nok", "Courant illisible"];
+      const i = rd16(f, 3);
+      return [inRange(i, 100, 800) ? "ok" : "nok", `${i} mA`];
+    } },
+  { id: "cliff", name: "Capteurs de vide", crit: "Réponse reçue · robot au sol : valeurs < 3 500", run: async () => {
+      const f = await askRetry(F("C", "m", [1], true), "Rm", 800, 16);
+      if (!f) return ["nok", "Pas de réponse"];
+      const v = decCliff(f).filter(x => x[1] !== 0);
+      const high = v.filter(x => x[1] > 3500);
+      return [high.length ? "warn" : "ok", v.map(x => `${x[0]} ${x[1]}`).join(" · ") + (high.length ? "\nValeur haute : robot soulevé ou capteur sale ?" : "")];
+    } },
+  { id: "ultra", name: "Ultrasons (tapis)", crit: "5 mesures d'écho, 1 par seconde · 2 000 à 5 000 (atelier)", run: async () => {
+      const vals = [];
+      for (let k = 0; k < 5; k++) {
+        checkAbort();
+        setRowDetail("ultra", `Mesure ${k + 1}/5`);
+        const f = await ask(F("C", "r", [2], true), "Rr", 900, 10);
+        vals.push(f ? u16(f, 3) : null);
+        await sleep(1000);
+      }
+      const good = vals.filter(v => v !== null && inRange(v, 2000, 5000)).length;
+      return [good === 5 ? "ok" : "nok", `${good}/5 dans la plage (${vals.map(v => v === null ? "—" : v).join(", ")})`];
+    } },
+  { id: "battery", name: "Batterie", crit: "12,0 à 17,6 V · 0 à 50 °C", run: async () => {
+      const q = await askRetry(F("C", "q", [1], true), "Rq", 800, 8);
+      const s = await askRetry(F("C", "S", [1], true), "RS", 800, 14);
+      if (!s) return ["nok", "Pas de réponse"];
+      techBattery(s);
+      const t = q ? rd16(q, 5) / 10 : null;
+      if (t !== null) { battInfo.temp = t; $("idTemp").textContent = t.toFixed(1).replace(".", ",") + " °C"; }
+      const okV = inRange(battInfo.voltage, 12, 17.6), okT = t === null || inRange(t, 0, 50);
+      return [okV && okT ? "ok" : "nok", `${battInfo.level} % · ${battInfo.voltage.toFixed(2).replace(".", ",")} V · ${t === null ? "— °C" : t.toFixed(1).replace(".", ",") + " °C"}`];
+    } },
+  { id: "bumper", name: "Pare-chocs", crit: "Appui gauche et droit détectés", manual: true, run: async () => {
+      let L = false, R = false;
+      const r = await manual({ title: "🔘 Pare-chocs", desc: "Appuyez puis relâchez le pare-chocs <b>à gauche</b>, puis <b>à droite</b>.",
+        icons: [{ id: "L", label: "Gauche", icon: "⬅️" }, { id: "R", label: "Droite", icon: "➡️" }],
+        buttons: [{ label: "Passer ce test", value: "skip" }], timeout: 25000, onTimeout: "timeout",
+        watch: (mark, finish, done) => watchButtons(() => L && R, s => {
+          if (!(s.bump & 1)) { L = true; mark("L"); }
+          if (!(s.bump & 2)) { R = true; mark("R"); }
+        }, done).then(() => { if (L && R) setTimeout(() => finish("ok"), 500); }) });
+      if (r === "skip") return ["skip", "Passé par le technicien"];
+      return [L && R ? "ok" : "nok", `Gauche ${L ? "✓" : "✗"} · Droite ${R ? "✓" : "✗"}`];
+    } },
+  { id: "dirtbox", name: "Bac à poussière", crit: "Retrait puis remise détectés", manual: true, run: async () => {
+      let out = false, back = false;
+      const r = await manual({ title: "🗑️ Bac à poussière", desc: "<b>Retirez</b> le bac à poussière, puis <b>remettez-le</b>.",
+        icons: [{ id: "out", label: "Retiré", icon: "⬆️" }, { id: "back", label: "Remis", icon: "⬇️" }],
+        buttons: [{ label: "Passer ce test", value: "skip" }], timeout: 30000, onTimeout: "timeout",
+        watch: (mark, finish, done) => watchButtons(() => out && back, s => {
+          const present = !!(s.dirtbox & 1);
+          if (!present && !out) { out = true; mark("out"); }
+          if (present && out && !back) { back = true; mark("back"); }
+        }, done).then(() => { if (out && back) setTimeout(() => finish("ok"), 500); }) });
+      if (r === "skip") return ["skip", "Passé par le technicien"];
+      return [out && back ? "ok" : "nok", `Retrait ${out ? "✓" : "✗"} · Remise ${back ? "✓" : "✗"}`];
+    } },
+  { id: "drop", name: "Capteurs de roues pendantes", crit: "Roue gauche et droite détectées en l'air", manual: true, run: async () => {
+      let L = false, R = false;
+      const r = await manual({ title: "⬆️ Roues pendantes", desc: "<b>Soulevez le robot</b> pour que les deux roues pendent, puis reposez-le.",
+        icons: [{ id: "L", label: "Roue gauche", icon: "🛞" }, { id: "R", label: "Roue droite", icon: "🛞" }],
+        buttons: [{ label: "Passer ce test", value: "skip" }], timeout: 25000, onTimeout: "timeout",
+        watch: (mark, finish, done) => watchButtons(() => L && R, s => {
+          if (s.drop & 1) { L = true; mark("L"); }
+          if (s.drop & 2) { R = true; mark("R"); }
+        }, done).then(() => { if (L && R) setTimeout(() => finish("ok"), 500); }) });
+      if (r === "skip") return ["skip", "Passé par le technicien"];
+      return [L && R ? "ok" : "nok", `Gauche ${L ? "✓" : "✗"} · Droite ${R ? "✓" : "✗"}`];
+    } },
+  { id: "lds", name: "Levage du laser (LDS)", crit: "Montée puis descente : position atteinte", run: async () => {
+      if (techCfg.ldsLift === "no") return ["skip", "LDS fixe (configuration)"];
+      if (!await cmd(F("D", "O", [1]), "LDS montée")) return ["nok", "Pas de réponse"];
+      await twait(2000, "Montée");
+      const i1 = await ask(F("D", "P", [0]), "AP", 800, 6);
+      const p1 = await ask(F("D", "P", [1]), "AP", 800, 5);
+      await cmd(F("D", "O", [0]), "LDS descente");
+      await twait(2000, "Descente");
+      const i2 = await ask(F("D", "P", [0]), "AP", 800, 6);
+      const p2 = await ask(F("D", "P", [1]), "AP", 800, 5);
+      const up = p1 && p1[3] === 1, down = p2 && p2[3] === 2;
+      return [up && down ? "ok" : "nok", `Montée ${up ? "✓" : "✗"} (${i1 ? rd16(i1, 3) : "—"} mA) · Descente ${down ? "✓" : "✗"} (${i2 ? rd16(i2, 3) : "—"} mA)`];
+    } },
+  { id: "led", name: "LED", crit: "Contrôle visuel de la séquence", manual: true, run: async () => {
+      const seq = [[1, "Start blanc"], [2, "Start orange"], [4, "Home blanc"], [8, "Home orange"], [[0, 1], "Laser rouge"], [[0, 2], "Laser vert"], [[0, 4], "Laser bleu"]];
+      for (const [c, n] of seq) { checkAbort(); setRowDetail("led", n); await cmd(F("C", "N", Array.isArray(c) ? c : [c]), "LED " + n, 2); await sleep(1000); }
+      await cmd(F("C", "N", [0]), "LED boutons éteintes", 2); await cmd(F("C", "N", [0, 0]), "LED laser éteinte", 2);
+      const r = await manual({ title: "💡 LED", desc: "Les voyants Start, Home et le laser se sont-ils allumés dans les bonnes couleurs ?",
+        buttons: [{ label: "✅ Oui, conforme", value: "ok" }, { label: "❌ Non", value: "nok", cls: "stop" }, { label: "🔁 Rejouer", value: "again" }] });
+      if (r === "again") return TESTS.find(t => t.id === "led").run();
+      return [r === "ok" ? "ok" : "nok", r === "ok" ? "Séquence conforme" : "Défaut constaté par le technicien"];
+    } },
+  { id: "wheels", name: "Roues motrices", crit: "300 mm/s 5 s avant puis arrière · ≥ 250 mm/s, 5 à 300 mA (atelier)", manual: true, run: async () => {
+      const go = await manual({ title: "⚙️ Roues motrices", desc: "<b>Soulevez le robot</b> (ou posez-le sur une cale) : les roues doivent tourner dans le vide.",
+        buttons: [{ label: "✅ C'est fait, lancer", value: "go" }, { label: "Passer", value: "skip" }] });
+      if (go !== "go") return ["skip", "Passé par le technicien"];
+      const run = async (v, n) => {
+        await cmd(F("C", "A", [...i16(v), ...i16(v)], true), "Roues " + n);
+        await twait(5000, n);
+        return await askRetry(F("C", "B", [0x20], true), "RB", 800, 12);
+      };
+      const a = await run(300, "Marche avant"), b = await run(-300, "Marche arrière");
+      await cmd(F("C", "A", [0, 0, 0, 0]), "Roues arrêt");
+      const chk = f => f && Math.abs(rd16(f, 3)) >= 250 && Math.abs(rd16(f, 5)) >= 250 && inRange(rd16(f, 7), 5, 300) && inRange(rd16(f, 9), 5, 300);
+      const txt = (f, n) => f ? `${n} G ${rd16(f, 3)} mm/s ${rd16(f, 7)} mA · D ${rd16(f, 5)} mm/s ${rd16(f, 9)} mA` : `${n} : mesure illisible`;
+      return [chk(a) && chk(b) ? "ok" : "nok", txt(a, "Avant") + "\n" + txt(b, "Arrière")];
+    } },
+  { id: "mop", name: "Serpillière", crit: "Rouleau : 16 V avant/arrière 5 s, 300 à 1 500 mA · Disques : 1,6 V, 20 à 1 000 mA (atelier)", run: async () => {
+      if (techCfg.mop === "none") return ["skip", "Aucune serpillière (configuration)"];
+      if (techCfg.mop === "roller") {
+        const run = async (v, n) => { await cmd(F("C", "w", i16(v)), "Rouleau " + n); await twait(5000, n); const f = await askRetry(F("C", "x", [0], true), "Rx", 800, 6); return f ? rd16(f, 3) : null; };
+        const a = await run(16000, "Avant"), b = await run(-16000, "Arrière");
+        await cmd(F("C", "w", i16(0)), "Rouleau arrêt");
+        return [a !== null && b !== null && inRange(a, 300, 1500) && inRange(b, 300, 1500) ? "ok" : "nok", `Avant ${a ?? "—"} mA · Arrière ${b ?? "—"} mA`];
+      }
+      const run = async (v, n) => { await cmd(F("D", "B", [...i16(v), ...i16(v), 0]), "Disques " + n); await twait(5000, n); const f = await askRetry(F("D", "C", [0]), "AC", 800, 8); return f ? [rd16(f, 3), rd16(f, 5)] : null; };
+      const a = await run(1600, "Avant"), b = await run(-1600, "Arrière");
+      await cmd(F("D", "B", [0, 0, 0, 0, 0]), "Disques arrêt");
+      const ok = x => x && inRange(x[0], 20, 1000) && inRange(x[1], 20, 1000);
+      return [ok(a) && ok(b) ? "ok" : "nok", `Avant G ${a ? a[0] : "—"} / D ${a ? a[1] : "—"} mA · Arrière G ${b ? b[0] : "—"} / D ${b ? b[1] : "—"} mA`];
+    } },
+  { id: "charge", name: "Charge sur la base", crit: "Charge détectée, courant > 100 mA", manual: true, single: true, run: async () => {
+      let res = null;
+      const r = await manual({ title: "🔌 Charge sur la base", desc: "Posez le robot <b>sur sa base de charge</b>.",
+        icons: [{ id: "c", label: "Charge détectée", icon: "⚡" }],
+        buttons: [{ label: "Passer", value: "skip" }], timeout: 30000, onTimeout: "timeout",
+        watch: async (mark, finish, done) => {
+          while (!done()) {
+            const f = await ask(F("C", "S", [1], true), "RS", 800, 14);
+            if (f) { const b = decBattery(f); techBattery(f); if (b.charging && b.chargeI > 100) { res = b; mark("c"); setTimeout(() => finish("ok"), 700); return; } }
+            await sleep(600);
+          }
+        } });
+      if (r === "skip") return ["skip", "Passé par le technicien"];
+      return res ? ["ok", `Charge ${res.chargeI} mA · ${res.chargeV.toFixed(2).replace(".", ",")} V`] : ["nok", "Aucune charge détectée"];
+    } },
+];
+const AUTO_IDS = TESTS.filter(t => !t.single).map(t => t.id);
+const ST_ICON = { ok: "✅", nok: "❌", warn: "⚠️", skip: "⏭️", run: "⏱️", wait: "·" };
+
+function renderTests() {
+  $("testList").innerHTML = TESTS.map(t => {
+    const r = techResults[t.id];
+    return `<div class="trow${curTest === t.id ? " run" : ""}" id="tr_${t.id}">
+      <div class="st">${curTest === t.id ? ST_ICON.run : r ? ST_ICON[r.st] : ST_ICON.wait}</div>
+      <div><div class="nm">${t.name}${t.single ? ' <span style="font-weight:600;color:var(--muted);font-size:12px">(hors test complet)</span>' : ""}</div>
+        <div class="dt" id="td_${t.id}">${r ? r.detail : ""}</div><div class="cr">${t.crit}</div></div>
+      <button class="go" data-t="${t.id}" title="Lancer ce test seul" ${techRunning ? "disabled" : ""}>▶</button></div>`;
+  }).join("");
+  $("testList").querySelectorAll(".go").forEach(b => b.onclick = () => runTests([b.dataset.t]));
+  const done = AUTO_IDS.filter(id => techResults[id]).length;
+  $("autoCount").textContent = `${done}/${AUTO_IDS.length} testés`;
+  const res = AUTO_IDS.map(id => techResults[id]).filter(Boolean);
+  const nok = res.filter(r => r.st === "nok").length, warn = res.filter(r => r.st === "warn").length;
+  const v = $("autoVerdict");
+  if (!techRunning && res.length) {
+    v.className = "verdict " + (nok ? "nok" : "ok");
+    v.textContent = nok ? `❌ NON CONFORME — ${nok} défaut(s)${warn ? `, ${warn} à vérifier` : ""}` : `✅ CONFORME${warn ? ` — ${warn} point(s) à vérifier` : ""} (${res.filter(r => r.st === "ok").length} OK)`;
+  } else v.className = "verdict";
+}
+function setRowDetail(id, txt) { const e = $("td_" + id); if (e) e.textContent = txt; }
+function showIdent() {
+  $("idSn").textContent = ident.sn || "—"; $("idProj").textContent = ident.proj || "—";
+  $("idVer").textContent = ident.ver || "—"; $("idGit").textContent = ident.git || "—";
+}
+
+async function runTests(ids, full) {
+  if (techRunning) return;
+  if (!writer) { toast("Robot non connecté", true); return; }
+  stopLive();
+  techRunning = true; techAbort = false;
+  $("btnAuto").textContent = "⏹ Arrêter le test"; $("btnAuto").classList.remove("red"); $("btnAuto").classList.add("dark");
+  try {
+    if (!fctActive && !await enterFct(true)) { toast("Le robot ne répond pas au mode test", true); return; }
+    if (full) {
+      const go = await manual({ title: "🧪 Test complet", desc: "Robot <b>posé à plat au sol</b>, bac, brosses et serpillière en place. Des actions vous seront demandées au fil du test (pare-chocs, bac, soulever le robot).",
+        buttons: [{ label: "▶ C'est parti", value: "go" }, { label: "Annuler", value: "no", cls: "stop" }] });
+      if (go !== "go") return;
+      ids.forEach(id => delete techResults[id]);
+    }
+    let n = 0;
+    for (const id of ids) {
+      if (techAbort) break;
+      const t = TESTS.find(x => x.id === id);
+      curTest = id; renderTests(); setRowDetail(id, "En cours…");
+      $("autoBar").style.width = Math.round(n / ids.length * 100) + "%";
+      let st, detail;
+      try { [st, detail] = await t.run(); }
+      catch (e) { if (e.message === "ARRET") { st = "skip"; detail = "Interrompu"; } else { st = "nok"; detail = "Erreur : " + e.message; } }
+      techResults[id] = { st, detail, at: new Date() };
+      log(st === "nok" ? "err" : "info", `Test ${t.name} : ${st.toUpperCase()} — ${detail.replace(/\n/g, " / ")}`);
+      curTest = null; n++;
+      $("autoBar").style.width = Math.round(n / ids.length * 100) + "%";
+      renderTests();
+    }
+  } finally {
+    techRunning = false; curTest = null;
+    $("btnAuto").textContent = "▶ Lancer le test complet"; $("btnAuto").classList.add("red"); $("btnAuto").classList.remove("dark");
+    if (techAbort) toast("Test interrompu", true);
+    renderTests();
+    setTimeout(() => { $("autoBar").style.width = "0"; }, 1200);
+  }
+}
+
+/* =========================================================================
+   MESURES EN DIRECT
+   ========================================================================= */
+const LIVE = {
+  cliff: { name: "Capteurs de vide", q: () => F("C", "m", [1], true), key: "Rm", len: 16, show: f => decCliff(f).map(([n, v]) => ({ n, v: v === 0 ? "absent" : v, pct: Math.min(100, v / 40.95), hot: v > 3500 })) },
+  buttons: { name: "Boutons et détecteurs", q: () => F("C", "M", [1], true), key: "RM", len: 9, show: f => { const s = decButtons(f); return [
+      { n: "Bouton Start", v: s.key === 1 ? "appuyé" : "—", act: s.key === 1 }, { n: "Bouton Home", v: s.key === 2 ? "appuyé" : "—", act: s.key === 2 },
+      { n: "Pare-chocs G", v: s.bump & 1 ? "—" : "appuyé", act: !(s.bump & 1) }, { n: "Pare-chocs D", v: s.bump & 2 ? "—" : "appuyé", act: !(s.bump & 2) },
+      { n: "Roue G pendante", v: s.drop & 1 ? "oui" : "—", act: !!(s.drop & 1) }, { n: "Roue D pendante", v: s.drop & 2 ? "oui" : "—", act: !!(s.drop & 2) },
+      { n: "Bac à poussière", v: s.dirtbox & 1 ? "en place" : "absent", act: !(s.dirtbox & 1) }, { n: "Code bac (brut)", v: s.dirtbox },
+      { n: "Serpillières (brut)", v: s.waterbox } ]; } },
+  imu: { name: "IMU", q: () => F("C", "O", [1], true), key: "RO", len: 22, show: f => decImu(f).map(([n, v]) => ({ n, v })) },
+  hall: { name: "Hall levage roues", q: () => F("S", "p", [1]), key: "Zp", len: 5, show: f => ["G avant", "G milieu", "G arrière", "D avant", "D milieu", "D arrière", "G levage", "D levage"].map((n, i) => ({ n, v: f[3] >> i & 1 ? "—" : "détecté", act: !(f[3] >> i & 1) })) },
+  battery: { name: "Batterie", q: () => F("C", "S", [1], true), key: "RS", len: 14, show: f => { const b = decBattery(f); techBattery(f); return [
+      { n: "Niveau", v: b.level + " %" }, { n: "Tension", v: b.voltage.toFixed(2) + " V" }, { n: "État", v: b.charging ? "en charge" : "hors base", act: !!b.charging },
+      { n: "Tension de charge", v: b.chargeV.toFixed(2) + " V" }, { n: "Courant de charge", v: b.chargeI + " mA" }, { n: "Consommation", v: b.dischargeI + " mA" } ]; } },
+};
+let liveId = null, liveT = null;
+function renderLiveBar() {
+  $("liveBar").innerHTML = Object.entries(LIVE).map(([k, g]) => `<button class="tbtn${liveId === k ? " on" : ""}" data-l="${k}">${g.name}</button>`).join("");
+  $("liveBar").querySelectorAll("[data-l]").forEach(b => b.onclick = () => liveId === b.dataset.l ? stopLive() : startLive(b.dataset.l));
+}
+function startLive(k) {
+  if (techRunning) { toast("Test en cours", true); return; }
+  if (!writer) { toast("Robot non connecté", true); return; }
+  stopLive(); liveId = k; renderLiveBar();
+  const g = LIVE[k];
+  $("liveGrid").innerHTML = `<div style="grid-column:1/-1;color:var(--muted);font-size:13px">Lecture…</div>`;
+  const tick = async () => {
+    if (liveId !== k) return;
+    const f = await ask(g.q(), g.key, 700, g.len);
+    if (liveId !== k) return;
+    if (f) $("liveGrid").innerHTML = g.show(f).map(c => `<div class="lv${c.act ? " act" : c.hot ? " hot" : ""}"><span>${c.n}</span><b>${c.v}</b>${c.pct !== undefined ? `<div class="bar"><i style="width:${c.pct}%"></i></div>` : ""}</div>`).join("");
+    liveT = setTimeout(tick, 350);
+  };
+  tick();
+}
+function stopLive() {
+  clearTimeout(liveT); liveT = null;
+  if (liveId) { liveId = null; if ($("liveBar")) renderLiveBar(); }
+}
+
+/* =========================================================================
+   RAPPORT
+   ========================================================================= */
+function buildReport() {
+  const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const res = AUTO_IDS.concat("charge").map(id => techResults[id]).filter(Boolean);
+  const nok = res.filter(r => r.st === "nok").length;
+  const global = !res.length ? "AUCUN TEST" : nok ? "NON CONFORME" : "CONFORME";
+  const d = new Date();
+  const logo = document.querySelector(".brand img").src;
+  const label = { ok: "OK", nok: "NOK", warn: "À vérifier", skip: "Non testé" };
+  const rows = TESTS.map(t => { const r = techResults[t.id]; return `<tr class="${r ? r.st : "none"}"><td>${esc(t.name)}</td><td>${esc(t.crit)}</td><td>${r ? esc(r.detail).replace(/\n/g, "<br>") : "—"}</td><td class="v">${r ? label[r.st] : "—"}</td></tr>`; }).join("");
+  return `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Rapport FCT ${esc(ident.sn || "")}</title>
+<style>
+body{font-family:"Segoe UI",Arial,sans-serif;color:#1a1a1a;margin:0;padding:28px;font-size:13px}
+header{display:flex;align-items:center;gap:16px;border-bottom:4px solid #E30613;padding-bottom:12px;margin-bottom:18px}
+header img{width:64px;height:64px}header h1{margin:0;font-size:22px}header p{margin:2px 0 0;color:#666}
+.g{display:grid;grid-template-columns:repeat(4,1fr);gap:8px 18px;margin-bottom:16px}.g div span{display:block;font-size:11px;color:#777;text-transform:uppercase;font-weight:700}.g div b{font-size:14px}
+.verdict{padding:12px;border-radius:8px;font-size:18px;font-weight:800;text-align:center;margin:12px 0 16px}
+.verdict.ok{background:#E3F5EB;color:#1E9E5A}.verdict.nok{background:#FDE8EA;color:#E30613}.verdict.none{background:#eee}
+table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:7px 8px;text-align:left;vertical-align:top}th{background:#f4f4f4;font-size:12px}
+td.v{font-weight:800;white-space:nowrap}tr.ok td.v{color:#1E9E5A}tr.nok td.v{color:#E30613}tr.warn td.v{color:#C77F00}tr.skip td.v,tr.none td.v{color:#888}
+.note{margin-top:16px;border:1px solid #ddd;border-radius:8px;padding:10px;min-height:40px;white-space:pre-wrap}
+.sig{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:30px}.sig div{border-top:1px solid #999;padding-top:6px;color:#666}
+footer{margin-top:24px;color:#999;font-size:11px}
+@media print{body{padding:10mm}}
+</style></head><body>
+<header><img src="${logo}" alt="Darty"><div><h1>Rapport de contrôle — robot aspirateur</h1><p>Fnac Darty · Atelier SAV · ${d.toLocaleDateString("fr-FR")} à ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</p></div></header>
+<div class="g">
+<div><span>N° de série</span><b>${esc(ident.sn || "—")}</b></div><div><span>Projet</span><b>${esc(ident.proj || "—")}</b></div>
+<div><span>Version</span><b>${esc(ident.ver || "—")}</b></div><div><span>Git</span><b>${esc(ident.git || "—")}</b></div>
+<div><span>Technicien</span><b>${esc($("rpTech").value || "—")}</b></div><div><span>N° dossier</span><b>${esc($("rpFile").value || "—")}</b></div>
+<div><span>Batterie</span><b>${battInfo.voltage ? `${battInfo.level} % · ${battInfo.voltage.toFixed(2)} V` : "—"}</b></div>
+<div><span>Configuration</span><b>Serpillière ${({ roller: "rouleau", disc: "disques", none: "aucune" })[techCfg.mop]} · LDS ${techCfg.ldsLift === "yes" ? "relevable" : "fixe"}</b></div>
+</div>
+<div class="verdict ${!res.length ? "none" : nok ? "nok" : "ok"}">${global}${nok ? ` — ${nok} défaut(s)` : ""}</div>
+<table><thead><tr><th>Test</th><th>Critère</th><th>Mesure</th><th>Résultat</th></tr></thead><tbody>${rows}</tbody></table>
+<div class="note"><b>Remarques :</b> ${esc($("rpNote").value || "")}</div>
+<div class="sig"><div>Signature du technicien</div><div>Visa responsable</div></div>
+<footer>Généré par l'outil de diagnostic FCT (liaison série 115200 bps). Seuils « atelier » : valeurs de référence internes ; seuil « Dreame » : critère du logiciel constructeur.</footer>
+</body></html>`;
+}
+function downloadReport() {
+  const html = buildReport();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+  a.download = `Rapport_FCT_${(ident.sn || "robot").replace(/[^\w-]/g, "")}_${new Date().toISOString().slice(0, 10)}.html`;
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+function printReport() {
+  const w = window.open("", "_blank");
+  if (!w) { toast("Autoriser les fenêtres pop-up pour imprimer", true); return; }
+  w.document.write(buildReport()); w.document.close();
+  w.onload = () => { w.focus(); w.print(); };
+  setTimeout(() => { try { w.focus(); w.print(); } catch (_) {} }, 600);
+}
+
+/* ---------- Initialisation ---------- */
+function initTech() {
+  document.querySelectorAll("#modeSwitch button").forEach(b => b.onclick = () => setMode(b.dataset.m === "tech"));
+  document.querySelectorAll(".seg[data-cfg]").forEach(seg => {
+    const k = seg.dataset.cfg;
+    const paint = () => seg.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v === techCfg[k]));
+    seg.querySelectorAll("button").forEach(b => b.onclick = () => { techCfg[k] = b.dataset.v; saveCfg(); paint(); });
+    paint();
+  });
+  $("btnAuto").onclick = () => techRunning ? (techAbort = true, stopAll()) : runTests(AUTO_IDS, true);
+  $("btnIdent").onclick = () => runTests(["core"]);
+  $("btnReport").onclick = downloadReport;
+  $("btnPrint").onclick = printReport;
+  renderTests(); renderLiveBar();
+  let m = "demo"; try { m = localStorage.getItem(MODE_KEY) || "demo"; } catch (_) {}
+  setMode(m === "tech");
+}
+
+/* =========================================================================
+   DÉMARRAGE
+   ========================================================================= */
+$("btnConnect").onclick = connect;
+$("btnStop").onclick = () => stopAndRelease();
+$("btnSettings").onclick = openSettings;
+$("pillPad").onclick = openPadHelp;
+$("pillFct").style.cursor = "pointer";
+$("pillFct").onclick = async () => { if (!writer) return toast("Robot non connecté", true); await enterFct(); };
+$("overlay").onclick = () => { if (!sheetLocked) closeSheet(); };
+document.querySelectorAll("#power button").forEach(b => b.onclick = () => setPower(+b.dataset.p));
+if (!("serial" in navigator)) $("connectHint").textContent = "⚠ Ce navigateur ne gère pas le port série : utiliser Chrome ou Edge sur ordinateur";
+else $("connectHint").textContent = "Robot allumé et branché, puis appuyer sur Connecter et choisir le port.";
+$("btnRestart").onclick = restartAll;
+renderTiles();
+initTech();
+</script>
+</body>
+</html>
