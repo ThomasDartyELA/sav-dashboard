@@ -983,10 +983,10 @@ function majJetonsUI(){
    Interrupteur global piloté par un admin. Quand il est actif, AUCUN poste
    n'interroge plus le serveur SSRS (ni « Actualiser », ni « Vider le cache »,
    admins compris) ; aucun jeton n'est consommé ; le cache reste affiché.
-   Firestore : collection config_efficience, doc "pause_serveur" {actif,par,depuis}.
+   Firestore : collection jetons_efficience, doc "_PAUSE_SERVEUR" {actif,par,depuis}.
    Écoute en temps réel -> effet immédiat sur tous les postes ouverts.
    Sans Firestore : pas de pause (on ne bloque jamais l'outil par erreur). */
-const COLL_CONFIG="config_efficience", PAUSE_DOC="pause_serveur";
+const COLL_CONFIG=COLL_JETONS, PAUSE_DOC="_PAUSE_SERVEUR";   // collection des jetons : règles Firestore déjà publiées
 var PAUSE_SSRS={actif:false};
 function pauseActive(){ return !!(PAUSE_SSRS&&PAUSE_SSRS.actif); }
 /* La pause n'est VISIBLE qu'en mode admin. Côté technicien : aucun bandeau, boutons
