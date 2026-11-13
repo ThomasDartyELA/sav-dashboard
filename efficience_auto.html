@@ -213,6 +213,21 @@
   .ss-results div:hover{background:#f3f0e8}
   .code-msg{color:var(--danger);font-size:.82rem;min-height:1.1em;margin-top:6px}
   @media(max-width:640px){.stat-value{font-size:1.3rem}}
+  /* Détail du chargement : une ligne par étape (en attente / en cours / ✅ / ⚠️) */
+  details.etapes{margin-top:8px;font-size:.8rem;color:var(--text-muted)}
+  details.etapes summary{cursor:pointer;user-select:none;font-weight:600}
+  .etapes-liste{margin:6px 0 0;padding:8px 12px;list-style:none;background:#f8fafc;border:1px solid var(--border);border-radius:8px}
+  .etapes-liste li{display:flex;gap:8px;align-items:baseline;padding:2px 0;line-height:1.45}
+  .etapes-liste .et-ico{flex:0 0 18px;text-align:center}
+  .etapes-liste .et-nom{flex:0 0 150px;font-weight:600;color:var(--text)}
+  .etapes-liste .et-msg{flex:1 1 auto;min-width:0}
+  .etapes-liste .et-ms{flex:0 0 auto;font-variant-numeric:tabular-nums;color:#94a3b8;display:none}
+  details.etapes.adm .et-ms{display:inline}
+  .etapes-liste li.attente,.etapes-liste li.saute{opacity:.55}
+  .etapes-liste li.ok .et-msg{color:#166534}
+  .etapes-liste li.warn .et-msg{color:#92400e}
+  .etapes-liste .spin{margin-right:0}
+  @media(max-width:640px){.etapes-liste .et-nom{flex-basis:105px}}
 </style>
 </head>
 <body>
@@ -378,6 +393,7 @@
       </div>
     </div>
     <div id="src-status" class="status load">Choisissez le mois puis « Actualiser ».</div>
+    <details id="load-steps" class="etapes hidden"><summary>Détail du chargement</summary><ul class="etapes-liste" id="load-steps-list"></ul></details>
     <div id="pause-banner" class="pause-banner"></div>
     <div id="autorefresh-info" class="hint" style="margin-top:8px"></div>
     <details class="adv" style="margin-top:14px">
@@ -715,16 +731,22 @@ try{ POLE_OVERRIDES=JSON.parse(localStorage.getItem(LS_POLES)||"{}")||{}; }catch
 async function hydratePoles(){
   if(!FB)return;
   try{
-    const d=await FB.collection("config_efficience").doc("poles").get();
+    const d=await fsLire(FB.collection("config_efficience").doc("poles"));
     if(d.exists){ POLE_OVERRIDES=(d.data()&&d.data().overrides)||{}; memSet(LS_POLES,JSON.stringify(POLE_OVERRIDES)); }
-  }catch(e){ console.warn("Lecture pôles Firestore échouée — cache local :",e); }
+  }catch(e){ console.warn("Lecture pôles Firestore échouée — cache local :",e&&e.message||e); }
 }
 function setPoleOverride(code,pole){
   if(pole) POLE_OVERRIDES[code]=pole; else delete POLE_OVERRIDES[code];
   memSet(LS_POLES,JSON.stringify(POLE_OVERRIDES));
-  if(FB) FB.collection("config_efficience").doc("poles")
-    .set({overrides:POLE_OVERRIDES,updatedAt:Date.now(),by:IDENTITY||""})
-    .catch(e=>console.warn("Écriture pôles Firestore :",e));
+  // Écriture CIBLÉE (un seul technicien) : deux admins qui modifient en même temps ne s'écrasent plus.
+  if(FB){
+    try{
+      FB.collection("config_efficience").doc("poles")
+        .set({overrides:{[code]:pole||firebase.firestore.FieldValue.delete()},updatedAt:Date.now(),by:IDENTITY||""},{merge:true})
+        .catch(e=>{ console.warn("Écriture pôles Firestore :",e);
+          setStatus("warn","⚠️ Pôle enregistré sur ce poste uniquement : le stockage partagé a refusé l'écriture ("+escH(e&&(e.code||e.message)||e)+")."); });
+    }catch(e){ console.warn("Écriture pôles Firestore :",e); }
+  }
 }
 /* Pôle « auto » de chaque technicien = pôle majoritaire de ses interventions du mois. */
 function polesAutoDuMois(){
@@ -834,7 +856,7 @@ const $=s=>document.querySelector(s);
 /* Version applicative — à incrémenter à chaque publication sur GitHub.
    Affichée discrètement dans la barre du haut pour vérifier que les postes
    ont bien reçu la dernière version (mise à jour auto au lancement). */
-const APP_VERSION="2026.11.13";
+const APP_VERSION="2026.11.14";
 (function(){const v=document.getElementById("app-version");if(v)v.textContent=" · v"+APP_VERSION;})();
 
 /* ---- Mise à jour EN COURS DE SESSION (sans fermer le portable) ----
@@ -845,7 +867,7 @@ function afficherBanniereMaj(v){
   if(MAJ_BANNIERE_AFFICHEE||document.getElementById("maj-banniere"))return;
   MAJ_BANNIERE_AFFICHEE=true;
   const b=document.createElement("div");b.id="maj-banniere";b.className="maj-banniere";
-  b.innerHTML=`<span>🔄 Une nouvelle version (v${v}) de l'application est disponible.</span>
+  b.innerHTML=`<span>🔄 Une nouvelle version (v${escH(v)}) de l'application est disponible.</span>
     <button class="btn btn-primary" id="maj-appliquer">Mettre à jour maintenant</button>`;
   document.body.appendChild(b);
   b.querySelector("#maj-appliquer").addEventListener("click",async()=>{
@@ -866,10 +888,11 @@ async function verifierMajAppli(){
 /* Notes de la version en cours : affichées UNE fois (par version, par poste)
    quand le technicien reçoit la mise à jour. Vider le tableau = pas de fenêtre. */
 const NOTES_VERSION=[
-  "<strong>Saisie rapide des heures</strong> : boutons <strong>7 h</strong>, <strong>7,5 h</strong> et <strong>8 h</strong> sur chaque jour, plus un bouton pour remplir d'un coup les jours encore vides. La saisie libre reste possible.",
-  "<strong>Responsables de pôle</strong> : passage automatique en mode admin, avec la vue filtrée sur leur pôle (Air, Culinaire &amp; vapeur, Café &amp; robots). Le filtre « Tous les pôles » reste disponible."
+  "<strong>Chargement détaillé</strong> : pendant une actualisation, l'application indique étape par étape ce qu'elle fait (interventions, retours, NPS, heures). En cas de souci, elle dit clairement ce qui bloque.",
+  "<strong>Actualisation plus rapide</strong> : les retours atelier ne sont plus retéléchargés en entier à chaque fois, seulement les derniers jours.",
+  "<strong>Saisie des heures plus sûre</strong> : si le stockage partagé est indisponible, vos heures restent enregistrées sur le poste et sont envoyées automatiquement dès que possible."
 ];
-const LS_NOTES_VUE="eff_notes_vue_"+APP_VERSION;
+const LS_NOTES_VUE="eff_notes_vue_"+APP_VERSION.replace(/b$/,"");
 function montrerNotesMaj(){
   if(!NOTES_VERSION.length) return;
   if(memGet(LS_NOTES_VUE)) return;
@@ -935,30 +958,151 @@ function initFirebase(){
     return true;
   }catch(e){console.warn("Firebase indisponible — mode local :",e);FB=null;return false;}
 }
-/* Charge toutes les heures d'un mois (tous techs) depuis Firebase dans le cache */
-async function hydrateHours(ym){
-  if(!FB)return;
+/* ============ ACCÈS FIRESTORE BORNÉ ============
+   Toute LECTURE Firestore passe par fsLire() :
+   - délai maximum (quota dépassé = le SDK réessaie sans fin et la promesse ne se termine jamais) ;
+   - après un blocage ou un « quota dépassé », on n'insiste plus pendant FS_REPOS_MS : les
+     lectures suivantes échouent tout de suite -> copie locale, l'interface n'attend plus ;
+   - une réponse « hors ligne » (cache vide du SDK) est REFUSÉE : sinon une liste vide pouvait
+     remplacer les données locales (déductions effacées, messages marqués « lus »). */
+const FS_DELAI_MS=5000, FS_REPOS_MS=180000;
+var FS_HS_JUSQUA=0;
+function fsLire(ref,ms){
+  if(!FB) return Promise.reject(new Error("Firestore non chargé"));
+  if(Date.now()<FS_HS_JUSQUA) return Promise.reject(new Error("Firestore indisponible il y a peu (nouvel essai dans quelques minutes)"));
+  return new Promise((res,rej)=>{
+    let fini=false,p;
+    const t=setTimeout(()=>{ if(fini)return; fini=true; FS_HS_JUSQUA=Date.now()+FS_REPOS_MS; rej(new Error("Firestore ne répond pas")); },ms||FS_DELAI_MS);
+    try{ p=ref.get(); }catch(e){ fini=true; clearTimeout(t); rej(e); return; }
+    p.then(s=>{ if(fini)return; fini=true; clearTimeout(t);
+      if(s&&s.metadata&&s.metadata.fromCache) rej(new Error("Firestore hors ligne")); else res(s);
+    },e=>{ if(fini)return; fini=true; clearTimeout(t);
+      if(e&&e.code==="resource-exhausted") FS_HS_JUSQUA=Date.now()+FS_REPOS_MS;
+      rej(e); });
+  });
+}
+
+/* ============ HEURES : copie locale + synchronisation INCRÉMENTALE ============
+   Avant : chaque ouverture / actualisation / changement de mois relisait TOUTES les heures du
+   mois de TOUS les techniciens (jusqu'à ~1 000 lectures Firestore à chaque fois) -> quota épuisé.
+   Maintenant :
+   - H_MOIS[ym].map = copie du mois, gardée dans IndexedDB (affichage immédiat, même sans Firestore) ;
+   - on ne demande à Firestore que les documents modifiés depuis la dernière synchro (updatedAt),
+     avec une marge de 30 min pour les horloges de postes décalées ;
+   - relecture complète du mois seulement la 1re fois, après « Vider le cache », ou tous les 7 jours ;
+   - une heure effacée n'est plus supprimée de Firestore mais enregistrée « vide » (heures:null),
+     pour que les autres postes voient l'effacement sans tout relire ;
+   - H_ATTENTE = saisies pas encore confirmées par Firestore : gardées sur le poste, prioritaires
+     à l'affichage, renvoyées automatiquement (même après fermeture de l'appli). */
+const H_MOIS={};
+const H_SYNC_MARGE=30*60000, H_COMPLET_MAX=7*864e5, H_SYNC_MIN=60000;
+const cleHeures=ym=>"heures1_"+ym;
+const LS_H_ATT="eff_heures_attente";
+var H_ATTENTE={};
+try{H_ATTENTE=JSON.parse(localStorage.getItem(LS_H_ATT)||"{}")||{};}catch(e){H_ATTENTE={};}
+function hAttSave(){memSet(LS_H_ATT,JSON.stringify(H_ATTENTE));}
+const H_SAVE_T={},H_ENVOI={};
+function hMoisSave(ym){
+  clearTimeout(H_SAVE_T[ym]);
+  H_SAVE_T[ym]=setTimeout(()=>{const c=H_MOIS[ym];if(c)idbSet(cleHeures(ym),{map:c.map,sync:c.sync,complet:c.complet});},1000);
+}
+/* Reporte la copie du mois (+ les saisies en attente) dans le cache mémoire HCACHE. */
+function hAppliquer(ym){
+  const c=H_MOIS[ym];if(!c)return;
+  if(c.sync) Object.keys(HCACHE).forEach(k=>{ if(k.slice(-10,-3)===ym){ const id=k.slice(6); if(!(id in c.map)&&!(id in H_ATTENTE)) delete HCACHE[k]; } });
+  Object.keys(c.map).forEach(id=>{ if(!(id in H_ATTENTE)) HCACHE["eff_h_"+id]=c.map[id]; });
+  Object.keys(H_ATTENTE).forEach(id=>{ const k="eff_h_"+id; if(H_ATTENTE[id]==null) delete HCACHE[k]; else HCACHE[k]=H_ATTENTE[id]; });
+}
+/* Copie locale seule (IndexedDB) : rapide, aucun appel réseau. */
+async function hChargerLocal(ym){
+  if(H_MOIS[ym]) return H_MOIS[ym];
+  const s=await idbGet(cleHeures(ym));
+  if(!H_MOIS[ym]) H_MOIS[ym]=(s&&s.map&&typeof s.map==="object")?{map:s.map,sync:s.sync||0,complet:s.complet||0}:{map:{},sync:0,complet:0};
+  hAppliquer(ym);
+  return H_MOIS[ym];
+}
+/* Relecture complète : une heure présente sur CE poste mais absente de Firestore n'a jamais été
+   envoyée (panne, quota, appli fermée trop vite) -> on la met en attente d'envoi au lieu de la perdre. */
+function hRecupererLocaux(ym,map){
+  let n=0;
   try{
-    const snap=await FB.collection(COLL_HEURES).where("mois","==",ym).get();
-    snap.forEach(doc=>{const d=doc.data();if(d&&d.code&&d.date&&d.heures!=null)HCACHE[hKey(d.code,d.date)]=d.heures;});
-  }catch(e){console.warn("Lecture Firestore échouée — mode local :",e);}
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(!k||k.indexOf("eff_h_")!==0||k.slice(-10,-3)!==ym||!/_\d{4}-\d{2}-\d{2}$/.test(k))continue;
+      const id=k.slice(6);
+      if((id in map)||(id in H_ATTENTE))continue;
+      const v=parseFloat(localStorage.getItem(k));
+      if(!isNaN(v)){H_ATTENTE[id]=v;n++;}
+    }
+  }catch(e){}
+  if(n)hAttSave();
+  return n;
+}
+/* Synchronise les heures d'un mois (tous techs). Renvoie {ok, n} ; ne lève jamais. */
+async function hydrateHours(ym,forceComplet){
+  const c=await hChargerLocal(ym);
+  if(!FB) return{ok:false,raison:"local"};
+  const maintenant=Date.now();
+  if(!forceComplet&&c.sync&&maintenant-(c.essai||0)<H_SYNC_MIN) return{ok:true,n:0};   // synchronisé il y a moins d'une minute
+  const complet=!!forceComplet||!c.sync||!c.complet||maintenant-c.complet>H_COMPLET_MAX;
+  try{
+    const col=FB.collection(COLL_HEURES);
+    const snap=await fsLire(complet?col.where("mois","==",ym):col.where("updatedAt",">",c.sync-H_SYNC_MARGE));
+    const map=complet?{}:c.map; let n=0;
+    snap.forEach(doc=>{
+      const d=doc.data();if(!d||!d.code||!d.date||String(d.date).slice(0,7)!==ym)return;
+      const id=d.code+"_"+d.date,k=hKey(d.code,d.date),vide=(d.heures==null||d.heures==="");
+      n++;
+      if(vide)delete map[id];else map[id]=d.heures;
+      if(!(id in H_ATTENTE)){                       // garde le localStorage du poste cohérent avec le serveur
+        if(vide){try{localStorage.removeItem(k);}catch(e){}}
+        else if(memGet(k)!=null)memSet(k,String(d.heures));
+      }
+    });
+    c.map=map;c.sync=maintenant;c.essai=maintenant;if(complet)c.complet=maintenant;
+    if(complet)hRecupererLocaux(ym,map);
+    hAppliquer(ym);hMoisSave(ym);envoyerHeuresEnAttente();
+    return{ok:true,n};
+  }catch(e){
+    console.warn("Heures : Firestore indisponible — copie locale utilisée :",e&&e.message||e);
+    return{ok:false,raison:String(e&&e.message||e)};
+  }
 }
 function hoursGet(code,date){
   const k=hKey(code,date);
   let v=(k in HCACHE)?HCACHE[k]:memGet(k);
   return v==null||v===""?null:parseFloat(v);
 }
+const H_TIMERS={};           // écritures Firestore des heures, regroupées (anti-rafale de frappe)
 function hoursSet(code,date,val){
-  const k=hKey(code,date);
-  if(val==null||val===""){
-    delete HCACHE[k];try{localStorage.removeItem(k);}catch(e){}
-    if(FB)FB.collection(COLL_HEURES).doc(`${code}_${date}`).delete().catch(e=>console.warn("Suppr Firestore:",e));
-  }else{
-    const num=parseFloat(val);HCACHE[k]=num;memSet(k,String(num));
-    if(FB)FB.collection(COLL_HEURES).doc(`${code}_${date}`)
-      .set({code,date,mois:date.slice(0,7),heures:num,updatedAt:Date.now()})
-      .catch(e=>console.warn("Écriture Firestore:",e));
-  }
+  const k=hKey(code,date),id=`${code}_${date}`,ym=String(date).slice(0,7);
+  let num=(val==null||val==="")?null:parseFloat(val);
+  if(num!=null&&isNaN(num))num=null;
+  if(num==null){ delete HCACHE[k];try{localStorage.removeItem(k);}catch(e){} }
+  else{ HCACHE[k]=num;memSet(k,String(num)); }
+  H_ATTENTE[id]=num;hAttSave();                    // à envoyer : survit à une panne Firestore ou à la fermeture de l'appli
+  const c=H_MOIS[ym];
+  if(c){ if(num==null)delete c.map[id];else c.map[id]=num; hMoisSave(ym); }
+  clearTimeout(H_TIMERS[k]);
+  H_TIMERS[k]=setTimeout(()=>{ delete H_TIMERS[k]; envoyerHeure(id); },800);
+}
+/* Envoie UNE saisie en attente ; elle ne quitte la file qu'une fois confirmée par Firestore. */
+function envoyerHeure(id){
+  if(!FB||!(id in H_ATTENTE))return;
+  const v=H_ATTENTE[id];
+  if((id in H_ENVOI)&&H_ENVOI[id]===v)return;      // même valeur déjà en cours d'envoi
+  const i=id.lastIndexOf("_"),code=id.slice(0,i),date=id.slice(i+1);
+  if(i<1||!/^\d{4}-\d{2}-\d{2}$/.test(date)){ delete H_ATTENTE[id];hAttSave();return; }
+  H_ENVOI[id]=v;
+  const fin=()=>{ if(H_ENVOI[id]===v)delete H_ENVOI[id]; };
+  try{
+    FB.collection(COLL_HEURES).doc(id).set({code,date,mois:date.slice(0,7),heures:v,updatedAt:Date.now()})
+      .then(()=>{ fin(); if((id in H_ATTENTE)&&H_ATTENTE[id]===v){ delete H_ATTENTE[id];hAttSave(); } })
+      .catch(e=>{ fin(); console.warn("Écriture heures Firestore :",e); });
+  }catch(e){ fin(); console.warn("Écriture heures Firestore :",e); }
+}
+function envoyerHeuresEnAttente(){
+  Object.keys(H_ATTENTE).forEach(id=>{ if(!H_TIMERS["eff_h_"+id]) envoyerHeure(id); });
 }
 
 /* ============ STOCKAGE DES DÉDUCTIONS DE TEMPS ============
@@ -967,20 +1111,59 @@ function hoursSet(code,date,val){
    Priorité Firebase (partagé -> visible par Véronique) ; repli localStorage.
    Chaque déduction : {id, code, date, mois, heures, motif, createdAt}. */
 const COLL_DEDUC="deductions_efficience";
-let DEDUCTIONS=[];                 // déductions du mois chargé (tous techs)
+var DEDUCTIONS=[];                 // déductions du mois chargé (tous techs)
+var DEDUC_YM=null;                 // mois actuellement présent dans DEDUCTIONS
+const DEDUC_ESSAI={},DEDUC_ENVOI={};
+const LS_DEDUC_SUPPR="eff_deduc_suppr";   // suppressions pas encore confirmées par Firestore {id:mois}
 function lsDeducKey(ym){return "eff_deduc_"+ym;}
-function lsDeducSave(ym){try{localStorage.setItem(lsDeducKey(ym),JSON.stringify(DEDUCTIONS));}catch(e){}}
-function lsDeducLoad(ym){try{const v=localStorage.getItem(lsDeducKey(ym));return v?JSON.parse(v):[];}catch(e){return [];}}
-/* Charge les déductions d'un mois (tous techs) depuis Firebase, repli localStorage. */
-async function hydrateDeductions(ym){
-  if(FB){
-    try{
-      const snap=await FB.collection(COLL_DEDUC).where("mois","==",ym).get();
-      const arr=[];snap.forEach(doc=>{const d=doc.data();if(d&&d.code&&d.date)arr.push({id:doc.id,...d});});
-      DEDUCTIONS=arr;lsDeducSave(ym);return;
-    }catch(e){console.warn("Lecture déductions Firestore échouée — mode local :",e);}
+function lsDeducEcrire(ym,arr){try{localStorage.setItem(lsDeducKey(ym),JSON.stringify(arr));}catch(e){}}
+/* N'écrit que si DEDUCTIONS contient bien ce mois (sinon on écrasait la copie d'un autre mois). */
+function lsDeducSave(ym){if(ym===DEDUC_YM)lsDeducEcrire(ym,DEDUCTIONS);}
+function lsDeducLoad(ym){try{const v=localStorage.getItem(lsDeducKey(ym));const a=v?JSON.parse(v):[];return Array.isArray(a)?a:[];}catch(e){return [];}}
+function deducSupprLire(){try{return JSON.parse(memGet(LS_DEDUC_SUPPR)||"{}")||{};}catch(e){return {};}}
+/* Déduction pas encore confirmée par Firestore (ou créée hors ligne : id local « d_… »). */
+function deducEnAttente(d){return !!d&&(!!d.attente||String(d.id).indexOf("d_")===0);}
+/* Charge les déductions d'un mois (tous techs) : copie locale d'abord, puis Firestore en
+   INCRÉMENTAL (ajouts + suppressions depuis la dernière synchro ; mois complet la 1re fois,
+   après « Vider le cache » ou tous les 7 jours). Renvoie {ok, n} ; ne lève jamais.
+   Les déductions saisies hors ligne sont conservées et renvoyées (avant : elles étaient
+   effacées à la lecture Firestore suivante). */
+async function hydrateDeductions(ym,forceComplet){
+  if(DEDUC_YM!==ym){ DEDUCTIONS=lsDeducLoad(ym); DEDUC_YM=ym; }
+  if(!FB) return{ok:false,raison:"local"};
+  let meta={};try{meta=JSON.parse(memGet(lsDeducKey(ym)+"_meta")||"{}")||{};}catch(e){meta={};}
+  const maintenant=Date.now();
+  if(!forceComplet&&meta.sync&&maintenant-(DEDUC_ESSAI[ym]||0)<H_SYNC_MIN) return{ok:true,n:0};
+  const complet=!!forceComplet||!meta.sync||!meta.complet||maintenant-meta.complet>H_COMPLET_MAX;
+  try{
+    const col=FB.collection(COLL_DEDUC),docs=[];
+    if(complet) (await fsLire(col.where("mois","==",ym))).forEach(x=>docs.push(x));
+    else{
+      const depuis=meta.sync-H_SYNC_MARGE;
+      const r=await Promise.all([fsLire(col.where("createdAt",">",depuis)),fsLire(col.where("supprimeAt",">",depuis))]);
+      r.forEach(s=>s.forEach(x=>docs.push(x)));
+    }
+    if(DEDUC_YM!==ym) return{ok:true,n:0};          // l'utilisateur a changé de mois entre-temps
+    const suppr=deducSupprLire(),parId={};
+    DEDUCTIONS.forEach(d=>{ if(!complet||deducEnAttente(d)) parId[d.id]=d; });
+    let n=0;
+    docs.forEach(doc=>{
+      const d=doc.data();if(!d||!d.code||!d.date)return;
+      if(String(d.mois||String(d.date).slice(0,7))!==ym)return;
+      n++;
+      if(d.supprime||suppr[doc.id]){ delete parId[doc.id]; return; }
+      parId[doc.id]={id:doc.id,...d};
+    });
+    DEDUCTIONS=Object.keys(parId).map(k=>parId[k]);
+    lsDeducSave(ym);
+    meta.sync=maintenant;if(complet)meta.complet=maintenant;
+    memSet(lsDeducKey(ym)+"_meta",JSON.stringify(meta));DEDUC_ESSAI[ym]=maintenant;
+    deducRenvoyer();
+    return{ok:true,n};
+  }catch(e){
+    console.warn("Déductions : Firestore indisponible — copie locale utilisée :",e&&e.message||e);
+    return{ok:false,raison:String(e&&e.message||e)};
   }
-  DEDUCTIONS=lsDeducLoad(ym);
 }
 function deductionsDe(code){return DEDUCTIONS.filter(d=>d.code===code);}
 function deductionJourSum(code,date){
@@ -990,23 +1173,62 @@ function deductionJourSum(code,date){
 function deductionsTotal(code){
   return deductionsDe(code).reduce((s,d)=>s+(parseFloat(d.heures)||0),0);
 }
-/* Ajoute une déduction (écrit Firebase + local). Renvoie une promesse. */
+function deducConfirmee(mois,id){
+  const l=(mois===DEDUC_YM)?DEDUCTIONS:lsDeducLoad(mois);
+  const x=l.find(y=>y.id===id);
+  if(x&&x.attente){ delete x.attente; lsDeducEcrire(mois,l); }
+}
+/* Envoie une déduction à Firestore SANS attendre la réponse (l'identifiant est créé sur le
+   poste) : la fenêtre ne reste plus bloquée sur « Enregistrement… » si Firestore est saturé. */
+function deducEnvoyer(d){
+  if(!FB||!d)return;
+  try{
+    const col=FB.collection(COLL_DEDUC);
+    if(String(d.id).indexOf("d_")===0){ d.id=col.doc().id; d.attente=true; lsDeducSave(d.mois); }
+    if(DEDUC_ENVOI[d.id])return;
+    DEDUC_ENVOI[d.id]=1;
+    const id=d.id,mois=d.mois;
+    col.doc(id).set({code:d.code,date:d.date,mois:d.mois,heures:d.heures,motif:d.motif||"",createdAt:d.createdAt||Date.now()},{merge:true})
+      .then(()=>{ delete DEDUC_ENVOI[id]; deducConfirmee(mois,id); })
+      .catch(e=>{ delete DEDUC_ENVOI[id]; console.warn("Écriture déduction Firestore :",e); });
+  }catch(e){ console.warn("Écriture déduction Firestore :",e); }
+}
+/* Suppression = marque « supprimée » (heures:0) plutôt qu'un effacement : les autres postes
+   la voient en lecture incrémentale, et elle est rejouée si Firestore était indisponible. */
+function deducSupprEnvoyer(id){
+  if(!FB||DEDUC_ENVOI["s_"+id])return;
+  DEDUC_ENVOI["s_"+id]=1;
+  const fin=()=>{ delete DEDUC_ENVOI["s_"+id]; };
+  try{
+    FB.collection(COLL_DEDUC).doc(id).set({heures:0,supprime:true,supprimeAt:Date.now()},{merge:true})
+      .then(()=>{ fin(); const s=deducSupprLire(); delete s[id]; memSet(LS_DEDUC_SUPPR,JSON.stringify(s)); })
+      .catch(e=>{ fin(); console.warn("Suppression déduction Firestore :",e); });
+  }catch(e){ fin(); }
+}
+function deducRenvoyer(){
+  DEDUCTIONS.filter(deducEnAttente).forEach(deducEnvoyer);
+  Object.keys(deducSupprLire()).forEach(deducSupprEnvoyer);
+}
+/* Ajoute une déduction : enregistrée sur le poste tout de suite, envoyée à Firestore en arrière-plan. */
 async function addDeduction(code,date,heures,motif){
   const mois=date.slice(0,7);const h=parseFloat(heures)||0;
   const rec={code,date,mois,heures:h,motif:(motif||"").trim(),createdAt:Date.now()};
   let id="d_"+code+"_"+date+"_"+rec.createdAt;
-  if(FB){
-    try{const ref=await FB.collection(COLL_DEDUC).add(rec);id=ref.id;}
-    catch(e){console.warn("Écriture déduction Firestore:",e);}
-  }
-  DEDUCTIONS.push({id,...rec});lsDeducSave(mois);
+  if(FB){ try{ id=FB.collection(COLL_DEDUC).doc().id; }catch(e){} }
+  const loc={id,...rec,attente:true};
+  if(mois===DEDUC_YM){ DEDUCTIONS.push(loc); lsDeducSave(mois); }
+  else{ const l=lsDeducLoad(mois); l.push(loc); lsDeducEcrire(mois,l); }
+  deducEnvoyer(loc);
 }
-/* Supprime une déduction par id. */
+/* Supprime une déduction par id (effet immédiat à l'écran, Firestore en arrière-plan). */
 async function deleteDeduction(id){
   const d=DEDUCTIONS.find(x=>x.id===id);
-  if(FB&&id&&!id.startsWith("d_")){try{await FB.collection(COLL_DEDUC).doc(id).delete();}catch(e){console.warn("Suppr déduction Firestore:",e);}}
   DEDUCTIONS=DEDUCTIONS.filter(x=>x.id!==id);
   if(d)lsDeducSave(d.mois);
+  if(id&&String(id).indexOf("d_")!==0){
+    const s=deducSupprLire(); s[id]=(d&&d.mois)||DEDUC_YM||""; memSet(LS_DEDUC_SUPPR,JSON.stringify(s));
+    deducSupprEnvoyer(id);
+  }
 }
 
 /* ============ JETONS D'ACTUALISATION ============
@@ -1023,46 +1245,58 @@ function estAdminJetons(){ return MODE==="admin" || estSuperviseur(IDENTITY); }
 function jetonDocId(code,date){ return `${code}_${date}`; }
 function jetonAllId(date){ return `_ALL_${date}`; }
 
-/* Lit le solde du tech courant pour aujourd'hui. */
-async function chargerJetons(){
-  JETONS_RESTANTS=JETONS_BASE; JETONS_UTILISES=0;
-  if(FB && IDENTITY && !estAdminJetons()){
-    const date=isoLocal(new Date());
-    try{
-      const [p,a]=await Promise.all([
-        FB.collection(COLL_JETONS).doc(jetonDocId(IDENTITY,date)).get(),
-        FB.collection(COLL_JETONS).doc(jetonAllId(date)).get()
-      ]);
-      const perso=p.exists?p.data():{}, all=a.exists?a.data():{};
-      JETONS_UTILISES=perso.utilises||0;
-      JETONS_RESTANTS=Math.max(0, JETONS_BASE+(perso.bonus||0)+(all.bonus||0)-JETONS_UTILISES);
-    }catch(e){ console.warn("Lecture jetons échouée :",e); }
-  }
+/* Solde du tech courant pour aujourd'hui. Il est tenu à jour par l'ÉCOUTE temps réel
+   (ecouterJetons) : plus aucune lecture ponctuelle ici (avant : 8 lectures Firestore à chaque
+   ouverture, 2 de plus à chaque changement). Sans Firestore : 5 jetons, on ne bloque jamais. */
+var JETON_UNSUB=[], JETON_DATE=null, JETON_QUI=null, JET_SNAP={p:null,a:null};
+function calculerJetons(){
+  const perso=JET_SNAP.p||{}, all=JET_SNAP.a||{};
+  JETONS_UTILISES=perso.utilises||0;
+  JETONS_RESTANTS=Math.max(0, JETONS_BASE+(perso.bonus||0)+(all.bonus||0)-JETONS_UTILISES);
   majJetonsUI();
+}
+async function chargerJetons(){
+  if(!FB || !IDENTITY || estAdminJetons()){
+    if(JETON_UNSUB.length) ecouterJetons();        // admin / pas d'identité : on coupe l'écoute
+    JETONS_RESTANTS=JETONS_BASE; JETONS_UTILISES=0; majJetonsUI(); return;
+  }
+  // (ré)abonnement si nécessaire : première fois, autre technicien, ou nouveau jour
+  if(!JETON_UNSUB.length || JETON_QUI!==IDENTITY || JETON_DATE!==isoLocal(new Date())) ecouterJetons();
+  calculerJetons();
 }
 
 /* Écoute en temps réel le solde du tech courant : si un admin crédite des jetons,
    le badge se met à jour tout seul sans rouvrir l'appli. */
-let JETON_UNSUB=[];
 function ecouterJetons(){
-  JETON_UNSUB.forEach(u=>{try{u&&u();}catch(e){}}); JETON_UNSUB=[];
+  JETON_UNSUB.forEach(u=>{try{u&&u();}catch(e){}}); JETON_UNSUB=[]; JET_SNAP={p:null,a:null}; JETON_DATE=null; JETON_QUI=null;
   if(!FB || !IDENTITY || estAdminJetons()) return;
-  const date=isoLocal(new Date());
+  const date=isoLocal(new Date()), moi=IDENTITY;
+  JETON_DATE=date; JETON_QUI=moi;
+  const recu=cle=>s=>{ if(JETON_QUI!==moi||JETON_DATE!==date)return; JET_SNAP[cle]=(s&&s.exists)?(s.data()||{}):{}; calculerJetons(); };
   try{
-    JETON_UNSUB.push(FB.collection(COLL_JETONS).doc(jetonDocId(IDENTITY,date)).onSnapshot(()=>chargerJetons(),()=>{}));
-    JETON_UNSUB.push(FB.collection(COLL_JETONS).doc(jetonAllId(date)).onSnapshot(()=>chargerJetons(),()=>{}));
+    JETON_UNSUB.push(FB.collection(COLL_JETONS).doc(jetonDocId(moi,date)).onSnapshot(recu("p"),()=>{}));
+    JETON_UNSUB.push(FB.collection(COLL_JETONS).doc(jetonAllId(date)).onSnapshot(recu("a"),()=>{}));
   }catch(e){ console.warn("Écoute jetons impossible :",e); }
 }
+/* Appli laissée ouverte la nuit : au changement de jour on repart sur le compteur du jour
+   (avant : un tech à 0 jeton la veille restait bloqué jusqu'au redémarrage de l'appli). */
+setInterval(()=>{ try{ if(JETON_DATE&&JETON_DATE!==isoLocal(new Date())) chargerJetons(); }catch(e){} },60000);
 
 /* Consomme 1 jeton via une écriture atomique (increment), comme la distribution
-   admin qui fonctionne. Le solde a déjà été vérifié > 0 par l'appelant. */
+   admin qui fonctionne. Le solde a déjà été vérifié > 0 par l'appelant.
+   Le décompte est appliqué tout de suite à l'écran ; on n'attend la confirmation de Firestore
+   qu'un court instant (s'il est saturé, l'écriture partira plus tard, sans retarder l'actualisation). */
 async function consommerJeton(){
   if(estAdminJetons()) return true;         // admin illimité
-  if(!FB) return true;                       // sans Firestore : on ne bloque pas
+  if(!FB || !IDENTITY) return true;          // sans Firestore : on ne bloque pas
   const date=isoLocal(new Date());
   try{
-    await FB.collection(COLL_JETONS).doc(jetonDocId(IDENTITY,date))
-      .set({code:IDENTITY,date,utilises:firebase.firestore.FieldValue.increment(1)},{merge:true});
+    const p=FB.collection(COLL_JETONS).doc(jetonDocId(IDENTITY,date))
+      .set({code:IDENTITY,date,utilises:firebase.firestore.FieldValue.increment(1)},{merge:true})
+      .catch(e=>console.warn("Consommation jeton échouée :",e));
+    JET_SNAP.p=Object.assign({},JET_SNAP.p||{},{utilises:((JET_SNAP.p||{}).utilises||0)+1});
+    calculerJetons();
+    await Promise.race([p,new Promise(r=>setTimeout(r,1500))]);
   }catch(e){ console.warn("Consommation jeton échouée :",e); }
   return true;
 }
@@ -1084,11 +1318,14 @@ function majJetonsUI(){
     : "Chaque « Actualiser » consomme 1 jeton. 5 jetons par jour, remis à zéro chaque nuit.";
   if(btn){
     const pause=pauseVisible();
-    const bloque=pause || (!admin && JETONS_RESTANTS<=0);
+    const bloque=CHARGEMENT_EN_COURS || pause || (!admin && JETONS_RESTANTS<=0);
     btn.disabled=bloque;
-    btn.title=pause?"Actualisations suspendues (incident serveur NOMAD).":bloque?"Plus de jetons aujourd'hui — demandez à un responsable ou revenez demain.":"";
+    btn.title=CHARGEMENT_EN_COURS?"Actualisation en cours…":pause?"Actualisations suspendues (incident serveur NOMAD).":bloque?"Plus de jetons aujourd'hui — demandez à un responsable ou revenez demain.":"";
   }
-  ["#btn-vider-cache","#btn-cache-admin"].forEach(id=>{const b=$(id); if(b){b.disabled=pauseVisible(); if(pauseVisible())b.title="Actualisations suspendues (incident serveur NOMAD).";}});
+  ["#btn-vider-cache","#btn-cache-admin"].forEach(id=>{const b=$(id); if(b){
+    if(b.dataset.titre==null)b.dataset.titre=b.title||"";
+    b.disabled=CHARGEMENT_EN_COURS||pauseVisible();
+    b.title=pauseVisible()?"Actualisations suspendues (incident serveur NOMAD).":b.dataset.titre;}});
 }
 
 /* ============ PAUSE SERVEUR (incident NOMAD) ============
@@ -1105,6 +1342,7 @@ function pauseActive(){ return !!(PAUSE_SSRS&&PAUSE_SSRS.actif); }
    normaux ; « Actualiser » réaffiche simplement le cache, sans appel serveur ni jeton. */
 function pauseVisible(){ return pauseActive() && MODE==="admin"; }
 async function actualisationSilencieuse(){
+  etapesMasquer();
   setStatus("load",`⏳ Connexion aux flux atelier pour ${currentYM()}…`);
   await new Promise(r=>setTimeout(r,1200));
   await afficherCacheSeul();
@@ -1131,16 +1369,23 @@ function majPauseBanniere(){
   const bp=$("#btn-pause-admin");
   if(bp){ bp.textContent=pauseActive()?"▶ Reprendre les actualisations":"⏸ Pause serveur"; bp.classList.toggle("accent",pauseActive()); }
 }
-function lirePauseSnap(s){ PAUSE_SSRS=(s&&s.exists)?(s.data()||{actif:false}):{actif:false}; majPauseUI(); }
+var PAUSE_RECUE=false;       // l'écoute temps réel a-t-elle déjà reçu l'état depuis le serveur ?
+function lirePauseSnap(s){
+  PAUSE_SSRS=(s&&s.exists)?(s.data()||{actif:false}):{actif:false};
+  if(s&&s.metadata&&!s.metadata.fromCache)PAUSE_RECUE=true;
+  majPauseUI();
+}
 function ecouterPause(){
   if(!FB) return;
-  try{ FB.collection(COLL_CONFIG).doc(PAUSE_DOC).onSnapshot(lirePauseSnap,()=>{}); }
+  try{ FB.collection(COLL_CONFIG).doc(PAUSE_DOC).onSnapshot(lirePauseSnap,()=>{PAUSE_RECUE=false;}); }
   catch(e){ console.warn("Écoute pause impossible :",e); }
 }
-/* Lecture ponctuelle juste avant un appel serveur (si l'écoute n'a pas encore répondu). */
+/* Juste avant un appel serveur. L'écoute temps réel tient déjà l'état à jour : on ne relit
+   Firestore (lecture bornée) que si elle n'a encore rien reçu. */
 async function verifierPause(){
   if(!FB) return false;
-  try{ lirePauseSnap(await FB.collection(COLL_CONFIG).doc(PAUSE_DOC).get()); }catch(e){}
+  if(PAUSE_RECUE) return pauseActive();
+  try{ lirePauseSnap(await fsLire(FB.collection(COLL_CONFIG).doc(PAUSE_DOC),2500)); }catch(e){}
   return pauseActive();
 }
 async function basculerPause(){
@@ -1156,16 +1401,35 @@ async function basculerPause(){
 }
 (function wirePauseAdmin(){ const b=$("#btn-pause-admin"); if(b) b.addEventListener("click",basculerPause); })();
 
+/* Verrou d'actualisation : un seul chargement à la fois (double clic, « Vider le cache »
+   pendant un chargement, changement de mois en cours de route…). */
+var CHARGEMENT_EN_COURS=false;
+function verrouChargement(on){
+  CHARGEMENT_EN_COURS=!!on;
+  const m=$("#sel-month");if(m)m.disabled=!!on;
+  majJetonsUI();
+}
 /* Bouton Actualiser : consomme un jeton puis lance un rafraîchissement INTELLIGENT. */
 async function actualiserAvecJeton(){
-  if(await verifierPause()){ if(pauseVisible())alert(msgPause()); else await actualisationSilencieuse(); return; }   // pause : aucun appel serveur, aucun jeton
-  if(!estAdminJetons()){
-    if(JETONS_RESTANTS<=0){ majJetonsUI(); return; }
-    const ok=await consommerJeton();
-    if(!ok){ await chargerJetons(); alert("Plus de jetons pour aujourd'hui.\nDemandez à un responsable d'en ajouter, ou revenez demain."); return; }
-    await chargerJetons();                    // rafraîchit le solde affiché
-  }
-  chargerAuto(false);                          // refresh intelligent : ne charge que le nécessaire
+  if(CHARGEMENT_EN_COURS)return;
+  if(!IDENTITY){ouvrirModalIdentite();return;}
+  verrouChargement(true);
+  try{
+    etapesDebut();
+    etape("verif","cours",MODE==="admin"?"Vérification de la pause serveur…":"Vérification avant actualisation…");
+    if(await verifierPause()){ etapesMasquer(); if(pauseVisible())alert(msgPause()); else await actualisationSilencieuse(); return; }   // pause : aucun appel serveur, aucun jeton
+    if(!estAdminJetons()){
+      if(JETONS_RESTANTS<=0){ etapesMasquer(); setStatus("warn","Plus de jetons aujourd'hui — demandez à un responsable d'en ajouter, ou revenez demain."); return; }
+      etape("verif","cours","Utilisation d'un jeton…");
+      await consommerJeton();
+      await chargerJetons();                    // rafraîchit le solde affiché
+      etape("verif","ok",`Jeton utilisé (${JETONS_RESTANTS} restant${JETONS_RESTANTS>1?"s":""})`);
+    }else etape("verif","ok",MODE==="admin"?"Pas de pause serveur · actualisations illimitées (admin)":"Actualisations illimitées");
+    await chargerAuto(false);                   // refresh intelligent : ne charge que le nécessaire
+  }catch(e){
+    console.error(e);
+    setStatus("err","❌ Actualisation interrompue : "+escH(e&&e.message||e)+" — les données déjà chargées restent affichées.");
+  }finally{ verrouChargement(false); }
 }
 
 /* ---- Distribution des jetons (admin) ---- */
@@ -1221,18 +1485,34 @@ async function validerCreditJetons(){
 /* Admin : vide tout le cache local puis retélécharge le mois COMPLET.
    À utiliser en cas de cache corrompu / erreurs de données. */
 async function viderCacheEtRecharger(){
-  if(await verifierPause()){ if(pauseVisible())alert(msgPause()); else await actualisationSilencieuse(); return; }   // pause : on ne vide rien
-  const admin=estAdminJetons();
-  if(!admin && JETONS_RESTANTS<=0){
-    alert("Plus de jetons aujourd'hui : le rechargement complet nécessite 1 jeton.\nDemandez à un responsable d'en ajouter, ou revenez demain.");
-    return;
-  }
-  if(!confirm("Vider le cache local et retélécharger TOUT le mois depuis le serveur ?\n\nÀ utiliser si des journées ou des interventions semblent manquer."+(admin?"":"\n\nCela consomme 1 jeton d'actualisation."))) return;
-  if(!admin){ await consommerJeton(); await chargerJetons(); }
-  await idbClear();
-  ROWS=[];ROWS_RETOUR=[];RETOUR_LOADED=false;ROWS_NPS=[];NPS_LOADED=false;NPS_IMPORT=false;NPS_MOIS=null;
-  setStatus("load","🧹 Cache vidé — rechargement complet du mois en cours…");
-  chargerAuto(true);                           // force = mois entier
+  if(CHARGEMENT_EN_COURS)return;
+  if(!IDENTITY){ouvrirModalIdentite();return;}
+  verrouChargement(true);
+  try{
+    if(await verifierPause()){ etapesMasquer(); if(pauseVisible())alert(msgPause()); else await actualisationSilencieuse(); return; }   // pause : on ne vide rien
+    const admin=estAdminJetons();
+    if(!admin && JETONS_RESTANTS<=0){
+      alert("Plus de jetons aujourd'hui : le rechargement complet nécessite 1 jeton.\nDemandez à un responsable d'en ajouter, ou revenez demain.");
+      return;
+    }
+    if(!confirm("Vider le cache local et retélécharger TOUT le mois depuis le serveur ?\n\nÀ utiliser si des journées ou des interventions semblent manquer."+(admin?"":"\n\nCela consomme 1 jeton d'actualisation."))) return;
+    etapesDebut();
+    if(!admin){
+      etape("verif","cours","Utilisation d'un jeton…");
+      await consommerJeton(); await chargerJetons();
+      etape("verif","ok",`Jeton utilisé (${JETONS_RESTANTS} restant${JETONS_RESTANTS>1?"s":""})`);
+    }else etape("verif","ok","Actualisations illimitées (admin)");
+    await idbClear();
+    // les copies locales des heures / déductions seront relues en entier depuis Firestore
+    Object.keys(H_MOIS).forEach(k=>delete H_MOIS[k]);
+    try{localStorage.removeItem(lsDeducKey(currentYM())+"_meta");}catch(e){}
+    ROWS=[];ROWS_RETOUR=[];RETOUR_LOADED=false;ROWS_NPS=[];NPS_LOADED=false;NPS_IMPORT=false;NPS_MOIS=null;
+    setStatus("load","🧹 Cache vidé — rechargement complet du mois en cours…");
+    await chargerAuto(true);                     // force = mois entier
+  }catch(e){
+    console.error(e);
+    setStatus("err","❌ Rechargement interrompu : "+escH(e&&e.message||e));
+  }finally{ verrouChargement(false); }
 }
 (function wireCacheAdmin(){
   const b=$("#btn-cache-admin"); if(b) b.addEventListener("click",viderCacheEtRecharger);
@@ -1370,7 +1650,7 @@ function rowsFromWb(wb,builder,requireCols){
 /* ATOM optimisé : un seul parcours par entrée, on ne retient que F_NEEDED. */
 function parseAtom(xmlText){
   const doc=new DOMParser().parseFromString(xmlText,"application/xml");
-  if(doc.querySelector("parsererror"))throw new Error("XML invalide");
+  if(doc.querySelector("parsererror"))throw new Error("Interventions : données reçues illisibles (téléchargement incomplet)");
   const entries=doc.getElementsByTagNameNS("*","entry");const out=[];
   for(let i=0;i<entries.length;i++){
     const props={};const nodes=entries[i].getElementsByTagName("*");
@@ -1400,7 +1680,7 @@ function buildRowRetour(get){
 const FR_NEEDED=new Set(Object.values(FR));
 function parseAtomRetour(xmlText){
   const doc=new DOMParser().parseFromString(xmlText,"application/xml");
-  if(doc.querySelector("parsererror"))throw new Error("XML invalide");
+  if(doc.querySelector("parsererror"))throw new Error("Retours : données reçues illisibles (téléchargement incomplet)");
   const entries=doc.getElementsByTagNameNS("*","entry");const out=[];
   for(let i=0;i<entries.length;i++){
     const props={};const nodes=entries[i].getElementsByTagName("*");
@@ -1408,6 +1688,7 @@ function parseAtomRetour(xmlText){
       if(el.childElementCount===0){const ln=el.localName;if(ln&&FR_NEEDED.has(ln))props[ln]=el.textContent;}}
     const row=buildRowRetour(n=>props[n]); if(row)out.push(row);
   }
+  out.total=entries.length;   // nombre total de lignes du rapport (retours ou non) — affiché dans le détail du chargement
   return out;
 }
 function parseExcelRetour(buf){return rowsFromWb(XLSX.read(buf,{type:"array",cellDates:true}),buildRowRetour,[FR.dossier,FR.techPrec]);}
@@ -1473,6 +1754,50 @@ function setStatus(cls,msg){
   el.innerHTML=(cls==="load"?'<span class="spin"></span>':"")+msg;
   afficherBarreChargement(cls==="load");   // barre visible pendant le chargement, cachée ensuite
 }
+/* ============ DÉTAIL DU CHARGEMENT (une ligne par étape) ============
+   Affiché sous la barre d'état pendant « Actualiser » : chaque flux a sa ligne et son état
+   (en attente / en cours / ✅ / ⚠️). La durée de chaque étape n'est visible qu'en mode admin.
+   Replié automatiquement quand tout s'est bien passé ; reste ouvert en cas de problème. */
+const ETAPES_DEF=[["verif","Autorisation"],["cache","Cache local"],["eff","Interventions"],["ret","Retours atelier"],
+  ["nps","Satisfaction (NPS)"],["sync","Heures & déductions"],["aff","Affichage"]];
+const ET_ICO={attente:"·",cours:'<span class="spin"></span>',ok:"✅",warn:"⚠️",saute:"—"};
+var ETAPES=null;
+function nbFr(n){return Number(n||0).toLocaleString("fr-FR");}
+function jjmm(iso){return String(iso).slice(8,10)+"/"+String(iso).slice(5,7);}
+function fDuree(ms){return ms<950?Math.round(ms)+" ms":(ms/1000).toFixed(1).replace(".",",")+" s";}
+function fTaille(n){return n>=1048576?(n/1048576).toFixed(1).replace(".",",")+" Mo":Math.max(1,Math.round(n/1024))+" Ko";}
+/* Laisse le navigateur afficher le message en cours avant un traitement lourd (lecture du flux). */
+function pauseUI(){return new Promise(r=>setTimeout(r,0));}
+function etapesDebut(){
+  ETAPES={};
+  const box=$("#load-steps"),ul=$("#load-steps-list");if(!box||!ul)return;
+  ul.innerHTML=ETAPES_DEF.map(([id,nom])=>`<li id="et-${id}" class="attente"><span class="et-ico">·</span><span class="et-nom">${nom}</span><span class="et-msg">en attente</span><span class="et-ms"></span></li>`).join("");
+  ETAPES_DEF.forEach(([id])=>ETAPES[id]={etat:"attente",t0:0,ms:null});
+  box.classList.remove("hidden");box.classList.toggle("adm",MODE==="admin");box.open=true;
+}
+function etapesMasquer(){ETAPES=null;const box=$("#load-steps");if(box)box.classList.add("hidden");}
+/* etat : "cours" | "ok" | "warn" | "saute". Un message « en cours » est aussi repris dans la barre d'état. */
+function etape(id,etat,msg){
+  try{
+    const e=ETAPES&&ETAPES[id];if(!e)return;
+    const now=performance.now();
+    if(etat==="cours"&&!e.t0)e.t0=now;
+    if(etat!=="cours"&&e.t0&&e.ms==null)e.ms=now-e.t0;
+    e.etat=etat;
+    const li=document.getElementById("et-"+id);if(!li)return;
+    li.className=etat;
+    li.querySelector(".et-ico").innerHTML=ET_ICO[etat]||"";
+    if(msg!=null)li.querySelector(".et-msg").textContent=msg;
+    li.querySelector(".et-ms").textContent=e.ms!=null?fDuree(e.ms):"";
+    if(etat==="cours"&&msg)setStatus("load",escH(msg));
+  }catch(err){}
+}
+function etapesFin(probleme){
+  if(!ETAPES)return;
+  ETAPES_DEF.forEach(([id])=>{ const e=ETAPES[id]; if(e&&(e.etat==="attente"||e.etat==="cours")) etape(id,"saute",e.etat==="cours"?"interrompu":"non lancé"); });
+  const box=$("#load-steps");
+  if(box){ box.classList.toggle("adm",MODE==="admin"); box.open=!!probleme; }
+}
 function filtreMois(rows,ym){return rows.filter(r=>r.jour&&r.jour.slice(0,7)===ym);}
 
 const FLUX_FILE="flux-atelier.xlsx";
@@ -1488,17 +1813,24 @@ const FLUX_FILE="flux-atelier.xlsx";
 /* Appel SSRS avec délai maximum : si le serveur rame, on abandonne au lieu d'attendre
    sans fin (et on libère le serveur). Le délai couvre aussi la lecture de la réponse. */
 const SSRS_TIMEOUT_MS=90000;
+/* Les erreurs sont formulées pour un technicien (« le serveur NOMAD ne répond pas » plutôt
+   que « Failed to fetch »). 'quoi' = nom du flux, repris en tête du message. */
 async function fetchSSRSTexte(url,quoi){
   const ctrl=new AbortController(); const t=setTimeout(()=>ctrl.abort(),SSRS_TIMEOUT_MS);
   try{
-    const r=await fetch(url,{cache:"no-store",signal:ctrl.signal});
-    if(!r.ok)throw new Error(`${quoi} indisponible (HTTP ${r.status})`);
-    const txt=await r.text();
+    let r,txt;
+    try{ r=await fetch(url,{cache:"no-store",signal:ctrl.signal}); }
+    catch(e){ if(ctrl.signal.aborted)throw e; throw new Error(`${quoi} : le serveur NOMAD ne répond pas (serveur arrêté, ou poste hors du réseau magasin)`); }
+    if(!r.ok)throw new Error(`${quoi} : `+(r.status>=500?`le serveur NOMAD est en erreur (code ${r.status})`
+      :(r.status===401||r.status===403||r.status===407)?`accès refusé par le serveur NOMAD ou le proxy (code ${r.status})`
+      :`rapport introuvable sur le serveur NOMAD (code ${r.status})`));
+    try{ txt=await r.text(); }
+    catch(e){ if(ctrl.signal.aborted)throw e; throw new Error(`${quoi} : téléchargement interrompu en cours de route (connexion coupée)`); }
     // Garde-fou : une vraie réponse ATOM contient <feed>. Page d'erreur / réponse tronquée = rejet.
-    if(!/<feed[\s>]/i.test(txt))throw new Error(`${quoi} : réponse anormale du serveur`);
+    if(!/<feed[\s>]/i.test(txt))throw new Error(`${quoi} : le serveur NOMAD a renvoyé une page d'erreur au lieu des données`);
     return txt;
   }catch(e){
-    if(ctrl.signal.aborted)throw new Error(`${quoi} : serveur NOMAD trop lent (pas de réponse en ${SSRS_TIMEOUT_MS/1000} s)`);
+    if(ctrl.signal.aborted)throw new Error(`${quoi} : le serveur NOMAD est trop lent (pas de réponse complète en ${SSRS_TIMEOUT_MS/1000} s)`);
     throw e;
   }finally{ clearTimeout(t); }
 }
@@ -1506,133 +1838,230 @@ async function fetchSSRSTexte(url,quoi){
    pour la même période (serveur saturé / base partielle). On garde alors le cache. */
 function reponseSuspecte(nFrais,nAvant){ return nAvant>0 && (nFrais===0 || (nAvant>=5 && nFrais<nAvant*0.5)); }
 async function fetchFluxEff(ym,deb,fin){
-  const txt=await fetchSSRSTexte(buildFluxUrl(ym,deb,fin),"Flux efficience");
+  const txt=await fetchSSRSTexte(buildFluxUrl(ym,deb,fin),"Interventions");
   return{rows:parseAtom(txt),src:"flux direct"};
 }
 async function fetchRetourWin(ym,deb,fin){
-  return parseAtomRetour(await fetchSSRSTexte(buildFluxUrlRetour(ym,deb,fin),"Flux retours"));
+  return parseAtomRetour(await fetchSSRSTexte(buildFluxUrlRetour(ym,deb,fin),"Retours"));
+}
+
+/* ============ RETOURS : actualisation INCRÉMENTALE ============
+   Le rapport RETOURS_ATELIER liste les interventions TERMINÉES entre DATE_TERM_ATL_DEBUT et
+   DATE_TERM_ATL_FIN ; une ligne est un « retour » quand NOM_TECH_AFN_PREC est renseigné, et sa
+   date (DATE_TERMINE_ATELIER -> champ « jour ») est celle de la 2e intervention, c.-à-d. la date
+   filtrée par le serveur (vérifié sur un export réel : toutes les lignes sont dans la fenêtre
+   demandée). ADD_PERIOD=30 = profondeur de recherche de l'intervention précédente.
+   => comme pour les interventions, redemander seulement les derniers jours suffit :
+   - fenêtre = depuis (jour de la dernière actualisation − RET_MARGE_JOURS) jusqu'à la fin du mois ;
+   - fusion SANS suppression avec le cache (clé dossier|jour|technicien) : un retour déjà connu
+     n'est jamais perdu par une actualisation partielle ;
+   - filet de sécurité : mois COMPLET rechargé si le dernier rechargement complet date de plus de
+     RET_COMPLET_MAX_H heures (rattrape une clôture antidatée ou une ligne disparue), et bien
+     sûr avec « Vider le cache ». Le cache mémorise syncJour (dernière actualisation réussie)
+     et complet (dernier rechargement complet). */
+const RET_MARGE_JOURS=2, RET_COMPLET_MAX_H=20;
+function planRetours(cache,ym,force,maintenant){
+  const b=moisBornes(ym);
+  if(force||!cache||!Array.isArray(cache.rows)||!cache.syncJour||!cache.complet) return{mode:"complet",deb:b.deb};
+  if(cache.complet>=b.fin.getTime()+31*864e5) return{mode:"rien"};        // mois clos depuis > 30 j et rechargé en entier depuis
+  if(maintenant-cache.complet>RET_COMPLET_MAX_H*36e5) return{mode:"complet",deb:b.deb};
+  const d=new Date(cache.syncJour+"T00:00:00");
+  if(isNaN(d)) return{mode:"complet",deb:b.deb};
+  d.setDate(d.getDate()-RET_MARGE_JOURS);
+  if(d<=b.deb) return{mode:"complet",deb:b.deb};                            // la fenêtre couvre tout le mois
+  if(d>=b.fin) return{mode:"rien"};                                         // mois passé, déjà à jour
+  return{mode:"incr",deb:d};
+}
+function cleRetourLigne(x){return x.dossier+"|"+x.jour+"|"+(x.techNom||x.techCode||"");}
+function fusionRetours(cacheRows,frais){
+  const vus=new Set(frais.map(cleRetourLigne));
+  return cacheRows.filter(x=>!vus.has(cleRetourLigne(x))).concat(frais);
 }
 
 /* Affichage SANS aucun appel au serveur SSRS : uniquement le cache local (+ heures/
    déductions Firestore, qui ne saturent pas le serveur de données). Utilisé au
-   démarrage et au changement de mois — aucune mise à jour tant qu'on ne clique pas. */
+   démarrage et au changement de mois — aucune mise à jour tant qu'on ne clique pas.
+   Le cache s'affiche TOUT DE SUITE ; Firestore et le NPS complètent ensuite l'affichage
+   (avant : l'écran attendait leurs réponses, jusqu'à plusieurs secondes si le réseau rame). */
+var AFFICHAGE_SEQ=0;
 async function afficherCacheSeul(){
-  const ym=currentYM();
-  const cacheEff=await lireCache(cleFlux(ym),cleFluxV2(ym));
-  const cacheRet=await lireCache(cleRetour(ym),cleRetourV2(ym));
+  const ym=currentYM(),seq=++AFFICHAGE_SEQ;
+  const [cacheEff,cacheRet]=await Promise.all([lireCache(cleFlux(ym),cleFluxV2(ym)),lireCache(cleRetour(ym),cleRetourV2(ym))]);
+  await hChargerLocal(ym);                           // heures : copie locale (aucun réseau)
+  if(seq!==AFFICHAGE_SEQ)return;                     // un autre affichage / une actualisation a pris la main
   ROWS=(cacheEff&&Array.isArray(cacheEff.rows))?cacheEff.rows.slice():[];
   if(cacheRet&&Array.isArray(cacheRet.rows)){ROWS_RETOUR=cacheRet.rows.slice();RETOUR_LOADED=true;}
   else{ROWS_RETOUR=[];RETOUR_LOADED=false;}
-  await Promise.all([hydrateHours(ym).catch(()=>{}),hydrateDeductions(ym).catch(()=>{}),
-    NPS_LOADED?Promise.resolve():chargerNps().catch(()=>{})]);   // NPS = GitHub, gratuit (aucun jeton)
+  const pD=hydrateDeductions(ym),pH=hydrateHours(ym);   // copies locales appliquées immédiatement, Firestore ensuite
   render();
-  if(ROWS.length||ROWS_RETOUR.length)
-    setStatus("ok",`📁 Données en cache (${ROWS.length} interventions). Cliquez « Actualiser » pour mettre à jour.`);
-  else
+  if(ROWS.length||ROWS_RETOUR.length){
+    const quand=(cacheEff&&cacheEff.savedAt)?" du "+new Date(cacheEff.savedAt).toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"";
+    setStatus("ok",`📁 Données en cache${quand} (${nbFr(ROWS.length)} interventions, ${nbFr(ROWS_RETOUR.length)} retours). Cliquez « Actualiser » pour mettre à jour.`);
+  }else
     setStatus("warn",`Aucune donnée en cache pour ${ym}. Cliquez « Actualiser » pour charger (coûte 1 jeton).`);
+  const pN=NPS_LOADED?Promise.resolve(true):chargerNps();   // NPS = GitHub, gratuit (aucun jeton)
+  await Promise.all([Promise.resolve(pH).catch(()=>{}),Promise.resolve(pD).catch(()=>{}),Promise.resolve(pN).catch(()=>{})]);
+  if(seq!==AFFICHAGE_SEQ)return;
+  renderDoux();                                      // heures des collègues, déductions et NPS arrivés entre-temps
 }
 
-/* Chargement intelligent + parallèle.
-   - force=true : recharge TOUT le mois (bouton « Actualiser le mois », clôture, transition).
+/* Chargement intelligent + parallèle. À n'appeler QUE sous verrou (verrouChargement) :
+   actualiserAvecJeton / viderCacheEtRecharger s'en chargent.
+   - force=true : recharge TOUT le mois (« Vider le cache »).
    - sinon : mois entier si rien en cache, puis seulement les jours manquants
-     (+ aujourd'hui & hier) grâce au suivi de couverture jour par jour. */
+     (+ aujourd'hui & hier) grâce au suivi de couverture jour par jour ; retours en incrémental.
+   Chaque étape est tracée dans le détail du chargement (etape). */
 async function chargerAuto(force){
-  if(pauseActive()){ if(pauseVisible()){setStatus("warn",msgPause());majJetonsUI();} else await actualisationSilencieuse(); return; }   // pause : zéro appel serveur
-  const ym=currentYM();$("#btn-refresh").disabled=true;
+  if(pauseActive()){ etapesMasquer(); if(pauseVisible()){setStatus("warn",msgPause());majJetonsUI();} else await actualisationSilencieuse(); return; }   // pause : zéro appel serveur
+  const ym=currentYM(),t0=performance.now();
+  ++AFFICHAGE_SEQ;                                   // annule un affichage du cache encore en cours
   const alertes=[];   // problèmes serveur rencontrés (le cache est alors conservé)
-  setStatus("load",`⏳ Connexion aux flux atelier pour ${ym}…`);
-
-  // 1) Affichage instantané depuis le cache local
-  const cacheEff=await lireCache(cleFlux(ym),cleFluxV2(ym));
-  const cacheRet=await lireCache(cleRetour(ym),cleRetourV2(ym));
-  const rowsCache=(cacheEff&&Array.isArray(cacheEff.rows))?cacheEff.rows:null;
-  const retCache =(cacheRet&&Array.isArray(cacheRet.rows))?cacheRet.rows:null;
-  if(rowsCache)ROWS=rowsCache.slice();
-  if(retCache){ROWS_RETOUR=retCache.slice();RETOUR_LOADED=true;}
-  if(ROWS.length||ROWS_RETOUR.length)render();
-
-  // 2) Chargement INTELLIGENT : on ne re-télécharge que les jours manquants.
-  //    - aucun cache (ou forçage "Actualiser") -> mois entier.
-  //    - sinon -> jours pas encore chargés + aujourd'hui & hier (qui bougent encore).
-  //    Le suivi se fait jour par jour via cacheEff.days (liste des jours déjà couverts).
-  const b=moisBornes(ym);
-  const dernier=dernierJourACouvrir(ym);
-  const couvert=new Set((cacheEff&&Array.isArray(cacheEff.days))?cacheEff.days:[]);
-  let deb;
-  if(force||!rowsCache||!couvert.size){
-    deb=b.deb;                                     // rien de fiable en cache / forçage -> tout le mois
-  }else{
-    const manquants=joursMois(ym,dernier).filter(j=>!couvert.has(j));
-    const chauds=[];                               // toujours revérifier aujourd'hui + hier
-    if(ym===ymNow()){chauds.push(dernier);const h=new Date();h.setDate(h.getDate()-1);const hi=isoLocal(h);if(hi>=isoLocal(b.deb))chauds.push(hi);}
-    const aFetch=[...new Set([...manquants,...chauds])].sort();
-    deb=aFetch.length?new Date(aFetch[0]+"T00:00:00"):null;  // null = déjà à jour, aucun téléchargement
-  }
-  const cutoff=deb?isoLocal(deb):null;
-  // Jours qui seront couverts par ce téléchargement (de cutoff jusqu'à 'dernier').
-  // On ne marque comme couverts QUE les jours consolidés (terminés depuis >= 2 jours) :
-  // les jours récents restent "à revérifier" à chaque actualisation, même après une absence.
-  const limite=limiteConsolidation();
-  const joursCouverts=deb?joursMois(ym,dernier).filter(j=>j>=cutoff&&j<=limite):[];
-  const baseCouv=(deb&&cutoff)?[...couvert].filter(j=>j<cutoff):[...couvert];
-  const couvertureMaj=[...new Set([...baseCouv,...joursCouverts])].sort();
-
-  // 3) Lancement en parallèle (indépendants)
-  const pEff = (deb!==null)?fetchFluxEff(ym,deb,b.fin):Promise.resolve(null);
-  // Retours : TOUJOURS le mois complet. Un retour (appareil revenu < 30 j) peut apparaître
-  // plusieurs jours après la date de l'intervention d'origine : un chargement partiel le ratait.
-  const pRet = fetchRetourWin(ym,b.deb,b.fin);
-  const pNps = chargerNps();
-  const pH   = hydrateHours(ym);
-  const pD   = hydrateDeductions(ym);
-
-  // Efficience : fusion cache (jours < cutoff) + frais (jours >= cutoff)
-  let effOK=false,srcEff="";
+  if(!ETAPES)etapesDebut();
   try{
-    const r=await pEff;
-    if(r){
-      const frais=filtreMois(r.rows,ym);
-      const jt0=x=>x.jourT||x.jour;
-      const nAvant=rowsCache?(cutoff?rowsCache.filter(x=>jt0(x)>=cutoff).length:rowsCache.length):0;
-      if(reponseSuspecte(frais.length,nAvant))
-        throw new Error(`Flux efficience : réponse incomplète du serveur (${frais.length} lignes reçues au lieu d'au moins ${nAvant})`);
-      if(!cutoff||!rowsCache){ROWS=frais;}
-      else{
-        // Partition sur jourT (date terminé = champ filtré par le serveur) :
-        // le cache garde les jours antérieurs à la fenêtre, le frais fait autorité dessus.
-        const jt=x=>x.jourT||x.jour;
-        const k=x=>x.dossier+"|"+jt(x)+"|"+x.tech+"|"+x.codic;   // identité stable (hors champs modifiables)
-        const vus=new Set(frais.map(k));                          // le frais prime en cas de recouvrement
-        ROWS=rowsCache.filter(x=>jt(x)<cutoff&&!vus.has(k(x))).concat(frais);
-      }
-      srcEff=r.src;effOK=true;
-      await idbSet(cleFlux(ym),{rows:ROWS,days:couvertureMaj,savedAt:Date.now(),schema:CACHE_SCHEMA});
-    }else if(rowsCache){effOK=true;srcEff="cache";}
-  }catch(e){ alertes.push(e.message||String(e)); if(rowsCache){ROWS=rowsCache.slice();effOK=true;srcEff="cache";} else ROWS=[]; }
-  render();   // rendu progressif dès que l'efficience est prête
+    // 1) Affichage instantané depuis le cache local
+    etape("cache","cours","Lecture du cache local…");
+    const [cacheEff,cacheRet]=await Promise.all([lireCache(cleFlux(ym),cleFluxV2(ym)),lireCache(cleRetour(ym),cleRetourV2(ym))]);
+    const rowsCache=(cacheEff&&Array.isArray(cacheEff.rows))?cacheEff.rows:null;
+    const retCache =(cacheRet&&Array.isArray(cacheRet.rows))?cacheRet.rows:null;
+    if(rowsCache)ROWS=rowsCache.slice();
+    if(retCache){ROWS_RETOUR=retCache.slice();RETOUR_LOADED=true;}
+    await hChargerLocal(ym);
+    etape("cache","ok",(rowsCache||retCache)
+      ?`${nbFr(rowsCache?rowsCache.length:0)} interventions, ${nbFr(retCache?retCache.length:0)} retours déjà sur ce poste`
+      :(force?"Cache vidé : tout le mois va être retéléchargé":"Rien en cache pour ce mois : premier chargement complet"));
+    if(ROWS.length||ROWS_RETOUR.length)renderDoux();
 
-  // Retours : remplacés par le mois complet fraîchement téléchargé
-  let retOK=RETOUR_LOADED;
-  try{
-    const rr=await pRet;
-    if(rr){
-      const fraisR=rr.filter(r=>r.jour&&r.jour.slice(0,7)===ym);   // mois complet = fait autorité
-      const nAvantR=retCache?retCache.length:0;
-      if(reponseSuspecte(fraisR.length,nAvantR))
-        throw new Error(`Flux retours : réponse incomplète du serveur (${fraisR.length} retours reçus au lieu d'au moins ${nAvantR})`);
-      ROWS_RETOUR=fraisR;
-      RETOUR_LOADED=true;retOK=true;
-      await idbSet(cleRetour(ym),{rows:ROWS_RETOUR,savedAt:Date.now(),schema:CACHE_SCHEMA});
+    // 2) Chargement INTELLIGENT : on ne re-télécharge que les jours manquants.
+    //    - aucun cache (ou forçage) -> mois entier.
+    //    - sinon -> jours pas encore chargés + aujourd'hui & hier (qui bougent encore).
+    //    Le suivi se fait jour par jour via cacheEff.days (liste des jours déjà couverts).
+    const b=moisBornes(ym);
+    const dernier=dernierJourACouvrir(ym);
+    const couvert=new Set((cacheEff&&Array.isArray(cacheEff.days))?cacheEff.days:[]);
+    let deb;
+    if(force||!rowsCache||!couvert.size){
+      deb=b.deb;                                     // rien de fiable en cache / forçage -> tout le mois
+    }else{
+      const manquants=joursMois(ym,dernier).filter(j=>!couvert.has(j));
+      const chauds=[];                               // toujours revérifier aujourd'hui + hier
+      if(ym===ymNow()){chauds.push(dernier);const h=new Date();h.setDate(h.getDate()-1);const hi=isoLocal(h);if(hi>=isoLocal(b.deb))chauds.push(hi);}
+      const aFetch=[...new Set([...manquants,...chauds])].sort();
+      deb=aFetch.length?new Date(aFetch[0]+"T00:00:00"):null;  // null = déjà à jour, aucun téléchargement
     }
-  }catch(e){ alertes.push(e.message||String(e)); /* on garde le cache retours */ }
+    const cutoff=deb?isoLocal(deb):null;
+    // Jours qui seront couverts par ce téléchargement (de cutoff jusqu'à 'dernier').
+    // On ne marque comme couverts QUE les jours consolidés (terminés depuis >= 2 jours) :
+    // les jours récents restent "à revérifier" à chaque actualisation, même après une absence.
+    const limite=limiteConsolidation();
+    const joursCouverts=deb?joursMois(ym,dernier).filter(j=>j>=cutoff&&j<=limite):[];
+    const baseCouv=(deb&&cutoff)?[...couvert].filter(j=>j<cutoff):[...couvert];
+    const couvertureMaj=[...new Set([...baseCouv,...joursCouverts])].sort();
+    const planR=planRetours(cacheRet,ym,force,Date.now());
 
-  let npsOK=false;try{npsOK=await pNps;}catch(e){}
-  await pH.catch(()=>{});await pD.catch(()=>{});
+    // 3) Lancement en parallèle (indépendants) — chaque flux tient sa ligne à jour
+    const pNps=(async()=>{
+      etape("nps","cours","Chargement du NPS…");
+      let okN=false;try{okN=await chargerNps(force);}catch(e){}
+      etape("nps",okN?"ok":"warn",okN?`${nbFr(ROWS_NPS.length)} avis clients`
+        :(NPS_LOADED?"Fichier NPS injoignable (GitHub) — avis déjà chargés conservés":"Fichier NPS injoignable (GitHub)"));
+      return okN;
+    })();
+    etape("sync","cours","Synchronisation des heures et des déductions…");
+    const pSync=(async()=>{
+      const [rH,rD]=await Promise.all([Promise.resolve(hydrateHours(ym,force)).catch(()=>null),Promise.resolve(hydrateDeductions(ym,force)).catch(()=>null)]);
+      const okS=!!(rH&&rH.ok&&rD&&rD.ok),nAtt=Object.keys(H_ATTENTE).length;
+      if(!FB)etape("sync","warn","Stockage partagé non chargé : heures enregistrées sur ce poste uniquement");
+      else if(okS){const n=(rH.n||0)+(rD.n||0);etape("sync","ok","Heures et déductions à jour"+(n?` (${n} modification${n>1?"s":""} reçue${n>1?"s":""})`:""));}
+      else etape("sync","warn","Stockage partagé injoignable : heures de ce poste affichées"+(nAtt?`, ${nAtt} saisie${nAtt>1?"s":""} en attente d'envoi`:"")+" — envoi automatique plus tard");
+      return okS;
+    })();
+    const pRet=(async()=>{
+      if(planR.mode==="rien"){ etape("ret","ok","Déjà à jour (mois terminé, plus rien de nouveau)"); return null; }
+      etape("ret","cours",planR.mode==="complet"?"Téléchargement des retours de tout le mois…":`Téléchargement des retours depuis le ${jjmm(isoLocal(planR.deb))}…`);
+      const txt=await fetchSSRSTexte(buildFluxUrlRetour(ym,planR.deb,b.fin),"Retours");
+      etape("ret","cours",`Lecture des retours reçus (${fTaille(txt.length)})…`);await pauseUI();
+      return parseAtomRetour(txt);
+    })();
+    const pEff=(async()=>{
+      if(deb===null){ etape("eff","ok","Déjà à jour (tous les jours du mois sont en cache)"); return null; }
+      const tout=cutoff===isoLocal(b.deb), nJ=joursMois(ym,dernier).filter(j=>j>=cutoff).length;
+      etape("eff","cours",tout?`Téléchargement des interventions de tout le mois (${nJ} jour${nJ>1?"s":""})…`
+        :`Téléchargement des interventions du ${jjmm(cutoff)} au ${jjmm(dernier)} (${nJ} jour${nJ>1?"s":""} à mettre à jour)…`);
+      const txt=await fetchSSRSTexte(buildFluxUrl(ym,deb,b.fin),"Interventions");
+      etape("eff","cours",`Lecture des interventions reçues (${fTaille(txt.length)})…`);await pauseUI();
+      return{rows:parseAtom(txt),src:"flux direct"};
+    })();
+    pRet.catch(()=>{});pEff.catch(()=>{});pNps.catch(()=>{});pSync.catch(()=>{});     // traitées plus bas : pas de « rejet non géré » entre-temps
+    const court=m=>String(m).replace(/^(Interventions|Retours) : /,"");
 
-  if(effOK)setStatus("ok",`✅ ${ROWS.length} interventions (${srcEff}) · ${retOK?ROWS_RETOUR.length+" retours":"retours non chargés"} · ${npsOK?ROWS_NPS.length+" NPS":"NPS non chargé"}${FB?" · heures synchronisées":""} — ${new Date().toLocaleTimeString("fr-FR")}`);
-  else setStatus("warn","⚠️ Flux/fichier efficience indisponible. Importez l'export Excel manuellement ci-dessous.");
-  if(alertes.length)setStatus("warn",`⚠️ ${alertes.join(" · ")} — données du cache conservées (${ROWS.length} interventions, ${ROWS_RETOUR.length} retours). Réessayez plus tard.`);
-  render();majJetonsUI();   // ré-active le bouton selon le solde de jetons restant
+    // Efficience : fusion cache (jours < cutoff) + frais (jours >= cutoff)
+    let effOK=false,srcEff="";
+    try{
+      const r=await pEff;
+      if(r){
+        const frais=filtreMois(r.rows,ym);
+        const jt0=x=>x.jourT||x.jour;
+        const nAvant=rowsCache?(cutoff?rowsCache.filter(x=>jt0(x)>=cutoff).length:rowsCache.length):0;
+        if(reponseSuspecte(frais.length,nAvant))
+          throw new Error(`Interventions : réponse incomplète du serveur NOMAD (${frais.length} ligne(s) reçue(s) au lieu d'au moins ${nAvant})`);
+        if(!cutoff||!rowsCache){ROWS=frais;}
+        else{
+          // Partition sur jourT (date terminé = champ filtré par le serveur) :
+          // le cache garde les jours antérieurs à la fenêtre, le frais fait autorité dessus.
+          const jt=x=>x.jourT||x.jour;
+          const k=x=>x.dossier+"|"+jt(x)+"|"+x.tech+"|"+x.codic;   // identité stable (hors champs modifiables)
+          const vus=new Set(frais.map(k));                          // le frais prime en cas de recouvrement
+          ROWS=rowsCache.filter(x=>jt(x)<cutoff&&!vus.has(k(x))).concat(frais);
+        }
+        srcEff=r.src;effOK=true;
+        await idbSet(cleFlux(ym),{rows:ROWS,days:couvertureMaj,savedAt:Date.now(),schema:CACHE_SCHEMA});
+        etape("eff","ok",`${nbFr(r.rows.length)} ligne${r.rows.length>1?"s":""} reçue${r.rows.length>1?"s":""} — ${nbFr(ROWS.length)} interventions sur le mois`);
+      }else if(rowsCache){effOK=true;srcEff="cache";}
+    }catch(e){
+      const m=e&&e.message||String(e);alertes.push(m);etape("eff","warn",court(m)+(rowsCache?" — cache conservé":""));
+      if(rowsCache){ROWS=rowsCache.slice();effOK=true;srcEff="cache";} else ROWS=[];
+    }
+    renderDoux();   // rendu progressif dès que l'efficience est prête
+
+    // Retours : mois complet = fait autorité ; fenêtre partielle = fusion sans suppression avec le cache
+    let retOK=RETOUR_LOADED;
+    try{
+      const rr=await pRet;
+      if(rr){
+        const fraisR=rr.filter(r=>r.jour&&r.jour.slice(0,7)===ym);
+        const complet=planR.mode==="complet"||!retCache;
+        const cutR=isoLocal(planR.deb);
+        const nAvantR=retCache?(complet?retCache.length:retCache.filter(x=>x.jour>=cutR).length):0;
+        if(reponseSuspecte(fraisR.length,nAvantR))
+          throw new Error(`Retours : réponse incomplète du serveur NOMAD (${fraisR.length} retour(s) reçu(s) au lieu d'au moins ${nAvantR})`);
+        ROWS_RETOUR=complet?fraisR:fusionRetours(retCache,fraisR);
+        RETOUR_LOADED=true;retOK=true;
+        await idbSet(cleRetour(ym),{rows:ROWS_RETOUR,savedAt:Date.now(),schema:CACHE_SCHEMA,
+          syncJour:isoLocal(new Date()),complet:complet?Date.now():(cacheRet.complet||0)});
+        const tot=(typeof rr.total==="number")?rr.total:rr.length;
+        etape("ret","ok",`${nbFr(tot)} ligne${tot>1?"s":""} reçue${tot>1?"s":""}${complet?"":" depuis le "+jjmm(cutR)} — ${nbFr(ROWS_RETOUR.length)} retours sur le mois`);
+      }
+    }catch(e){
+      const m=e&&e.message||String(e);alertes.push(m);etape("ret","warn",court(m)+(retCache?" — cache conservé":""));   // on garde le cache retours
+    }
+
+    let npsOK=false,syncOK=false;
+    try{npsOK=await pNps;}catch(e){}
+    try{syncOK=await pSync;}catch(e){}
+
+    etape("aff","cours","Mise à jour de l'affichage…");await pauseUI();
+    renderDoux();
+    etape("aff","ok","Terminé");
+    const duree=MODE==="admin"?` · ${fDuree(performance.now()-t0)}`:"";
+    if(effOK)setStatus("ok",`✅ ${nbFr(ROWS.length)} interventions (${srcEff}) · ${retOK?nbFr(ROWS_RETOUR.length)+" retours":"retours non chargés"} · ${NPS_LOADED?nbFr(ROWS_NPS.length)+" NPS":"NPS non chargé"}${FB?(syncOK?" · heures synchronisées":" · heures en mode local"):""} — ${new Date().toLocaleTimeString("fr-FR")}${duree}`);
+    else setStatus("warn","⚠️ Interventions indisponibles et rien en cache pour ce mois. Réessayez plus tard, ou importez l'export Excel (Options avancées).");
+    if(alertes.length)setStatus("warn",`⚠️ ${alertes.map(escH).join(" · ")} — données déjà en cache conservées (${nbFr(ROWS.length)} interventions, ${nbFr(ROWS_RETOUR.length)} retours). Réessayez plus tard.`);
+    etapesFin(alertes.length>0||!effOK);
+  }catch(e){
+    console.error(e);
+    setStatus("err","❌ Erreur inattendue pendant l'actualisation : "+escH(e&&e.message||e)+" — les données déjà chargées restent affichées.");
+    etapesFin(true);
+  }
   verifierMajAppli();       // au passage : propose la MAJ appli si une nouvelle version existe
 }
 /* Retours : flux direct puis fichier du site (retour-atelier.xlsx). Renvoie true si chargé. */
@@ -1644,12 +2073,22 @@ async function chargerRetour(ym){
   ROWS_RETOUR=[];RETOUR_LOADED=false;return false;
 }
 /* NPS : fichier lu depuis GitHub (raw). Pas de filtre mois : les clients répondent
-   avec du décalage, donc on affiche TOUS les avis présents dans l'export courant. */
-async function chargerNps(){
+   avec du décalage, donc on affiche TOUS les avis présents dans l'export courant.
+   - relu au plus toutes les NPS_FRAICHEUR_MS (le fichier change rarement) ;
+   - requête conditionnelle ("no-cache") : si le fichier n'a pas changé, GitHub répond 304 ;
+   - délai maximum (un proxy qui ne répond pas ne fige plus l'actualisation) ;
+   - en cas d'échec, les avis déjà chargés sont conservés. Renvoie true si le NPS est à jour. */
+const NPS_FRAICHEUR_MS=15*60000, NPS_TIMEOUT_MS=20000;
+var NPS_TS=0;
+async function chargerNps(force){
   if(NPS_IMPORT&&NPS_LOADED)return true;   // un fichier importé à la main reste prioritaire
-  try{const resp=await fetch(NPS_URL,{cache:"no-store"});if(!resp.ok)throw 0;
-    ROWS_NPS=parseNps(new Uint8Array(await resp.arrayBuffer()));
-    NPS_LOADED=true;return true;}catch(e){ROWS_NPS=[];NPS_LOADED=false;return false;}
+  if(!force&&NPS_LOADED&&Date.now()-NPS_TS<NPS_FRAICHEUR_MS)return true;
+  const ctrl=new AbortController();const t=setTimeout(()=>ctrl.abort(),NPS_TIMEOUT_MS);
+  try{const resp=await fetch(NPS_URL,{cache:"no-cache",signal:ctrl.signal});if(!resp.ok)throw 0;
+    const lignes=parseNps(new Uint8Array(await resp.arrayBuffer()));
+    ROWS_NPS=lignes;NPS_LOADED=true;NPS_TS=Date.now();return true;
+  }catch(e){return false;}
+  finally{clearTimeout(t);}
 }
 /* Chargement silencieux des fichiers du site au démarrage (GitHub Pages) */
 async function initLoadFiles(ym){
@@ -1663,7 +2102,7 @@ async function initLoadFiles(ym){
 /* Import manuel : détecte automatiquement s'il s'agit du flux efficience ou du flux retours */
 function chargerExcel(file){
   const ym=currentYM();
-  setStatus("load","⏳ Lecture de "+file.name+"…");
+  setStatus("load","⏳ Lecture de "+escH(file.name)+"…");
   const reader=new FileReader();
   reader.onload=async e=>{try{
     const buf=new Uint8Array(e.target.result);
@@ -1671,16 +2110,16 @@ function chargerExcel(file){
     if(type==="nps"){
       ROWS_NPS=parseNps(buf);NPS_LOADED=true;NPS_IMPORT=true;NPS_MOIS=null;
       const nm=npsMoisDispo().length;
-      setStatus("ok",`✅ ${ROWS_NPS.length} réponses NPS sur ${nm} mois — ${file.name}`);
+      setStatus("ok",`✅ ${ROWS_NPS.length} réponses NPS sur ${nm} mois — ${escH(file.name)}`);
     }else if(type==="retour"){
       ROWS_RETOUR=parseExcelRetour(buf).filter(r=>r.jour&&r.jour.slice(0,7)===ym);RETOUR_LOADED=true;
-      setStatus("ok",`✅ ${ROWS_RETOUR.length} retours pour ${ym} — ${file.name}`);
+      setStatus("ok",`✅ ${ROWS_RETOUR.length} retours pour ${ym} — ${escH(file.name)}`);
     }else if(type==="efficience"){
       const all=parseExcel(buf);ROWS=filtreMois(all,ym);await hydrateHours(ym);
-      setStatus("ok",`✅ ${ROWS.length} interventions pour ${ym} (sur ${all.length} lignes) — ${file.name}${FB?" · heures synchronisées":""}`);
+      setStatus("ok",`✅ ${ROWS.length} interventions pour ${ym} (sur ${all.length} lignes) — ${escH(file.name)}${FB?" · heures synchronisées":""}`);
     }else{ setStatus("err","❌ Fichier non reconnu (ni flux efficience, ni flux retours)."); return; }
     render();
-  }catch(err){setStatus("err","❌ Erreur : "+err.message);}};
+  }catch(err){setStatus("err","❌ Erreur : "+escH(err.message));}};
   reader.onerror=()=>setStatus("err","❌ Lecture impossible.");
   reader.readAsArrayBuffer(file);
 }
@@ -1768,6 +2207,17 @@ function render(){
   const cl=(MODE==="admin")?((ADMIN_FOCUS&&estClotureur(ADMIN_FOCUS))?ADMIN_FOCUS:null):(estClotureur(IDENTITY)?IDENTITY:null);
   if(cl)return renderClotures(cl);
   (MODE==="admin"&&!ADMIN_FOCUS)?renderAdmin():renderTech();
+}
+/* Rendu « doux » pour les rafraîchissements déclenchés en arrière-plan (fin d'actualisation,
+   arrivée des heures Firestore…) : si le technicien est en train de saisir ses heures, on ne
+   reconstruit pas le tableau sous ses doigts (perte du focus) ; on met à jour les totaux et
+   on refait le rendu complet dès qu'il a quitté le champ. */
+function renderDoux(){
+  const a=document.activeElement;
+  if(a&&a.tagName==="INPUT"&&a.closest&&a.closest("#tbl-jours-body")){
+    try{renderTechSoft();}catch(e){}
+    a.addEventListener("blur",()=>setTimeout(()=>{try{renderDoux();}catch(e){}},400),{once:true});
+  }else render();
 }
 
 /* ============ VUE CLÔTURES (clôtureurs, ex. Christophe Danière) ============
@@ -1882,7 +2332,7 @@ function renderTech(){
     $("#tech-empty").textContent="Chargez le mois pour afficher votre bilan.";return;}
   const b=bilanTech(code);
   emptyCard.classList.add("hidden");res.classList.remove("hidden");
-  $("#tech-title").innerHTML=`Bilan de <strong>${nomDe(code)}</strong> <span class="muted">(${code})</span> — ${currentYM()}`;
+  $("#tech-title").innerHTML=`Bilan de <strong>${escH(nomDe(code))}</strong> <span class="muted">(${escH(code)})</span> — ${currentYM()}`;
 
   // Jauge efficience
   const nEff=niveau("efficience",b.eff);
@@ -1924,7 +2374,12 @@ function renderTech(){
     tb.appendChild(tr);
   });
   tb.querySelectorAll("input.h-input").forEach(inp=>{
-    inp.addEventListener("input",()=>{hoursSet(code,inp.dataset.date,inp.value);majBoutonsHeures(inp.dataset.date);renderTechSoft();});
+    inp.addEventListener("input",()=>{
+      // saisie illisible (lettre…) ou hors 0–24 h : signalée, jamais enregistrée (avant : « 75 » au lieu de « 7,5 » passait, et une frappe invalide effaçait l'heure)
+      const v=inp.value===""?null:parseFloat(inp.value);
+      if((inp.validity&&inp.validity.badInput)||(v!=null&&(isNaN(v)||v<0||v>24))){inp.style.borderColor="var(--danger)";inp.title="Valeur entre 0 et 24 h — non enregistrée";return;}
+      inp.style.borderColor="";inp.title="";
+      hoursSet(code,inp.dataset.date,inp.value);majBoutonsHeures(inp.dataset.date);renderTechSoft();});
   });
   tb.querySelectorAll("button[data-hq]").forEach(bt=>{
     bt.addEventListener("click",()=>appliquerHeures(code,bt.dataset.date,bt.dataset.hq));
@@ -1976,12 +2431,12 @@ function renderRetour(code){
   const tb=$("#tbl-retours-body");tb.innerHTML="";
   if(!RETOUR_LOADED){tb.innerHTML=`<tr><td colspan="5" class="empty">Flux retours non chargé — cliquez « Actualiser le mois ».</td></tr>`;return;}
   if(!rets.length){tb.innerHTML=`<tr><td colspan="5" class="empty">Aucun retour ce mois-ci. 👍</td></tr>`;return;}
-  rets.forEach(r=>{
+  tb.innerHTML=rets.map(r=>{
     const t=r.code;const cls=t==="TAR"?"tar":t==="TAN"?"tan":(t==="ECC"||t==="ETC")?"ecc":"zero";
-    tb.innerHTML+=`<tr><td>${r.jour?frDate(r.jour):"—"}</td><td>${r.dossier}</td>
-      <td>${r.marque||'<span class="muted">—</span>'}</td><td>${r.famille}</td>
-      <td><span class="tag ${cls}">${t||"—"}</span></td></tr>`;
-  });
+    return `<tr><td>${r.jour?frDate(r.jour):"—"}</td><td>${escH(r.dossier)}</td>
+      <td>${escH(r.marque)||'<span class="muted">—</span>'}</td><td>${escH(r.famille)}</td>
+      <td><span class="tag ${cls}">${escH(t)||"—"}</span></td></tr>`;
+  }).join("");
 }
 function applyTab(){
   document.querySelectorAll(".tab2").forEach(bt=>bt.classList.toggle("active",bt.dataset.tab===TAB));
@@ -2066,7 +2521,7 @@ function renderNps(code){
   avis.forEach(x=>{
     const cls=x.note==null?"zero":x.note>=9?"ecc":x.note>=7?"tar":"tan";
     html+=`<tr><td>${x.jour?frDate(x.jour):"—"}</td><td><span class="tag ${cls}">${x.note==null?"—":x.note+"/10"}</span></td>
-      <td>${x.dossier}</td><td style="white-space:normal">${x.commentaire?escNps(x.commentaire):'<span class="muted">—</span>'}</td></tr>`;
+      <td>${escH(x.dossier)}</td><td style="white-space:normal">${x.commentaire?escNps(x.commentaire):'<span class="muted">—</span>'}</td></tr>`;
   });
   tb.innerHTML=html;
 }
@@ -2107,14 +2562,14 @@ function renderDetail(code){
   const suff=q?` · <span class="muted">${detail.length} résultat(s)</span>`:"";
   if(DETAIL_JOUR)fi.innerHTML=`— journée du <strong>${frDate(DETAIL_JOUR)}</strong> (${detail.length}) · <span class="lnk" id="detail-reset">↩ tout le mois</span>`+suff;
   else fi.innerHTML="(tout le mois — cliquez une date ci-dessus pour filtrer)"+suff;
-  detail.forEach(r=>{
+  db.innerHTML=detail.map(r=>{
     const temps=r._temps;
     const cls=classeTopage(r.topage);const t=labelTopage(r.topage);
-    db.innerHTML+=`<tr><td>${frDate(r.jour)}</td><td>${r.dossier}</td><td>${r.famille}</td>
-      <td>${r.marque||'<span class="muted">—</span>'}</td><td>${r.codic}</td>
-      <td class="num">${r.nbPieces}</td><td><span class="tag ${cls}">${t}</span></td>
+    return `<tr><td>${frDate(r.jour)}</td><td>${escH(r.dossier)}</td><td>${escH(r.famille)}</td>
+      <td>${escH(r.marque)||'<span class="muted">—</span>'}</td><td>${escH(r.codic)}</td>
+      <td class="num">${r.nbPieces}</td><td><span class="tag ${cls}">${escH(t)}</span></td>
       <td class="num">${temps?fN(temps)+" h":'<span class="muted">0 h</span>'}</td></tr>`;
-  });
+  }).join("");
   if(!detail.length)db.innerHTML=`<tr><td colspan="8" class="empty">${q?"Aucune intervention ne correspond à la recherche.":"Aucune intervention."}</td></tr>`;
   majEntetesTri();
   const reset=$("#detail-reset");if(reset)reset.addEventListener("click",()=>{DETAIL_JOUR=null;renderDetail(code);});
@@ -2138,12 +2593,10 @@ function renderDeductionsTech(code){
   const peutSupprimer=(MODE==="admin")||(MODE==="tech"&&code===IDENTITY);
   tb.innerHTML="";
   if(!list.length){tb.innerHTML=`<tr><td colspan="4" class="empty">Aucune déduction déclarée ce mois-ci.</td></tr>`;return;}
-  list.forEach(d=>{
-    tb.innerHTML+=`<tr><td>${d.date?frDate(d.date):"—"}</td>
-      <td class="num">${fN(d.heures)} h</td>
-      <td style="white-space:normal">${d.motif?d.motif:'<span class="muted">—</span>'}</td>
-      <td class="num">${peutSupprimer?`<span class="lnk" data-del-ded="${d.id}" title="Supprimer">✕</span>`:""}</td></tr>`;
-  });
+  tb.innerHTML=list.map(d=>`<tr><td>${d.date?frDate(d.date):"—"}</td>
+      <td class="num">${fN(parseFloat(d.heures))} h</td>
+      <td style="white-space:normal">${d.motif?escH(d.motif):'<span class="muted">—</span>'}${d.attente?' <span class="muted" title="Enregistrée sur ce poste, envoi au stockage partagé en cours">⏳</span>':""}</td>
+      <td class="num">${peutSupprimer?`<span class="lnk" data-del-ded="${escH(d.id)}" title="Supprimer">✕</span>`:""}</td></tr>`).join("");
   tb.querySelectorAll("[data-del-ded]").forEach(el=>{
     el.addEventListener("click",async()=>{
       if(!confirm("Supprimer cette déduction ?"))return;
@@ -2159,9 +2612,10 @@ function majBoutonsHeures(date){
   const v=inp.value===""?null:parseFloat(inp.value);
   inp.closest("td").querySelectorAll("button[data-hq]").forEach(bt=>bt.classList.toggle("on",v!=null&&parseFloat(bt.dataset.hq)===v));
 }
-function appliquerHeures(code,date,val){
-  const inp=$(`#tbl-jours-body input.h-input[data-date="${date}"]`);if(inp)inp.value=val;
-  hoursSet(code,date,val);majBoutonsHeures(date);renderTechSoft();
+function appliquerHeures(code,date,val,sansRendu){
+  const inp=$(`#tbl-jours-body input.h-input[data-date="${date}"]`);if(inp){inp.value=val;inp.style.borderColor="";inp.title="";}
+  hoursSet(code,date,val);majBoutonsHeures(date);
+  if(!sansRendu)renderTechSoft();
 }
 /* Remplit uniquement les jours sans heures saisies (ne touche jamais une valeur existante). */
 function remplirJoursVides(val){
@@ -2169,8 +2623,8 @@ function remplirJoursVides(val){
   const vides=bilanTech(code).lignes.filter(l=>l.heures==null);
   if(!vides.length)return;
   if(!confirm(`Mettre ${fHr(parseFloat(val))} sur les ${vides.length} jour(s) encore vide(s) ?`))return;
-  vides.forEach(l=>appliquerHeures(code,l.date,val));
-  $("#h-bulk").classList.add("hidden");
+  vides.forEach(l=>appliquerHeures(code,l.date,val,true));
+  renderTechSoft();                               // un seul recalcul (avant : un par jour rempli)
 }
 document.querySelectorAll("#h-bulk button[data-bulk]").forEach(bt=>bt.addEventListener("click",()=>remplirJoursVides(bt.dataset.bulk)));
 
@@ -2204,6 +2658,7 @@ function renderTechSoft(){
   $("#tbl-jours-foot").innerHTML=b.dates.length?`<tr><td>TOTAL du mois</td><td class="num">${b.nbTotal}</td>
     <td class="num">${b.piecesTotal}</td><td class="num">${fN(b.tempsTotal)} h</td>
     <td class="num">${fN(b.heuresTotal)} h</td><td class="num">${fPct(b.eff)}</td><td class="num">${fN(b.conso)}</td></tr>`:"";
+  $("#h-bulk").classList.toggle("hidden",!b.lignes.some(l=>l.heures==null));
   updateRanks(code);   // l'efficience a changé -> le classement aussi
 }
 
@@ -2228,15 +2683,17 @@ function renderAdmin(){
   const body=$("#tbl-admin-body");body.innerHTML="";
   if(!codes.length){body.innerHTML=`<tr><td colspan="12" class="empty">${tousCodes.length?"Aucun technicien dans ce pôle ce mois-ci.":"Chargez le mois pour afficher les collaborateurs."}</td></tr>`;}
   let ST=0,TT=0,HH=0,PP=0,NN=0,RET=0,REP=0;   // ST=temps jours saisis ; RET=retours ; REP=appareils réparés
+  const html=[];
   lignes.forEach(({code,nom,b})=>{
     ST+=b.tempsSaisi;TT+=b.tempsTotal;HH+=b.heuresTotal;PP+=b.piecesTotal;NN+=b.nbTotal;REP+=b.nbRepares;
     const rets=retoursDeTech(code).length;RET+=rets;
     const taux=b.nbRepares>0?rets/b.nbRepares*100:null;
     const rc=b.eff!=null?("row-"+niveau("efficience",b.eff)):"";
     const nc=niveau("conso",b.conso),nr=niveau("tauxRetour",taux);
-    body.innerHTML+=`<tr class="${rc}"><td>${code}</td>
-      <td><span class="lnk" data-code="${code}" title="Voir le détail de ce technicien">${nom}</span></td>
-      <td><select class="pole-sel${POLE_OVERRIDES[code]?" force":""}" data-pole-code="${code}" title="${POLE_OVERRIDES[code]?"Pôle forcé manuellement":"Pôle calculé d'après les interventions du mois"}">
+    const c=escH(code);
+    html.push(`<tr class="${rc}"><td>${c}</td>
+      <td><span class="lnk" data-code="${c}" title="Voir le détail de ce technicien">${escH(nom)}</span></td>
+      <td><select class="pole-sel${POLE_OVERRIDES[code]?" force":""}" data-pole-code="${c}" title="${POLE_OVERRIDES[code]?"Pôle forcé manuellement":"Pôle calculé d'après les interventions du mois"}">
         <option value="">Auto (${nomPole(pAuto[code]||"autre")})</option>
         ${POLES.map(p=>`<option value="${p.id}"${POLE_OVERRIDES[code]===p.id?" selected":""}>${p.nom}</option>`).join("")}
       </select></td>
@@ -2245,8 +2702,9 @@ function renderAdmin(){
       <td class="num">${b.eff!=null?fPct(b.eff):'<span class="muted">n/c</span>'}</td>
       <td class="num"><span class="niveau ${nc}">${fN(b.conso)}</span></td>
       <td class="num">${rets}</td>
-      <td class="num">${taux!=null?`<span class="niveau ${nr}">${fPct(taux)}</span>`:'<span class="muted">n/c</span>'}</td></tr>`;
+      <td class="num">${taux!=null?`<span class="niveau ${nr}">${fPct(taux)}</span>`:'<span class="muted">n/c</span>'}</td></tr>`);
   });
+  if(lignes.length)body.innerHTML=html.join("");
   body.querySelectorAll("[data-code]").forEach(el=>{
     el.addEventListener("click",()=>{ADMIN_FOCUS=el.dataset.code;render();window.scrollTo({top:0,behavior:"smooth"});});
   });
@@ -2284,15 +2742,14 @@ function renderAdminDeductions(){
   let list=base.slice();
   if(ADMIN_DEDUC_FILTER)list=list.filter(d=>d.code===ADMIN_DEDUC_FILTER);
   list.sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.createdAt||0)-(a.createdAt||0));
-  const body=$("#tbl-admin-deduc-body");if(!body)return;body.innerHTML="";
-  if(!list.length){body.innerHTML=`<tr><td colspan="5" class="empty">Aucune déduction déclarée ce mois-ci.</td></tr>`;}
+  const body=$("#tbl-admin-deduc-body");if(!body)return;
   let totH=0;
-  list.forEach(d=>{totH+=parseFloat(d.heures)||0;
-    body.innerHTML+=`<tr><td>${nomDe(d.code)} <span class="muted">(${d.code})</span></td>
-      <td>${d.date?frDate(d.date):"—"}</td><td class="num">${fN(d.heures)} h</td>
-      <td style="white-space:normal">${d.motif?d.motif:'<span class="muted">—</span>'}</td>
-      <td class="num"><span class="lnk" data-del-ded="${d.id}" title="Supprimer">✕</span></td></tr>`;
-  });
+  body.innerHTML=list.length?list.map(d=>{totH+=parseFloat(d.heures)||0;
+    return `<tr><td>${escH(nomDe(d.code))} <span class="muted">(${escH(d.code)})</span></td>
+      <td>${d.date?frDate(d.date):"—"}</td><td class="num">${fN(parseFloat(d.heures))} h</td>
+      <td style="white-space:normal">${d.motif?escH(d.motif):'<span class="muted">—</span>'}</td>
+      <td class="num"><span class="lnk" data-del-ded="${escH(d.id)}" title="Supprimer">✕</span></td></tr>`;
+  }).join(""):`<tr><td colspan="5" class="empty">Aucune déduction déclarée ce mois-ci.</td></tr>`;
   $("#tbl-admin-deduc-foot").innerHTML=list.length?`<tr><td colspan="2">TOTAL (${list.length})</td><td class="num">${fN(totH)} h</td><td colspan="2"></td></tr>`:"";
   $("#deduc-resume").textContent=`${base.length} déduction(s) ce mois${ADMIN_POLE?" (pôle filtré)":""} · ${fN(base.reduce((s,d)=>s+(parseFloat(d.heures)||0),0))} h au total`;
   body.querySelectorAll("[data-del-ded]").forEach(el=>{
@@ -2319,7 +2776,7 @@ function majBadge(){
   $("#btn-admin").classList.toggle("hidden",MODE==="admin");
   majJetonsUI();
 }
-function setIdentity(code){IDENTITY=code;memSet(LS_ID,code);MODE=estAutoAdmin(code)?"admin":"tech";ADMIN_FOCUS=null;ADMIN_POLE=poleParDefaut(code);majBadge();render();chargerJetons();ecouterJetons();montrerInfoJetons();montrerNotesMaj();}
+function setIdentity(code){IDENTITY=code;memSet(LS_ID,code);MODE=estAutoAdmin(code)?"admin":"tech";ADMIN_FOCUS=null;ADMIN_POLE=poleParDefaut(code);majBadge();render();ecouterJetons();chargerJetons();montrerInfoJetons();montrerNotesMaj();}
 
 /* ============ IMPORT DES HEURES DEPUIS L'APP SAV (collection "days") ============ */
 async function importerHeuresSAV(){
@@ -2408,18 +2865,33 @@ function tempsDocId(level,fam,marque){return level===1?("d1__"+fam):level===2?("
    Les modifications admin enregistrées AVANT cette date sont ignorées : le fichier
    Excel fait foi. Celles faites APRÈS restent appliquées par-dessus. */
 const BAREME_DATE=new Date(2026,9,12).getTime();
+const LS_TEMPS_CACHE="eff_temps_cache";    // copie locale des modifications du barème {sync, docs:{id:doc}}
+function tempsAppliquer(d){
+  if(!d||!d.fam)return;
+  if(!(typeof d.updatedAt==="number"&&d.updatedAt>=BAREME_DATE))return;   // antérieur au barème Excel
+  const tgt=(d.level===1)?IDX1[normCodic(d.fam)]:(d.level===2)?IDX2[d.fam+"|"+d.marque]:IDX3[d.fam];
+  if(!tgt)return;
+  ["tar","tan","etc"].forEach(k=>{if(typeof d[k]==="number")tgt[k]=d[k];});
+}
+/* Modifications du barème : copie locale appliquée d'abord (donc aussi sans Firestore), puis on
+   ne lit que les documents modifiés depuis la dernière synchro (avant : toute la collection
+   relue à chaque ouverture, y compris les modifications antérieures au barème, ignorées ensuite). */
 async function hydrateTemps(){
+  let c={sync:0,docs:{}};
+  try{const v=JSON.parse(memGet(LS_TEMPS_CACHE)||"null");if(v&&v.docs&&typeof v.docs==="object")c=v;}catch(e){}
+  Object.keys(c.docs).map(k=>c.docs[k]).sort((a,b)=>(a.updatedAt||0)-(b.updatedAt||0)).forEach(tempsAppliquer);
   if(!FB)return;
   try{
-    const snap=await FB.collection(COLL_TEMPS).get();
+    const maintenant=Date.now();
+    const depuis=Math.max(BAREME_DATE-1,(c.sync||0)-H_SYNC_MARGE);
+    const snap=await fsLire(FB.collection(COLL_TEMPS).where("updatedAt",">",depuis));
     snap.forEach(doc=>{
       const d=doc.data();if(!d||!d.fam)return;
-      if(!(typeof d.updatedAt==="number"&&d.updatedAt>=BAREME_DATE))return;   // antérieur au barème Excel
-      const tgt=(d.level===1)?IDX1[normCodic(d.fam)]:(d.level===2)?IDX2[d.fam+"|"+d.marque]:IDX3[d.fam];
-      if(!tgt)return;
-      ["tar","tan","etc"].forEach(k=>{if(typeof d[k]==="number")tgt[k]=d[k];});
+      c.docs[doc.id]={level:d.level,fam:d.fam,marque:d.marque||"",tar:d.tar,tan:d.tan,etc:d.etc,updatedAt:d.updatedAt};
+      tempsAppliquer(d);
     });
-  }catch(e){console.warn("Lecture bareme temps echouee:",e);}
+    c.sync=maintenant;memSet(LS_TEMPS_CACHE,JSON.stringify(c));
+  }catch(e){console.warn("Lecture bareme temps echouee:",e&&e.message||e);}
 }
 function tempsSet(level,fam,marque,champ,val){
   const num=parseFloat(String(val).replace(",","."));
@@ -2503,7 +2975,7 @@ async function checkTempsUpdates(){
   const seen=parseInt(seenRaw,10)||0;
   let list=[];
   try{
-    const snap=await FB.collection(COLL_TEMPS_LOG).where("ts",">",seen).orderBy("ts","desc").get();
+    const snap=await fsLire(FB.collection(COLL_TEMPS_LOG).where("ts",">",seen).orderBy("ts","desc"));
     snap.forEach(doc=>{const d=doc.data();if(d)list.push(d);});
   }catch(e){console.warn("Lecture journal temps:",e);return false;}
   if(!list.length){memSet(LS_TEMPS_SEEN,String(Date.now()));return false;}
@@ -2520,9 +2992,9 @@ function renderMajTemps(list){
     li.style.cssText="padding:9px 2px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:12px;align-items:center;font-size:.9rem";
     const cls=(d.champ==="tar")?"tar":(d.champ==="tan")?"tan":"ecc";
     const marque=(d.level===1)?" (par CODIC)":(d.marque?(" · "+tempsEsc(d.marque)):" · (toutes marques)");
-    const anc=(d.ancien==null?"—":d.ancien);
-    li.innerHTML="<span><strong>"+tempsEsc(d.level===1?("CODIC "+d.fam):d.fam)+"</strong>"+marque+" <span class='tag "+cls+"' style='margin-left:6px'>"+CHAMP_LBL[d.champ]+"</span></span>"
-      +"<span style='white-space:nowrap;color:var(--text-muted)'>"+anc+" &rarr; <strong style='color:var(--text)'>"+d.nouveau+"</strong> <span style='font-size:.8em;margin-left:6px'>"+fmtDateCourt(d.ts)+"</span></span>";
+    const anc=(d.ancien==null?"—":tempsEsc(d.ancien));
+    li.innerHTML="<span><strong>"+tempsEsc(d.level===1?("CODIC "+d.fam):d.fam)+"</strong>"+marque+" <span class='tag "+cls+"' style='margin-left:6px'>"+(CHAMP_LBL[d.champ]||"")+"</span></span>"
+      +"<span style='white-space:nowrap;color:var(--text-muted)'>"+anc+" &rarr; <strong style='color:var(--text)'>"+tempsEsc(d.nouveau)+"</strong> <span style='font-size:.8em;margin-left:6px'>"+fmtDateCourt(d.ts)+"</span></span>";
     frag.appendChild(li);
   });
   body.appendChild(frag);
@@ -2560,7 +3032,7 @@ async function checkInfoMessages(){
   const seen=parseInt(seenRaw,10)||0;
   let list=[];
   try{
-    const snap=await FB.collection(COLL_INFO).where("ts",">",seen).orderBy("ts","desc").get();
+    const snap=await fsLire(FB.collection(COLL_INFO).where("ts",">",seen).orderBy("ts","desc"));
     snap.forEach(doc=>{const d=doc.data();if(d&&d.texte)list.push(d);});
   }catch(e){console.warn("Lecture infos:",e);return;}
   if(!list.length){memSet(LS_INFO_SEEN,String(Date.now()));return;}
@@ -2608,16 +3080,16 @@ $("#sel-month").value=ymNow();
 $("#btn-refresh").addEventListener("click",actualiserAvecJeton);  // consomme 1 jeton puis refresh intelligent
 $("#btn-import").addEventListener("click",()=>$("#file-input").click());
 $("#file-input").addEventListener("change",e=>{if(e.target.files[0])chargerExcel(e.target.files[0]);});
-$("#sel-month").addEventListener("change",()=>{ROWS=[];ROWS_RETOUR=[];RETOUR_LOADED=false;NPS_MOIS=null;afficherCacheSeul();});
+$("#sel-month").addEventListener("change",()=>{if(CHARGEMENT_EN_COURS)return;etapesMasquer();ROWS=[];ROWS_RETOUR=[];RETOUR_LOADED=false;NPS_MOIS=null;afficherCacheSeul();});
 $("#nps-mois").addEventListener("change",e=>{NPS_MOIS=e.target.value;if(NPS_CODE){renderNps(NPS_CODE);updateRanks(NPS_CODE);}});
 $("#btn-changer").addEventListener("click",()=>demanderCode("Changer de technicien","Saisissez le code d'accès pour changer d'identité.",ouvrirModalIdentite));
 $("#btn-admin").addEventListener("click",()=>{
-  const entrer=()=>{MODE="admin";ADMIN_FOCUS=null;majBadge();render();};
+  const entrer=()=>{MODE="admin";ADMIN_FOCUS=null;majBadge();render();chargerJetons();};
   if(estAutoAdmin(IDENTITY)) entrer();   // responsables : pas de code
   else demanderCode("Mode admin","Saisissez le code d'accès administrateur.",entrer);
 });
 $("#sel-pole").addEventListener("change",e=>{ADMIN_POLE=e.target.value;renderAdmin();});
-$("#btn-quit-admin").addEventListener("click",()=>{MODE="tech";ADMIN_FOCUS=null;majBadge();render();});
+$("#btn-quit-admin").addEventListener("click",()=>{MODE="tech";ADMIN_FOCUS=null;majBadge();render();chargerJetons();});
 $("#btn-back-admin").addEventListener("click",()=>{ADMIN_FOCUS=null;render();window.scrollTo({top:0,behavior:"smooth"});});
 document.querySelectorAll(".tab2").forEach(bt=>bt.addEventListener("click",()=>{TAB=bt.dataset.tab;applyTab();}));
 
@@ -2650,10 +3122,10 @@ async function validerDeduction(){
   const motif=$("#ded-motif").value.trim();
   if(!IDENTITY){msg.style.color="var(--danger)";msg.textContent="Identité inconnue.";return;}
   if(!date){msg.style.color="var(--danger)";msg.textContent="Choisissez une date.";return;}
-  if(!heures||heures<=0){msg.style.color="var(--danger)";msg.textContent="Indiquez un temps supérieur à 0.";return;}
+  if(date.slice(0,7)!==currentYM()){msg.style.color="var(--danger)";msg.textContent="Choisissez une date du mois affiché.";return;}
+  if(!heures||heures<=0||heures>24){msg.style.color="var(--danger)";msg.textContent="Indiquez un temps entre 0 et 24 h.";return;}
   if(!motif){msg.style.color="var(--danger)";msg.textContent="Indiquez un motif.";return;}
-  msg.style.color="var(--text-muted)";msg.textContent="Enregistrement…";
-  await addDeduction(IDENTITY,date,heures,motif);
+  await addDeduction(IDENTITY,date,heures,motif);   // enregistrement local immédiat, Firestore en arrière-plan
   $("#modal-deduction").classList.add("hidden");
   render();
 }
@@ -2670,25 +3142,59 @@ dz.addEventListener("click",()=>$("#file-input").click());
 ["dragleave","drop"].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove("drag");}));
 dz.addEventListener("drop",e=>{const f=e.dataTransfer.files[0];if(f)chargerExcel(f);});
 
+/* ============ ANTI-BLOCAGE FIRESTORE ============
+   Si Firestore est saturé (quota dépassé, réseau lent), le SDK réessaie en boucle et ses
+   promesses ne se terminent jamais : l'appli restait figée (plus d'actualisation possible).
+   Chaque appel Firestore attendu par l'interface est donc limité dans le temps ; passé le
+   délai on continue avec le cache local (les écritures en attente partiront plus tard). */
+function sansBlocage(fn,ms,repli){
+  return async function(...args){
+    const val=()=>typeof repli==="function"?repli():repli;
+    let t;
+    try{
+      return await Promise.race([fn.apply(this,args),
+        new Promise(r=>{t=setTimeout(()=>{console.warn(`Firestore lent ou indisponible : ${fn.name} ignoré après ${ms} ms`);r(val());},ms);})]);
+    }catch(e){ console.warn(fn.name,e); return val(); }
+    finally{ clearTimeout(t); }
+  };
+}
+hydrateHours      = sansBlocage(hydrateHours,9000,()=>({ok:false}));
+hydrateDeductions = sansBlocage(hydrateDeductions,9000,()=>({ok:false}));
+hydrateTemps      = sansBlocage(hydrateTemps,7000);
+hydratePoles      = sansBlocage(hydratePoles,6000);
+checkTempsUpdates = sansBlocage(checkTempsUpdates,6000,false);
+checkInfoMessages = sansBlocage(checkInfoMessages,6000);
+chargerJetons     = sansBlocage(chargerJetons,5000,()=>majJetonsUI());
+verifierPause     = sansBlocage(verifierPause,4000,()=>pauseActive());
+consommerJeton    = sansBlocage(consommerJeton,2500,true);
+
 /* ============ DÉMARRAGE ============
    Aucune actualisation automatique : au lancement on n'affiche QUE le cache local
    (zéro appel au serveur SSRS). Les données ne se mettent à jour que lorsque
-   l'utilisateur clique sur « Actualiser » (ce qui consomme 1 jeton). */
+   l'utilisateur clique sur « Actualiser » (ce qui consomme 1 jeton).
+   Ordre : identité + cache local D'ABORD (affichage immédiat), Firestore ENSUITE en
+   arrière-plan. Avant, six lectures Firestore s'enchaînaient avant le premier affichage :
+   jusqu'à ~30 s d'écran vide quand Firestore était saturé. */
 (async function init(){
   initFirebase();
   ecouterPause();                // pause serveur (incident NOMAD) : écoute temps réel
-  await hydrateHours(ymNow());   // pré-charge les heures du mois courant (si Firebase dispo)
-  await hydrateDeductions(ymNow());
-  await hydrateTemps();          // pre-charge les overrides du bareme (si Firebase dispo)
-  await hydratePoles();          // pôles forcés par un admin (si Firebase dispo)
-  if(!(await checkTempsUpdates())) await checkInfoMessages();  // popups au lancement : bareme puis infos
-  startInfoListener();          // messages d'info en temps reel pour les postes deja ouverts
   const saved=memGet(LS_ID);
-  if(saved&&TECH_BY_CODE[saved]){IDENTITY=saved;MODE=estAutoAdmin(saved)?"admin":"tech";ADMIN_POLE=poleParDefaut(saved);majBadge();render();montrerInfoJetons();montrerNotesMaj();}
-  else{majBadge();ouvrirModalIdentite();}
-  await chargerJetons();          // solde de jetons du jour
-  ecouterJetons();                // mise à jour en temps réel si un admin crédite
-  try{ await afficherCacheSeul(); }catch(e){ /* pas de cache : l'utilisateur cliquera sur Actualiser */ }
+  if(saved&&TECH_BY_CODE[saved]){IDENTITY=saved;MODE=estAutoAdmin(saved)?"admin":"tech";ADMIN_POLE=poleParDefaut(saved);}
+  // Barème modifié + pôles forcés : copies locales appliquées tout de suite, Firestore en arrière-plan
+  const pTemps=Promise.resolve(hydrateTemps()).catch(()=>{}),pPoles=Promise.resolve(hydratePoles()).catch(()=>{});
+  try{
+    if(IDENTITY){majBadge();render();montrerInfoJetons();montrerNotesMaj();}
+    else{majBadge();ouvrirModalIdentite();}
+  }catch(e){console.error(e);}
+  try{chargerJetons();}catch(e){}            // solde du jour (écoute temps réel, sans attendre)
+  try{envoyerHeuresEnAttente();}catch(e){}   // saisies d'heures restées en attente (panne Firestore, appli fermée)
+  try{ await afficherCacheSeul(); }catch(e){ console.error(e); /* pas de cache : l'utilisateur cliquera sur Actualiser */ }
+  Promise.all([pTemps,pPoles]).then(()=>{ try{ if(!CHARGEMENT_EN_COURS)renderDoux(); }catch(e){} });
+  // Popups au lancement : barème puis infos ; ensuite écoute des messages en temps réel
+  (async()=>{
+    try{ if(!(await checkTempsUpdates())) await checkInfoMessages(); }catch(e){}
+    try{ startInfoListener(); }catch(e){}
+  })();
 })();
 </script>
 </body>
