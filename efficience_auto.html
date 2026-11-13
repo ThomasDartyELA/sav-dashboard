@@ -149,6 +149,23 @@
   .data-table tr.row-orange td{background:var(--warning-bg)} .data-table tr.row-orange:hover td{background:#fde7ad}
   .data-table tr.row-rouge td{background:var(--danger-bg)} .data-table tr.row-rouge:hover td{background:#fbd0d0}
   .data-table input.h-input{width:78px;margin:0;padding:5px 7px;text-align:right}
+  /* Saisie rapide des heures (7 / 7,5 / 8 h) */
+  .h-cell{display:inline-flex;align-items:center;gap:6px;justify-content:flex-end}
+  .h-quick{display:inline-flex;gap:3px}
+  .h-quick button{font:inherit;font-size:.72rem;font-weight:600;padding:4px 7px;border:1px solid var(--border);
+    border-radius:6px;background:#fff;color:var(--text-muted);cursor:pointer;line-height:1;font-variant-numeric:tabular-nums}
+  .h-quick button:hover{border-color:var(--primary);color:var(--primary)}
+  .h-quick button.on{background:var(--primary);border-color:var(--primary);color:#fff}
+  .h-bulk{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 10px;font-size:.82rem;color:var(--text-muted)}
+  .h-bulk button{font:inherit;font-size:.78rem;font-weight:600;padding:5px 10px;border:1px solid var(--border);
+    border-radius:8px;background:#fff;color:var(--text);cursor:pointer}
+  .h-bulk button:hover{border-color:var(--primary);color:var(--primary)}
+  /* Pôles (vue admin) */
+  .pole-barre{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+  .pole-barre label{font-size:.85rem;font-weight:600;color:var(--text-muted)}
+  .pole-barre select{padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:.88rem;background:#fff;color:var(--text);min-width:240px}
+  select.pole-sel{padding:3px 6px;border:1px solid var(--border);border-radius:6px;font-size:.76rem;background:#fff;color:var(--text);max-width:150px}
+  select.pole-sel.force{border-color:var(--primary);font-weight:600}
   .tag{font-size:.72rem;font-weight:700;padding:2px 7px;border-radius:6px}
   .tag.tar{background:#dbeafe;color:#1e40af} .tag.tan{background:#fde2e1;color:#9f1239}
   .tag.ecc{background:var(--success-bg);color:#166534} .tag.zero{background:#eef0f2;color:#64748b}
@@ -395,7 +412,11 @@
       <div class="stat-grid" id="tech-stats"></div>
 
       <div class="sect-title">Saisie des heures — un jour par ligne</div>
-      <div class="hint" style="margin-top:0">Indiquez votre temps de travail réel pour chaque jour. Seuls les jours renseignés comptent dans l'efficience du mois. La saisie est enregistrée automatiquement.</div>
+      <div class="hint" style="margin-top:0">Indiquez votre temps de travail réel pour chaque jour (boutons 7 / 7,5 / 8 h ou saisie libre). Seuls les jours renseignés comptent dans l'efficience du mois. La saisie est enregistrée automatiquement.</div>
+      <div class="h-bulk" id="h-bulk">
+        <span>Remplir les jours encore vides :</span>
+        <button type="button" data-bulk="7">7 h</button><button type="button" data-bulk="7.5">7,5 h</button><button type="button" data-bulk="8">8 h</button>
+      </div>
       <div class="tbl-wrap">
         <table class="data-table" id="tbl-jours">
           <thead><tr>
@@ -535,11 +556,16 @@
         </span>
       </h2>
       <div class="hint" style="margin-top:0">Interventions, pièces et temps alloué s'affichent pour tous. L'efficience nécessite les heures saisies (n/c sinon). Cliquez un nom pour voir le détail d'un technicien.</div>
+      <div class="pole-barre">
+        <label for="sel-pole">Pôle affiché</label>
+        <select id="sel-pole"></select>
+        <span class="muted" id="pole-info" style="font-size:.8rem"></span>
+      </div>
       <div class="stat-grid" id="admin-stats"></div>
       <div class="tbl-wrap">
         <table class="data-table" id="tbl-admin">
           <thead><tr>
-            <th>Code</th><th>Technicien</th><th class="num">Jours saisis</th><th class="num">Interv.</th>
+            <th>Code</th><th>Technicien</th><th>Pôle</th><th class="num">Jours saisis</th><th class="num">Interv.</th>
             <th class="num">Pièces</th><th class="num">Temps alloué</th><th class="num">Heures</th>
             <th class="num">Efficience</th><th class="num">Conso pièces</th>
             <th class="num">Retours</th><th class="num">Taux retour</th>
@@ -628,6 +654,89 @@ const TECH_BY_CODE={}; TECHNICIENS.forEach(t=>TECH_BY_CODE[t.code]=t);
 const SUPERVISEURS=[{code:"VFE",nom:"VERONIQUE FESTAZ"}];
 SUPERVISEURS.forEach(s=>TECH_BY_CODE[s.code]=s);
 function estSuperviseur(code){ return SUPERVISEURS.some(s=>s.code===code); }
+/* Responsables : passent AUTOMATIQUEMENT en mode admin à la sélection (sans code), vue admin
+   pré-filtrée sur leur pôle (pole:null = tous les pôles). Ils restent techniciens : ils
+   peuvent quitter l'admin pour voir leur propre bilan, et y revenir sans code. */
+const RESPONSABLES=[
+  {code:"L25",pole:"air"},    // SEBASTIEN DUCHASSIN — aspirateurs (dont Dyson)
+  {code:"L16",pole:"culi"},   // JONATHAN LYONNET — culinaire, traitement de l'air, vapeur
+  {code:"L04",pole:"cafe"},   // PHILIPPE TRONEL — café, aspirateurs robots
+  {code:"L38",pole:null},     // THOMAS CRASTRES — tous
+  {code:"VFE",pole:null}      // VERONIQUE FESTAZ (superviseur) — tous
+];
+function responsableDe(code){ return RESPONSABLES.find(r=>r.code===code)||null; }
+function estAutoAdmin(code){ return estSuperviseur(code) || !!responsableDe(code); }
+function poleParDefaut(code){ const r=responsableDe(code); return (r&&r.pole)||""; }
+
+/* ============ PÔLES ATELIER (filtre de la vue admin) ============
+   Chaque intervention est classée par FAMILLE (la marque ne suffit pas : un aspirateur Dyson
+   est en « air », un ventilateur Dyson en « culinaire »). Un technicien est rattaché au pôle
+   où il a le plus d'interventions sur le mois ; un admin peut forcer le pôle d'un technicien
+   (enregistré dans Firestore config_efficience/poles). */
+const POLES=[
+  {id:"air", nom:"Air — aspirateurs",          resp:"S. Duchassin"},
+  {id:"culi",nom:"Culinaire & vapeur",         resp:"J. Lyonnet"},
+  {id:"cafe",nom:"Café & aspirateurs robots",  resp:"P. Tronel"},
+  {id:"autre",nom:"Autres (multimédia, micro…)",resp:""}
+];
+function nomPole(id){ const p=POLES.find(x=>x.id===id); return p?p.nom:"—"; }
+const FAM_ROBOT=new Set(["ASPBT","ASRRC","ROBVI","ROBPI","ROBTO"]);
+const FAM_AIR=new Set(["ASPBA","ASPBN","ASPTR","ASPUN","ASPRC","ASBRC","ASMRC","ASTRC","BLNRC","SOLRC",
+  "NETTO","CIREU","SHAMP","SHARC","NHP","NHPKA","DIVAC","PETRC"]);
+const FAM_CAFE=new Set(["EXPCF","EXPBR","EXPSA","EXNES","EXPRE","EXNDG","EXCAP","EXBRC","EXCRC","EXPRC","EXPNE",
+  "EXPCO","EXPDG","CAFET","CAFSE","CAFTA","CAFVE","CAFEN","CAFRC","CAESE","CVERT","MLCAF","DICAF","PDJRC"]);
+const FAM_CULI=new Set([
+  // vapeur / linge
+  "GNVAP","FRVAP","FRSEC","TABLE","DEFRC","CVPRC","FERRC","LINRC","LINGE","COLEN","NETVP","NVPRC","MACOU",
+  // traitement de l'air / chauffage
+  "AIRDY","PURDY","PURIO","PURRC","VENTI","VENRC","HUMID","HUMRC","AIRRC","CONVE","CHARC","CHAUT","CLIMA","DISOL",
+  // culinaire
+  "MO","MOX","MIORC","ROBCB","ROBRC","ROCRC","ROMIX","ROMRC","MIJOT","MIJRC","FRITE","FRITR","GRIPN","GRIVD","GRILL",
+  "GRPRC","MIXER","MXBAT","MXBRC","PCULI","PCULH","PCULC","PCARC","PCHRC","PCURC","CSPRC","FOUPO","FOPRC","FOSTU",
+  "BOUIL","BOURC","AUTOC","GAUFR","GAURC","CENTR","CENRC","SORBE","SORRC","PRAGR","PAGRC","MACPN","HACH","TRANC",
+  "CUIRZ","TREAU","YAOUR","YAORC","CUIVP","CREPE","CRERC","BATTE","PUERI","RACLT","RACRC","FONDU","FONRC","PLARC",
+  "TIRBI","TIRRC","FABGL","KFCON","BLERC","THIRC","SAUCI","REPAS","TCPOS","CTELT","COUVE","OBOIT","TBMIX","ESSPO",
+  "LAVIT","TRFEU","RECHA","SDSAC","REDUC","STEDE","CONSV","CSGRC","FOUPI","MINIV","MINDY",
+  // soin / beauté
+  "BROSC","BROSD","BRCRC","BRDRC","LISSE","PISTO","PISRC","EPILA","EPILH","EPIRC","AEPIL","RASHO","RASFE","RASRC",
+  "TONRC","SCORP","SOINS","SOINB","SOLAI","PESPE","PESRC","SBGRC","SBPRC","HYPUL"]);
+function poleFamille(fam){
+  const f=(fam||"").toString().trim().toUpperCase();
+  if(!f) return "autre";
+  if(FAM_ROBOT.has(f)) return "cafe";
+  if(FAM_AIR.has(f)) return "air";
+  if(FAM_CAFE.has(f)) return "cafe";
+  if(FAM_CULI.has(f)) return "culi";
+  return "autre";
+}
+let POLE_OVERRIDES={};       // {codeTech -> idPole} forcé par un admin
+const LS_POLES="eff_poles_overrides";
+try{ POLE_OVERRIDES=JSON.parse(localStorage.getItem(LS_POLES)||"{}")||{}; }catch(e){ POLE_OVERRIDES={}; }
+async function hydratePoles(){
+  if(!FB)return;
+  try{
+    const d=await FB.collection("config_efficience").doc("poles").get();
+    if(d.exists){ POLE_OVERRIDES=(d.data()&&d.data().overrides)||{}; memSet(LS_POLES,JSON.stringify(POLE_OVERRIDES)); }
+  }catch(e){ console.warn("Lecture pôles Firestore échouée — cache local :",e); }
+}
+function setPoleOverride(code,pole){
+  if(pole) POLE_OVERRIDES[code]=pole; else delete POLE_OVERRIDES[code];
+  memSet(LS_POLES,JSON.stringify(POLE_OVERRIDES));
+  if(FB) FB.collection("config_efficience").doc("poles")
+    .set({overrides:POLE_OVERRIDES,updatedAt:Date.now(),by:IDENTITY||""})
+    .catch(e=>console.warn("Écriture pôles Firestore :",e));
+}
+/* Pôle « auto » de chaque technicien = pôle majoritaire de ses interventions du mois. */
+function polesAutoDuMois(){
+  const cnt={};
+  ROWS.forEach(r=>{ if(!r.tech)return; const p=poleFamille(r.famille);
+    (cnt[r.tech]=cnt[r.tech]||{})[p]=(cnt[r.tech][p]||0)+1; });
+  const res={};
+  Object.keys(cnt).forEach(code=>{ let best="autre",n=-1;
+    POLES.forEach(p=>{ const v=cnt[code][p.id]||0; if(v>n){n=v;best=p.id;} }); res[code]=best; });
+  return res;
+}
+let ADMIN_POLE="";           // pôle filtré en vue admin ("" = tous)
 /* Clôtureurs : clôturent des dossiers POUR les techniciens (le dossier compte pour le tech
    du topage). Pas d'efficience ni de classement : vue dédiée « Mes clôtures » listant tout ce
    qu'ils ont clôturé, repéré par les colonnes INTERVENANT TERM ATL (code tech) et
@@ -725,7 +834,7 @@ const $=s=>document.querySelector(s);
 /* Version applicative — à incrémenter à chaque publication sur GitHub.
    Affichée discrètement dans la barre du haut pour vérifier que les postes
    ont bien reçu la dernière version (mise à jour auto au lancement). */
-const APP_VERSION="2026.10.13";
+const APP_VERSION="2026.11.13";
 (function(){const v=document.getElementById("app-version");if(v)v.textContent=" · v"+APP_VERSION;})();
 
 /* ---- Mise à jour EN COURS DE SESSION (sans fermer le portable) ----
@@ -756,7 +865,10 @@ async function verifierMajAppli(){
 
 /* Notes de la version en cours : affichées UNE fois (par version, par poste)
    quand le technicien reçoit la mise à jour. Vider le tableau = pas de fenêtre. */
-const NOTES_VERSION=[];
+const NOTES_VERSION=[
+  "<strong>Saisie rapide des heures</strong> : boutons <strong>7 h</strong>, <strong>7,5 h</strong> et <strong>8 h</strong> sur chaque jour, plus un bouton pour remplir d'un coup les jours encore vides. La saisie libre reste possible.",
+  "<strong>Responsables de pôle</strong> : passage automatique en mode admin, avec la vue filtrée sur leur pôle (Air, Culinaire &amp; vapeur, Café &amp; robots). Le filtre « Tous les pôles » reste disponible."
+];
 const LS_NOTES_VUE="eff_notes_vue_"+APP_VERSION;
 function montrerNotesMaj(){
   if(!NOTES_VERSION.length) return;
@@ -1806,14 +1918,18 @@ function renderTech(){
     tr.innerHTML=`<td><span class="lnk" data-day="${l.date}" title="Voir les interventions de ce jour">${frDate(l.date)}</span></td>
       <td class="num">${l.nb}</td><td class="num">${l.pieces}</td>
       <td class="num">${fN(l.temps)} h</td>
-      <td class="num"><input type="number" class="h-input" min="0" step="0.25" data-date="${l.date}" value="${l.heures!=null?l.heures:""}" placeholder="—">${dedNote}</td>
+      <td class="num"><span class="h-cell"><span class="h-quick">${H_RAPIDES.map(h=>`<button type="button" data-hq="${h}" data-date="${l.date}"${l.heures===h?' class="on"':''} title="${fHr(h)} travaillées">${fHr(h).replace(" h","")}</button>`).join("")}</span><input type="number" class="h-input" min="0" max="24" step="0.25" data-date="${l.date}" value="${l.heures!=null?l.heures:""}" placeholder="—"></span>${dedNote}</td>
       <td class="num">${l.netH>0?fPct(effJ):'<span class="muted">—</span>'}</td>
       <td class="num">${fN(consoJ)}</td>`;
     tb.appendChild(tr);
   });
   tb.querySelectorAll("input.h-input").forEach(inp=>{
-    inp.addEventListener("input",()=>{hoursSet(code,inp.dataset.date,inp.value);renderTechSoft();});
+    inp.addEventListener("input",()=>{hoursSet(code,inp.dataset.date,inp.value);majBoutonsHeures(inp.dataset.date);renderTechSoft();});
   });
+  tb.querySelectorAll("button[data-hq]").forEach(bt=>{
+    bt.addEventListener("click",()=>appliquerHeures(code,bt.dataset.date,bt.dataset.hq));
+  });
+  $("#h-bulk").classList.toggle("hidden",!b.lignes.some(l=>l.heures==null));
   tb.querySelectorAll("[data-day]").forEach(el=>{
     el.addEventListener("click",()=>{DETAIL_JOUR=el.dataset.day;renderDetail(code);
       $("#tbl-detail").scrollIntoView({behavior:"smooth",block:"start"});});
@@ -2035,6 +2151,29 @@ function renderDeductionsTech(code){
     });
   });
 }
+/* ============ SAISIE RAPIDE DES HEURES (7 / 7,5 / 8 h) ============ */
+const H_RAPIDES=[7,7.5,8];
+function fHr(h){ return String(h).replace(".",",")+" h"; }
+function majBoutonsHeures(date){
+  const inp=$(`#tbl-jours-body input.h-input[data-date="${date}"]`);if(!inp)return;
+  const v=inp.value===""?null:parseFloat(inp.value);
+  inp.closest("td").querySelectorAll("button[data-hq]").forEach(bt=>bt.classList.toggle("on",v!=null&&parseFloat(bt.dataset.hq)===v));
+}
+function appliquerHeures(code,date,val){
+  const inp=$(`#tbl-jours-body input.h-input[data-date="${date}"]`);if(inp)inp.value=val;
+  hoursSet(code,date,val);majBoutonsHeures(date);renderTechSoft();
+}
+/* Remplit uniquement les jours sans heures saisies (ne touche jamais une valeur existante). */
+function remplirJoursVides(val){
+  const code=VIEW_CODE||IDENTITY;if(!code)return;
+  const vides=bilanTech(code).lignes.filter(l=>l.heures==null);
+  if(!vides.length)return;
+  if(!confirm(`Mettre ${fHr(parseFloat(val))} sur les ${vides.length} jour(s) encore vide(s) ?`))return;
+  vides.forEach(l=>appliquerHeures(code,l.date,val));
+  $("#h-bulk").classList.add("hidden");
+}
+document.querySelectorAll("#h-bulk button[data-bulk]").forEach(bt=>bt.addEventListener("click",()=>remplirJoursVides(bt.dataset.bulk)));
+
 /* recalcul léger : met à jour jauge/stats/total sans reconstruire les inputs (garde le focus) */
 function renderTechSoft(){
   const code=VIEW_CODE||IDENTITY;const b=bilanTech(code);
@@ -2070,11 +2209,24 @@ function renderTechSoft(){
 
 function renderAdmin(){
   $("#view-admin").classList.remove("hidden");$("#view-tech").classList.add("hidden");
-  const codes=[...new Set(ROWS.map(r=>r.tech).filter(Boolean))];
+  const tousCodes=[...new Set(ROWS.map(r=>r.tech).filter(Boolean))];
+  const pAuto=polesAutoDuMois();
+  const poleDe=c=>POLE_OVERRIDES[c]||pAuto[c]||"autre";
+  // Sélecteur de pôle (avec effectifs du mois)
+  const sel=$("#sel-pole");
+  if(sel){
+    const nb=id=>tousCodes.filter(c=>poleDe(c)===id).length;
+    sel.innerHTML=`<option value="">Tous les pôles (${tousCodes.length})</option>`+
+      POLES.map(p=>`<option value="${p.id}">${p.nom}${p.resp?" — "+p.resp:""} (${nb(p.id)})</option>`).join("");
+    sel.value=ADMIN_POLE;
+    const r=responsableDe(IDENTITY);
+    $("#pole-info").textContent=(r&&r.pole)?(ADMIN_POLE===r.pole?"Votre pôle":"Votre pôle : "+nomPole(r.pole)):"";
+  }
+  const codes=ADMIN_POLE?tousCodes.filter(c=>poleDe(c)===ADMIN_POLE):tousCodes;
   const lignes=codes.map(code=>({code,nom:nomDe(code),b:bilanTech(code)}))
     .sort((a,b)=>(b.b.eff??-1)-(a.b.eff??-1) || b.b.nbTotal-a.b.nbTotal);
   const body=$("#tbl-admin-body");body.innerHTML="";
-  if(!codes.length){body.innerHTML=`<tr><td colspan="11" class="empty">Chargez le mois pour afficher les collaborateurs.</td></tr>`;}
+  if(!codes.length){body.innerHTML=`<tr><td colspan="12" class="empty">${tousCodes.length?"Aucun technicien dans ce pôle ce mois-ci.":"Chargez le mois pour afficher les collaborateurs."}</td></tr>`;}
   let ST=0,TT=0,HH=0,PP=0,NN=0,RET=0,REP=0;   // ST=temps jours saisis ; RET=retours ; REP=appareils réparés
   lignes.forEach(({code,nom,b})=>{
     ST+=b.tempsSaisi;TT+=b.tempsTotal;HH+=b.heuresTotal;PP+=b.piecesTotal;NN+=b.nbTotal;REP+=b.nbRepares;
@@ -2084,6 +2236,10 @@ function renderAdmin(){
     const nc=niveau("conso",b.conso),nr=niveau("tauxRetour",taux);
     body.innerHTML+=`<tr class="${rc}"><td>${code}</td>
       <td><span class="lnk" data-code="${code}" title="Voir le détail de ce technicien">${nom}</span></td>
+      <td><select class="pole-sel${POLE_OVERRIDES[code]?" force":""}" data-pole-code="${code}" title="${POLE_OVERRIDES[code]?"Pôle forcé manuellement":"Pôle calculé d'après les interventions du mois"}">
+        <option value="">Auto (${nomPole(pAuto[code]||"autre")})</option>
+        ${POLES.map(p=>`<option value="${p.id}"${POLE_OVERRIDES[code]===p.id?" selected":""}>${p.nom}</option>`).join("")}
+      </select></td>
       <td class="num">${b.joursSaisis}</td><td class="num">${b.nbTotal}</td><td class="num">${b.piecesTotal}</td>
       <td class="num">${fN(b.tempsTotal)} h</td><td class="num">${fN(b.heuresTotal)} h</td>
       <td class="num">${b.eff!=null?fPct(b.eff):'<span class="muted">n/c</span>'}</td>
@@ -2094,8 +2250,11 @@ function renderAdmin(){
   body.querySelectorAll("[data-code]").forEach(el=>{
     el.addEventListener("click",()=>{ADMIN_FOCUS=el.dataset.code;render();window.scrollTo({top:0,behavior:"smooth"});});
   });
+  body.querySelectorAll("select[data-pole-code]").forEach(el=>{
+    el.addEventListener("change",()=>{setPoleOverride(el.dataset.poleCode,el.value);renderAdmin();});
+  });
   const effG=HH>0?ST/HH*100:null,consoG=NN>0?PP/NN:null,tauxG=REP>0?RET/REP*100:null;
-  $("#tbl-admin-foot").innerHTML=codes.length?`<tr><td colspan="3">TOTAL / MOYENNE</td>
+  $("#tbl-admin-foot").innerHTML=codes.length?`<tr><td colspan="4">TOTAL / MOYENNE</td>
     <td class="num">${NN}</td><td class="num">${PP}</td><td class="num">${fN(TT)} h</td>
     <td class="num">${fN(HH)} h</td><td class="num">${fPct(effG)}</td><td class="num">${fN(consoG)}</td>
     <td class="num">${RET}</td><td class="num">${fPct(tauxG)}</td></tr>`:"";
@@ -2109,8 +2268,11 @@ function renderAdmin(){
 
 /* Rubrique déductions (vue admin/superviseur) : toutes les déductions du mois, filtrables par tech. */
 function renderAdminDeductions(){
+  // Filtre de pôle de la vue admin appliqué aussi aux déductions
+  let base=DEDUCTIONS;
+  if(ADMIN_POLE){ const pa=polesAutoDuMois(); base=DEDUCTIONS.filter(d=>(POLE_OVERRIDES[d.code]||pa[d.code]||"autre")===ADMIN_POLE); }
   // Options du filtre : techniciens ayant au moins une déduction ce mois
-  const codesAvec=[...new Set(DEDUCTIONS.map(d=>d.code))]
+  const codesAvec=[...new Set(base.map(d=>d.code))]
     .map(c=>({code:c,nom:nomDe(c)})).sort((a,b)=>a.nom.localeCompare(b.nom,"fr"));
   const sel=$("#deduc-filtre-tech");
   if(sel){
@@ -2119,7 +2281,7 @@ function renderAdminDeductions(){
       codesAvec.map(c=>`<option value="${c.code}">${c.nom} (${c.code})</option>`).join("");
     if(codesAvec.some(c=>c.code===cur))sel.value=cur; else {sel.value="";ADMIN_DEDUC_FILTER="";}
   }
-  let list=DEDUCTIONS.slice();
+  let list=base.slice();
   if(ADMIN_DEDUC_FILTER)list=list.filter(d=>d.code===ADMIN_DEDUC_FILTER);
   list.sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.createdAt||0)-(a.createdAt||0));
   const body=$("#tbl-admin-deduc-body");if(!body)return;body.innerHTML="";
@@ -2132,7 +2294,7 @@ function renderAdminDeductions(){
       <td class="num"><span class="lnk" data-del-ded="${d.id}" title="Supprimer">✕</span></td></tr>`;
   });
   $("#tbl-admin-deduc-foot").innerHTML=list.length?`<tr><td colspan="2">TOTAL (${list.length})</td><td class="num">${fN(totH)} h</td><td colspan="2"></td></tr>`:"";
-  $("#deduc-resume").textContent=`${DEDUCTIONS.length} déduction(s) ce mois · ${fN(DEDUCTIONS.reduce((s,d)=>s+(parseFloat(d.heures)||0),0))} h au total`;
+  $("#deduc-resume").textContent=`${base.length} déduction(s) ce mois${ADMIN_POLE?" (pôle filtré)":""} · ${fN(base.reduce((s,d)=>s+(parseFloat(d.heures)||0),0))} h au total`;
   body.querySelectorAll("[data-del-ded]").forEach(el=>{
     el.addEventListener("click",async()=>{
       if(!confirm("Supprimer cette déduction ?"))return;
@@ -2153,11 +2315,11 @@ function majBadge(){
   $("#btn-cache-admin").classList.toggle("hidden",MODE!=="admin");
   $("#btn-pause-admin").classList.toggle("hidden",MODE!=="admin");
   majPauseBanniere();
-  $("#btn-changer").classList.toggle("hidden",MODE==="admin"&&!sup);
+  $("#btn-changer").classList.toggle("hidden",MODE==="admin"&&!estAutoAdmin(IDENTITY));
   $("#btn-admin").classList.toggle("hidden",MODE==="admin");
   majJetonsUI();
 }
-function setIdentity(code){IDENTITY=code;memSet(LS_ID,code);MODE=estSuperviseur(code)?"admin":"tech";ADMIN_FOCUS=null;majBadge();render();chargerJetons();ecouterJetons();montrerInfoJetons();montrerNotesMaj();}
+function setIdentity(code){IDENTITY=code;memSet(LS_ID,code);MODE=estAutoAdmin(code)?"admin":"tech";ADMIN_FOCUS=null;ADMIN_POLE=poleParDefaut(code);majBadge();render();chargerJetons();ecouterJetons();montrerInfoJetons();montrerNotesMaj();}
 
 /* ============ IMPORT DES HEURES DEPUIS L'APP SAV (collection "days") ============ */
 async function importerHeuresSAV(){
@@ -2449,7 +2611,12 @@ $("#file-input").addEventListener("change",e=>{if(e.target.files[0])chargerExcel
 $("#sel-month").addEventListener("change",()=>{ROWS=[];ROWS_RETOUR=[];RETOUR_LOADED=false;NPS_MOIS=null;afficherCacheSeul();});
 $("#nps-mois").addEventListener("change",e=>{NPS_MOIS=e.target.value;if(NPS_CODE){renderNps(NPS_CODE);updateRanks(NPS_CODE);}});
 $("#btn-changer").addEventListener("click",()=>demanderCode("Changer de technicien","Saisissez le code d'accès pour changer d'identité.",ouvrirModalIdentite));
-$("#btn-admin").addEventListener("click",()=>demanderCode("Mode admin","Saisissez le code d'accès administrateur.",()=>{MODE="admin";ADMIN_FOCUS=null;majBadge();render();}));
+$("#btn-admin").addEventListener("click",()=>{
+  const entrer=()=>{MODE="admin";ADMIN_FOCUS=null;majBadge();render();};
+  if(estAutoAdmin(IDENTITY)) entrer();   // responsables : pas de code
+  else demanderCode("Mode admin","Saisissez le code d'accès administrateur.",entrer);
+});
+$("#sel-pole").addEventListener("change",e=>{ADMIN_POLE=e.target.value;renderAdmin();});
 $("#btn-quit-admin").addEventListener("click",()=>{MODE="tech";ADMIN_FOCUS=null;majBadge();render();});
 $("#btn-back-admin").addEventListener("click",()=>{ADMIN_FOCUS=null;render();window.scrollTo({top:0,behavior:"smooth"});});
 document.querySelectorAll(".tab2").forEach(bt=>bt.addEventListener("click",()=>{TAB=bt.dataset.tab;applyTab();}));
@@ -2513,10 +2680,11 @@ dz.addEventListener("drop",e=>{const f=e.dataTransfer.files[0];if(f)chargerExcel
   await hydrateHours(ymNow());   // pré-charge les heures du mois courant (si Firebase dispo)
   await hydrateDeductions(ymNow());
   await hydrateTemps();          // pre-charge les overrides du bareme (si Firebase dispo)
+  await hydratePoles();          // pôles forcés par un admin (si Firebase dispo)
   if(!(await checkTempsUpdates())) await checkInfoMessages();  // popups au lancement : bareme puis infos
   startInfoListener();          // messages d'info en temps reel pour les postes deja ouverts
   const saved=memGet(LS_ID);
-  if(saved&&TECH_BY_CODE[saved]){IDENTITY=saved;MODE=estSuperviseur(saved)?"admin":"tech";majBadge();render();montrerInfoJetons();montrerNotesMaj();}
+  if(saved&&TECH_BY_CODE[saved]){IDENTITY=saved;MODE=estAutoAdmin(saved)?"admin":"tech";ADMIN_POLE=poleParDefaut(saved);majBadge();render();montrerInfoJetons();montrerNotesMaj();}
   else{majBadge();ouvrirModalIdentite();}
   await chargerJetons();          // solde de jetons du jour
   ecouterJetons();                // mise à jour en temps réel si un admin crédite
