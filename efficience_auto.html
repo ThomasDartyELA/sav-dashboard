@@ -156,6 +156,22 @@
     border-radius:6px;background:#fff;color:var(--text-muted);cursor:pointer;line-height:1;font-variant-numeric:tabular-nums}
   .h-quick button:hover{border-color:var(--primary);color:var(--primary)}
   .h-quick button.on{background:var(--primary);border-color:var(--primary);color:#fff}
+  /* Horaire de la semaine (35 / 37 / 39 / 42 h) */
+  .h-semaine{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px;padding:10px 12px;
+    border:1px solid var(--border);border-radius:10px;background:#faf9f7}
+  .h-semaine.a-choisir{border-color:var(--accent);background:#fff8db;box-shadow:0 0 0 3px rgba(255,204,0,.25)}
+  .h-semaine .hs-lbl{font-size:.85rem;font-weight:700;color:var(--text)}
+  .h-semaine select{padding:6px 8px;border:1px solid var(--border);border-radius:8px;font-size:.84rem;background:#fff;color:var(--text)}
+  .h-semaine .hs-btns{display:inline-flex;gap:6px;flex-wrap:wrap}
+  .h-semaine .hs-btns button{font:inherit;display:flex;flex-direction:column;align-items:center;gap:1px;padding:5px 12px;
+    border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--text);cursor:pointer;line-height:1.15}
+  .h-semaine .hs-btns button b{font-size:.9rem}
+  .h-semaine .hs-btns button small{font-size:.68rem;color:var(--text-muted)}
+  .h-semaine .hs-btns button:hover{border-color:var(--primary);color:var(--primary)}
+  .h-semaine .hs-btns button.on{background:var(--primary);border-color:var(--primary);color:#fff}
+  .h-semaine .hs-btns button.on small{color:#ffe3e6}
+  .h-semaine .hs-info{font-size:.78rem;color:var(--text-muted);flex-basis:100%}
+  .h-semaine.a-choisir .hs-info{color:#92400e;font-weight:600}
   .h-bulk{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 10px;font-size:.82rem;color:var(--text-muted)}
   .h-bulk button{font:inherit;font-size:.78rem;font-weight:600;padding:5px 10px;border:1px solid var(--border);
     border-radius:8px;background:#fff;color:var(--text);cursor:pointer}
@@ -179,6 +195,13 @@
   .nps-barre label{font-size:.85rem;font-weight:600;color:var(--text-muted)}
   .nps-barre select{padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:.9rem;background:#fff;color:var(--text);min-width:180px}
   .nps-barre .muted{font-size:.8rem}
+  .nps-periodes{display:inline-flex;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:#fff}
+  .nps-periodes button{font:inherit;font-size:.85rem;font-weight:600;padding:8px 14px;border:0;border-right:1px solid var(--border);
+    background:#fff;color:var(--text);cursor:pointer;white-space:nowrap}
+  .nps-periodes button:last-child{border-right:0}
+  .nps-periodes button:hover:not(:disabled){background:#faf9f7;color:var(--primary)}
+  .nps-periodes button.on{background:var(--primary);color:#fff}
+  .nps-periodes button:disabled{color:var(--text-muted);cursor:default}
   .jauge-card.atelier{background:#faf9f7}
   .empty{padding:30px;text-align:center;color:var(--text-muted);line-height:1.7}
   .lnk{color:var(--primary);font-weight:600;text-decoration:none;cursor:pointer}
@@ -387,7 +410,7 @@
       </div>
       <button class="btn btn-primary" id="btn-refresh">Actualiser le mois</button>
       <button class="btn btn-ghost" id="btn-vider-cache" title="À utiliser si des journées ou des interventions semblent manquer : vide le cache local et retélécharge tout le mois.">🧹 Vider le cache et tout recharger</button>
-      <input type="file" id="file-input" accept=".xlsx,.xls" hidden>
+      <input type="file" id="file-input" accept=".xlsx,.xls,.csv" hidden>
       <div style="align-self:center">
         <span id="jetons-badge" class="jetons-badge">—</span>
       </div>
@@ -429,6 +452,12 @@
 
       <div class="sect-title">Saisie des heures — un jour par ligne</div>
       <div class="hint" style="margin-top:0">Indiquez votre temps de travail réel pour chaque jour (boutons 7 / 7,5 / 8 h ou saisie libre). Seuls les jours renseignés comptent dans l'efficience du mois. La saisie est enregistrée automatiquement.</div>
+      <div class="h-semaine" id="h-semaine">
+        <span class="hs-lbl">Horaire de la semaine</span>
+        <select id="sem-select" aria-label="Semaine"></select>
+        <span class="hs-btns" id="sem-btns"></span>
+        <span class="hs-info" id="sem-info"></span>
+      </div>
       <div class="h-bulk" id="h-bulk">
         <span>Remplir les jours encore vides :</span>
         <button type="button" data-bulk="7">7 h</button><button type="button" data-bulk="7.5">7,5 h</button><button type="button" data-bulk="8">8 h</button>
@@ -495,7 +524,12 @@
 
       <div id="tab-nps" class="hidden">
         <div class="nps-barre">
-          <label for="nps-mois">Mois des réponses</label>
+          <div class="nps-periodes" id="nps-periodes" role="group" aria-label="Période NPS">
+            <button type="button" data-periode="P1">Dernier mois</button>
+            <button type="button" data-periode="P3">3 derniers mois</button>
+            <button type="button" data-periode="AN">Toute l'année</button>
+          </div>
+          <label for="nps-mois" style="margin-left:6px">ou mois précis</label>
           <select id="nps-mois"></select>
           <span class="muted" id="nps-mois-info"></span>
         </div>
@@ -505,7 +539,7 @@
         <div class="sect-title">Atelier — tous techniciens confondus</div>
         <div class="stat-grid" id="nps-stats-atelier"></div>
         <div class="sect-title">Commentaires clients</div>
-        <div class="hint" style="margin-top:0">Avis laissés par les clients sur vos interventions (enquête NPS) pour le mois choisi. Note sur 10.</div>
+        <div class="hint" style="margin-top:0">Avis laissés par les clients sur vos interventions (enquête NPS) pour la période choisie. Note sur 10.</div>
         <div class="tbl-wrap">
           <table class="data-table" id="tbl-nps">
             <thead><tr>
@@ -798,7 +832,9 @@ const RETOUR_FILE="retour-atelier.xlsx";
 const FR={dossier:"NUM_DOS_NOMAD",marque:"MARQUE",famille:"FAMILLE",code:"COPER_TERM_ATL",
   date:"DATE_TERMINE_ATELIER",techPrec:"NOM_TECH_AFN_PREC"};
 /* NPS — fichier lu directement depuis GitHub (raw, branche main : suit tes mises à jour) */
-const NPS_URL="https://raw.githubusercontent.com/ThomasDartyELA/sav-dashboard/main/nps-export.xlsx";
+/* NPS publié en CSV (plus léger) ; repli sur l'ancien Excel si le CSV est absent. */
+const NPS_URLS=["https://raw.githubusercontent.com/ThomasDartyELA/sav-dashboard/main/nps-export.csv",
+                "https://raw.githubusercontent.com/ThomasDartyELA/sav-dashboard/main/nps-export.xlsx"];
 const NPS_COL={date:0,tech:8,dossier:9,note:16,commentaire:17};
 const SEUILS={efficience:{sens:"haut",bon:93,moyen:78},conso:{sens:"bas",bon:1.10,moyen:1.40},
   tauxRetour:{sens:"bas",bon:5,moyen:7},nps:{sens:"haut",bon:50,moyen:0}};
@@ -856,7 +892,7 @@ const $=s=>document.querySelector(s);
 /* Version applicative — à incrémenter à chaque publication sur GitHub.
    Affichée discrètement dans la barre du haut pour vérifier que les postes
    ont bien reçu la dernière version (mise à jour auto au lancement). */
-const APP_VERSION="2026.11.14";
+const APP_VERSION="2026.11.14-3";
 (function(){const v=document.getElementById("app-version");if(v)v.textContent=" · v"+APP_VERSION;})();
 
 /* ---- Mise à jour EN COURS DE SESSION (sans fermer le portable) ----
@@ -888,9 +924,8 @@ async function verifierMajAppli(){
 /* Notes de la version en cours : affichées UNE fois (par version, par poste)
    quand le technicien reçoit la mise à jour. Vider le tableau = pas de fenêtre. */
 const NOTES_VERSION=[
-  "<strong>Chargement détaillé</strong> : pendant une actualisation, l'application indique étape par étape ce qu'elle fait (interventions, retours, NPS, heures). En cas de souci, elle dit clairement ce qui bloque.",
-  "<strong>Actualisation plus rapide</strong> : les retours atelier ne sont plus retéléchargés en entier à chaque fois, seulement les derniers jours.",
-  "<strong>Saisie des heures plus sûre</strong> : si le stockage partagé est indisponible, vos heures restent enregistrées sur le poste et sont envoyées automatiquement dès que possible."
+  "<strong>Horaire de la semaine</strong> : au-dessus du tableau des heures, choisissez <strong>35 h, 37 h, 39 h ou 42 h</strong> et toute la semaine est remplie d'un coup (du lundi au vendredi). Chaque jour reste modifiable. Les jours à venir ne comptent pas dans l'efficience tant qu'ils ne sont pas passés.",
+  "<strong>NPS par période</strong> : dans l'onglet Satisfaction, choisissez le dernier mois, les 3 derniers mois ou toute l'année."
 ];
 const LS_NOTES_VUE="eff_notes_vue_"+APP_VERSION.replace(/b$/,"");
 function montrerNotesMaj(){
@@ -1695,10 +1730,33 @@ function parseExcelRetour(buf){return rowsFromWb(XLSX.read(buf,{type:"array",cel
 function parseCsvRetour(text){return rowsFromWb(XLSX.read(text,{type:"string"}),buildRowRetour,[FR.dossier,FR.techPrec]);}
 /* ============ PARSING NPS ============
    Colonnes par position (export Qualtrics) : A=date, I=code tech, J=dossier, Q=note 0-10, R=commentaire. */
+/* Lecteur CSV (RFC 4180) : guillemets, retours à la ligne dans les commentaires, séparateur
+   « , » ou « ; » détecté sur l'en-tête. Tout reste en texte (n° de dossier avec zéros en tête). */
+function parseCsv(txt){
+  if(txt.charCodeAt(0)===0xFEFF)txt=txt.slice(1);
+  const l1=txt.slice(0,txt.search(/\r?\n/)>0?txt.search(/\r?\n/):txt.length);
+  const sep=(l1.split(";").length>l1.split(",").length)?";":",";
+  const rows=[];let row=[],f="",q=false;
+  for(let i=0;i<txt.length;i++){const c=txt[i];
+    if(q){ if(c==='"'){ if(txt[i+1]==='"'){f+='"';i++;} else q=false; } else f+=c; }
+    else if(c==='"')q=true;
+    else if(c===sep){row.push(f);f="";}
+    else if(c==="\n"||c==="\r"){ if(c==="\r"&&txt[i+1]==="\n")i++; row.push(f);f="";rows.push(row);row=[]; }
+    else f+=c;
+  }
+  if(f!==""||row.length){row.push(f);rows.push(row);}
+  return rows;
+}
+function estZip(buf){return buf&&buf.length>1&&buf[0]===0x50&&buf[1]===0x4B;}   // "PK" = .xlsx
 function parseNps(buf){
-  const wb=XLSX.read(buf,{type:"array",cellDates:true});
-  const ws=wb.Sheets[wb.SheetNames[0]];
-  const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:""});
+  let data;
+  if(estZip(buf)){
+    const wb=XLSX.read(buf,{type:"array",cellDates:true});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    data=XLSX.utils.sheet_to_json(ws,{header:1,defval:""});
+  }else{
+    data=parseCsv(new TextDecoder("utf-8").decode(buf));
+  }
   const out=[];
   for(let r=1;r<data.length;r++){const row=data[r];
     const tech=norm(row[NPS_COL.tech]);
@@ -2084,8 +2142,11 @@ async function chargerNps(force){
   if(NPS_IMPORT&&NPS_LOADED)return true;   // un fichier importé à la main reste prioritaire
   if(!force&&NPS_LOADED&&Date.now()-NPS_TS<NPS_FRAICHEUR_MS)return true;
   const ctrl=new AbortController();const t=setTimeout(()=>ctrl.abort(),NPS_TIMEOUT_MS);
-  try{const resp=await fetch(NPS_URL,{cache:"no-cache",signal:ctrl.signal});if(!resp.ok)throw 0;
+  try{let resp=null;
+    for(const u of NPS_URLS){const r=await fetch(u,{cache:"no-cache",signal:ctrl.signal});if(r.ok){resp=r;break;}}
+    if(!resp)throw 0;
     const lignes=parseNps(new Uint8Array(await resp.arrayBuffer()));
+    if(!lignes.length)throw 0;                     // fichier vide ou illisible : on garde l'existant
     ROWS_NPS=lignes;NPS_LOADED=true;NPS_TS=Date.now();return true;
   }catch(e){return false;}
   finally{clearTimeout(t);}
@@ -2385,6 +2446,7 @@ function renderTech(){
     bt.addEventListener("click",()=>appliquerHeures(code,bt.dataset.date,bt.dataset.hq));
   });
   $("#h-bulk").classList.toggle("hidden",!b.lignes.some(l=>l.heures==null));
+  majSemaineUI(code);
   tb.querySelectorAll("[data-day]").forEach(el=>{
     el.addEventListener("click",()=>{DETAIL_JOUR=el.dataset.day;renderDetail(code);
       $("#tbl-detail").scrollIntoView({behavior:"smooth",block:"start"});});
@@ -2455,28 +2517,58 @@ function libMois(ym){const[y,m]=ym.split("-");const l=MOIS_FR[parseInt(m,10)-1]|
 function npsMoisDispo(){
   return [...new Set(ROWS_NPS.map(r=>(r.jour||"").slice(0,7)).filter(x=>/^\d{4}-\d{2}$/.test(x)))].sort().reverse();
 }
+/* Périodes NPS (boutons) — calées sur le mois le plus récent du fichier NPS :
+   P1 = dernier mois · P3 = 3 derniers mois (calendaires) · AN = année civile de ce dernier mois. */
+const NPS_PERIODES=["P1","P3","AN"];
+function ymDecale(ym,n){const[y,m]=ym.split("-").map(Number);const d=new Date(y,m-1+n,1);
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");}
 function npsMoisActif(){
   const dispo=npsMoisDispo();
-  if(NPS_MOIS==="*"||(NPS_MOIS&&dispo.includes(NPS_MOIS)))return NPS_MOIS;
-  const ym=currentYM();
-  return dispo.includes(ym)?ym:(dispo[0]||"*");
+  if(!dispo.length)return "*";
+  if(NPS_MOIS==="*"||NPS_PERIODES.includes(NPS_MOIS)||(NPS_MOIS&&dispo.includes(NPS_MOIS)))return NPS_MOIS;
+  return "P1";                                   // défaut : dernier mois disponible
+}
+/* Liste des mois (YYYY-MM) couverts par la sélection ; null = tout le fichier. */
+function npsMoisSelection(){
+  const dispo=npsMoisDispo(),k=npsMoisActif();
+  if(k==="*"||!dispo.length)return null;
+  const last=dispo[0];
+  if(k==="P1")return [last];
+  if(k==="P3"){const deb=ymDecale(last,-2);return dispo.filter(m=>m>=deb&&m<=last);}
+  if(k==="AN")return dispo.filter(m=>m.slice(0,4)===last.slice(0,4));
+  return [k];
+}
+function npsLibPeriode(){
+  const dispo=npsMoisDispo(),k=npsMoisActif();
+  if(k==="*"||!dispo.length)return "tous les mois";
+  const last=dispo[0],court=ym=>libMois(ym).toLowerCase();
+  if(k==="P1")return court(last);
+  if(k==="P3")return `3 derniers mois (${court(ymDecale(last,-2))} → ${court(last)})`;
+  if(k==="AN")return `année ${last.slice(0,4)} (janvier → ${court(last).split(" ")[0]})`;
+  return court(k);
 }
 function npsDuMois(){
-  const m=npsMoisActif();
-  return m==="*"?ROWS_NPS:ROWS_NPS.filter(r=>(r.jour||"").slice(0,7)===m);
+  const sel=npsMoisSelection();
+  if(!sel)return ROWS_NPS;
+  const set=new Set(sel);
+  return ROWS_NPS.filter(r=>set.has((r.jour||"").slice(0,7)));
 }
 function npsDeTech(code){ return npsDuMois().filter(r=>r.tech===code); }
 function majSelectNpsMois(){
   const sel=$("#nps-mois");if(!sel)return;
   const dispo=npsMoisDispo(),actif=npsMoisActif();
-  let opts=dispo.map(m=>{const n=ROWS_NPS.filter(r=>(r.jour||"").slice(0,7)===m).length;
+  const periode=NPS_PERIODES.includes(actif);
+  let opts=`<option value="" disabled${periode?" selected":""}>—</option>`+dispo.map(m=>{const n=ROWS_NPS.filter(r=>(r.jour||"").slice(0,7)===m).length;
     return `<option value="${m}">${libMois(m)} (${n} avis)</option>`;}).join("");
-  if(dispo.length>1)opts+=`<option value="*">Tous les mois (${ROWS_NPS.length} avis)</option>`;
-  if(!dispo.length)opts=`<option value="*">—</option>`;
-  sel.innerHTML=opts;sel.value=actif;sel.disabled=dispo.length<=1;
+  if(dispo.length>1)opts+=`<option value="*">Tout le fichier (${ROWS_NPS.length} avis)</option>`;
+  sel.innerHTML=opts;sel.value=periode?"":actif;sel.disabled=!dispo.length;
+  // Boutons de période
+  document.querySelectorAll("#nps-periodes button[data-periode]").forEach(bt=>{
+    bt.disabled=!dispo.length;bt.classList.toggle("on",bt.dataset.periode===actif);
+  });
   const info=$("#nps-mois-info");
-  if(info)info.textContent=!NPS_LOADED?"":dispo.length>1?`${dispo.length} mois disponibles dans le fichier NPS${NPS_IMPORT?" (fichier importé)":""}`
-    :dispo.length===1?`Fichier NPS : ${libMois(dispo[0])} uniquement${NPS_IMPORT?" (fichier importé)":""}`:"";
+  if(info)info.textContent=!NPS_LOADED||!dispo.length?"":
+    `${npsDuMois().length} avis · ${npsLibPeriode()}${NPS_IMPORT?" · fichier importé":""}`;
 }
 function jaugeNps(s,label,extra,atelier){
   const nN=niveau("nps",s.score);
@@ -2500,8 +2592,7 @@ function cartesNps(s,sousRep){
 function renderNps(code){
   NPS_CODE=code;
   majSelectNpsMois();
-  const mois=npsMoisActif();
-  const libPeriode=mois==="*"?"tous les mois":libMois(mois).toLowerCase();
+  const libPeriode=npsLibPeriode();
   const list=npsDeTech(code);
   const s=npsStats(list);
   const sA=npsStats(npsDuMois());               // NPS global de l'atelier (toutes les réponses du mois)
@@ -2618,6 +2709,70 @@ function appliquerHeures(code,date,val,sansRendu){
   if(!sansRendu)renderTechSoft();
 }
 /* Remplit uniquement les jours sans heures saisies (ne touche jamais une valeur existante). */
+/* ============ HORAIRE DE LA SEMAINE ============
+   Un clic remplit les heures du lundi au vendredi selon l'horaire contractuel.
+   Les jours restent modifiables un par un. Un jour à venir (ou sans dossier) ne compte
+   jamais dans l'efficience : seuls les jours avec interventions entrent dans le calcul. */
+const SEMAINES_TYPES={
+  35:[7,7,7,7,7],
+  37:[7.5,7.5,7.5,7.5,7],
+  39:[8,8,8,8,7],
+  42:[8.5,8.5,8.5,8.5,8]
+};
+const JOURS_COURTS=["Lun","Mar","Mer","Jeu","Ven"];
+let SEM_LUNDI=null;          // lundi (ISO) de la semaine affichée dans le sélecteur
+function lundiDe(iso){const d=new Date(iso+"T00:00:00");const j=(d.getDay()+6)%7;d.setDate(d.getDate()-j);return isoLocal(d);}
+function joursSemaine(lundi){const d=new Date(lundi+"T00:00:00");
+  return [0,1,2,3,4].map(i=>{const x=new Date(d);x.setDate(d.getDate()+i);return isoLocal(x);});}
+function semainesDuMois(ym){
+  const [y,m]=ym.split("-").map(Number);const fin=new Date(y,m,0).getDate();const out=[];
+  for(let j=1;j<=fin;j++){const iso=`${ym}-${String(j).padStart(2,"0")}`;const l=lundiDe(iso);
+    if(!out.includes(l)&&joursSemaine(l).some(x=>x.slice(0,7)===ym))out.push(l);}
+  return out;
+}
+/* Horaire reconnu d'après les heures déjà saisies (null si rien ou personnalisé) */
+function horaireSemaine(code,lundi){
+  const h=joursSemaine(lundi).map(d=>hoursGet(code,d));
+  if(h.every(v=>v==null))return null;
+  const k=Object.keys(SEMAINES_TYPES).find(t=>SEMAINES_TYPES[t].every((v,i)=>h[i]===v));
+  return k||"perso";
+}
+function majSemaineUI(code){
+  const box=$("#h-semaine");if(!box)return;
+  const ym=currentYM(),semaines=semainesDuMois(ym),auj=isoLocal(new Date()),lCour=lundiDe(auj);
+  if(!SEM_LUNDI||!semaines.includes(SEM_LUNDI))SEM_LUNDI=semaines.includes(lCour)?lCour:semaines[semaines.length-1];
+  const sel=$("#sem-select");
+  sel.innerHTML=semaines.map(l=>{const j=joursSemaine(l);
+    return `<option value="${l}">${l===lCour?"Cette semaine — ":""}du ${frDate(j[0]).slice(0,5)} au ${frDate(j[4]).slice(0,5)}</option>`;}).join("");
+  sel.value=SEM_LUNDI;
+  const actuel=horaireSemaine(code,SEM_LUNDI);
+  $("#sem-btns").innerHTML=Object.keys(SEMAINES_TYPES).map(t=>{const v=SEMAINES_TYPES[t];
+    const detail=v[0]===v[4]?`${fHr(v[0])} × 5`:`${fHr(v[0])} ×4 + ${fHr(v[4])}`;
+    return `<button type="button" data-sem="${t}"${actuel===t?' class="on"':''} title="${JOURS_COURTS.map((j,i)=>j+" "+fHr(v[i])).join(" · ")}"><b>${t} h</b><small>${detail}</small></button>`;}).join("");
+  $("#sem-btns").querySelectorAll("button[data-sem]").forEach(bt=>bt.addEventListener("click",()=>appliquerSemaine(code,SEM_LUNDI,bt.dataset.sem)));
+  const nouvelle=(actuel==null&&SEM_LUNDI===lCour&&MODE==="tech"&&code===IDENTITY);
+  box.classList.toggle("a-choisir",nouvelle);
+  $("#sem-info").textContent=nouvelle?"Nouvelle semaine : choisissez votre horaire (modifiable ensuite jour par jour)."
+    :actuel==="perso"?"Horaire personnalisé pour cette semaine (heures modifiées à la main)."
+    :actuel?"Les jours à venir ne comptent dans l'efficience qu'une fois passés, avec des dossiers traités."
+    :"Aucune heure saisie sur cette semaine.";
+}
+async function appliquerSemaine(code,lundi,type){
+  const v=SEMAINES_TYPES[type];if(!v||!code)return;
+  const jours=joursSemaine(lundi);
+  // La semaine peut déborder sur le mois voisin : on charge ses heures avant d'écrire.
+  const mois=[...new Set(jours.map(d=>d.slice(0,7)))].filter(m=>m!==currentYM());
+  for(const m of mois){try{await hydrateHours(m);}catch(e){}}
+  const differents=jours.filter((d,i)=>{const h=hoursGet(code,d);return h!=null&&h!==v[i];});
+  let ecraser=false;
+  if(differents.length){
+    ecraser=confirm(`${differents.length} jour(s) de cette semaine ont déjà des heures différentes (${differents.map(d=>frDate(d).slice(0,5)).join(", ")}).\n\nOK = les remplacer par l'horaire ${type} h\nAnnuler = ne remplir que les jours vides`);
+  }
+  jours.forEach((d,i)=>{const h=hoursGet(code,d);if(h==null||ecraser)hoursSet(code,d,v[i]);});
+  render();
+}
+$("#sem-select").addEventListener("change",e=>{SEM_LUNDI=e.target.value;majSemaineUI(VIEW_CODE||IDENTITY);});
+
 function remplirJoursVides(val){
   const code=VIEW_CODE||IDENTITY;if(!code)return;
   const vides=bilanTech(code).lignes.filter(l=>l.heures==null);
@@ -2659,6 +2814,7 @@ function renderTechSoft(){
     <td class="num">${b.piecesTotal}</td><td class="num">${fN(b.tempsTotal)} h</td>
     <td class="num">${fN(b.heuresTotal)} h</td><td class="num">${fPct(b.eff)}</td><td class="num">${fN(b.conso)}</td></tr>`:"";
   $("#h-bulk").classList.toggle("hidden",!b.lignes.some(l=>l.heures==null));
+  majSemaineUI(code);
   updateRanks(code);   // l'efficience a changé -> le classement aussi
 }
 
@@ -3081,7 +3237,10 @@ $("#btn-refresh").addEventListener("click",actualiserAvecJeton);  // consomme 1 
 $("#btn-import").addEventListener("click",()=>$("#file-input").click());
 $("#file-input").addEventListener("change",e=>{if(e.target.files[0])chargerExcel(e.target.files[0]);});
 $("#sel-month").addEventListener("change",()=>{if(CHARGEMENT_EN_COURS)return;etapesMasquer();ROWS=[];ROWS_RETOUR=[];RETOUR_LOADED=false;NPS_MOIS=null;afficherCacheSeul();});
-$("#nps-mois").addEventListener("change",e=>{NPS_MOIS=e.target.value;if(NPS_CODE){renderNps(NPS_CODE);updateRanks(NPS_CODE);}});
+$("#nps-mois").addEventListener("change",e=>{if(!e.target.value)return;NPS_MOIS=e.target.value;if(NPS_CODE){renderNps(NPS_CODE);updateRanks(NPS_CODE);}});
+document.querySelectorAll("#nps-periodes button[data-periode]").forEach(bt=>bt.addEventListener("click",()=>{
+  NPS_MOIS=bt.dataset.periode;if(NPS_CODE){renderNps(NPS_CODE);updateRanks(NPS_CODE);}
+}));
 $("#btn-changer").addEventListener("click",()=>demanderCode("Changer de technicien","Saisissez le code d'accès pour changer d'identité.",ouvrirModalIdentite));
 $("#btn-admin").addEventListener("click",()=>{
   const entrer=()=>{MODE="admin";ADMIN_FOCUS=null;majBadge();render();chargerJetons();};
