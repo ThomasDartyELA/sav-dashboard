@@ -848,7 +848,7 @@ const IDX1={},IDX2={},IDX3={};
 function norm(s){return (s==null?"":String(s)).trim().toUpperCase();}
 /* ============ RÈGLES MÉTIER TOPAGE (ELA) ============
    Catégorie effective d'un code de topage, source unique de vérité :
-   - SCC compté comme ECC
+   - SCC et ECA comptés comme ECC
    - ECC et ETC = ECC
    - topage VIDE = carte cadeau Darty Max => compté comme TAN
    - RRR : affiché mais compte 0 (ce n'est pas une réparation)
@@ -859,7 +859,7 @@ function categorieTopage(topage){
   if(t==="")return "TAN";                              // carte cadeau Darty Max
   if(t==="TAR")return "TAR";
   if(t==="TAN")return "TAN";
-  if(t==="ECC"||t==="ETC"||t==="SCC")return "ECC";     // SCC assimilé à ECC
+  if(t==="ECC"||t==="ETC"||t==="SCC"||t==="ECA")return "ECC";   // SCC et ECA assimilés à ECC
   if(t==="RRR")return "RRR";                           // affiché, compte 0
   return "";                                           // autre : compte 0
 }
@@ -892,7 +892,7 @@ const $=s=>document.querySelector(s);
 /* Version applicative — à incrémenter à chaque publication sur GitHub.
    Affichée discrètement dans la barre du haut pour vérifier que les postes
    ont bien reçu la dernière version (mise à jour auto au lancement). */
-const APP_VERSION="2026.11.14-3";
+const APP_VERSION="2026.11.17";
 (function(){const v=document.getElementById("app-version");if(v)v.textContent=" · v"+APP_VERSION;})();
 
 /* ---- Mise à jour EN COURS DE SESSION (sans fermer le portable) ----
@@ -924,8 +924,7 @@ async function verifierMajAppli(){
 /* Notes de la version en cours : affichées UNE fois (par version, par poste)
    quand le technicien reçoit la mise à jour. Vider le tableau = pas de fenêtre. */
 const NOTES_VERSION=[
-  "<strong>Horaire de la semaine</strong> : au-dessus du tableau des heures, choisissez <strong>35 h, 37 h, 39 h ou 42 h</strong> et toute la semaine est remplie d'un coup (du lundi au vendredi). Chaque jour reste modifiable. Les jours à venir ne comptent pas dans l'efficience tant qu'ils ne sont pas passés.",
-  "<strong>NPS par période</strong> : dans l'onglet Satisfaction, choisissez le dernier mois, les 3 derniers mois ou toute l'année."
+  "<strong>Topage ECA</strong> : les interventions ECA sont maintenant comptées comme des ECC (temps alloué ECC du barème et comptées comme réparations). Votre temps alloué et votre efficience peuvent donc augmenter."
 ];
 const LS_NOTES_VUE="eff_notes_vue_"+APP_VERSION.replace(/b$/,"");
 function montrerNotesMaj(){
@@ -2494,7 +2493,7 @@ function renderRetour(code){
   if(!RETOUR_LOADED){tb.innerHTML=`<tr><td colspan="5" class="empty">Flux retours non chargé — cliquez « Actualiser le mois ».</td></tr>`;return;}
   if(!rets.length){tb.innerHTML=`<tr><td colspan="5" class="empty">Aucun retour ce mois-ci. 👍</td></tr>`;return;}
   tb.innerHTML=rets.map(r=>{
-    const t=r.code;const cls=t==="TAR"?"tar":t==="TAN"?"tan":(t==="ECC"||t==="ETC")?"ecc":"zero";
+    const t=r.code;const cls=norm(t)?classeTopage(t):"zero";
     return `<tr><td>${r.jour?frDate(r.jour):"—"}</td><td>${escH(r.dossier)}</td>
       <td>${escH(r.marque)||'<span class="muted">—</span>'}</td><td>${escH(r.famille)}</td>
       <td><span class="tag ${cls}">${escH(t)||"—"}</span></td></tr>`;
